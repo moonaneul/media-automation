@@ -1,0 +1,91 @@
+service: sunday
+date: 2026-10-11
+
+bulletin:
+  number:
+    status: VALUE
+    value: "13-XX"
+
+  annual_slogan:
+    status: VALUE
+    text: "예시 표어"
+
+worship:
+  opening_songs:
+    - status: VALUE
+      title: 찬양 1
+
+    - status: VALUE
+      title: 찬양 2
+
+    - status: VALUE
+      title: 찬양 3
+
+  separate_hymn:
+    status: VALUE
+    title: 찬송가
+    hymn_number: 000
+
+  prayer:
+    status: VALUE
+    person: 홍길동
+
+  offering_hymn:
+    status: VALUE
+    title: 찬송가
+    hymn_number: 000
+
+  offering_prayer:
+    status: VALUE
+    person: 홍길동
+
+  special_song:
+    status: NONE
+
+sermon:
+  title:
+    status: VALUE
+    text: 설교 제목
+
+  scripture:
+    status: VALUE
+    reference: 요 3:16-18
+
+  additional_scripture:
+    status: NONE
+
+  decision_hymn:
+    status: VALUE
+    title: 결단 찬송
+    hymn_number: 000
+
+bulletin_content:
+  afternoon_service:
+    status: VALUE
+    text: 오후예배 내용
+
+  church_news:
+    status: VALUE
+    items: []
+
+  this_week_service:
+    status: VALUE
+    items: []
+
+  next_week_service:
+    status: VALUE
+    items: []
+
+  monthly_schedule:
+    status: VALUE
+    items: []
+
+  cell_group:
+    status: VALUE
+    scripture: 요 3:16-18
+    title: 설교 제목
+    questions:
+      - 질문 1
+      - 질문 2
+      - 질문 3
+      - 질문 4
