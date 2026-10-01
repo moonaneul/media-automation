@@ -3,6 +3,7 @@ from __future__ import annotations
 from typing import Any
 
 from media_automation.weekly_data.models import (
+    FridayZoomData,
     SundayData,
     WednesdayData,
     WeeklyStatus,
@@ -327,3 +328,146 @@ def build_sunday_plan(
     )
 
     return plan
+
+def build_friday_zoom_plan(
+    data: FridayZoomData,
+) -> list[WorshipBlock]:
+    """
+    금요기도회 Zoom Weekly Data를
+    실제 예배 순서 블록으로 변환한다.
+
+    기본 흐름:
+
+    예배 준비
+    → 찬양 2곡
+    → 첫 기도 제목
+    → 찬양
+    → 본문 안내·봉독
+    → 설교 제목
+    → 추가 말씀
+    → 응답 찬양
+    → 말씀 관련 기도
+    → 찬양
+    → 공동체·중보기도
+    → 개인 기도
+
+    Zoom 찬양은 악보 찬양과 구분하여
+    ZOOM_SONG 블록으로 만든다.
+    """
+
+    content_blocks: list[WorshipBlock] = []
+
+    # 시작 찬양 2곡
+    for index, song in enumerate(data.opening_songs):
+        block = _make_optional_block(
+            field=song,
+            key=f"opening_songs[{index}]",
+            kind=BlockKind.ZOOM_SONG,
+        )
+
+        if block is not None:
+            content_blocks.append(block)
+
+    # 첫 기도 제목
+    block = _make_optional_block(
+        field=data.first_prayer,
+        key="first_prayer",
+        kind=BlockKind.PRAYER_TOPICS,
+    )
+    if block is not None:
+        content_blocks.append(block)
+
+    # 기도 후 찬양
+    block = _make_optional_block(
+        field=data.song_after_prayer,
+        key="song_after_prayer",
+        kind=BlockKind.ZOOM_SONG,
+    )
+    if block is not None:
+        content_blocks.append(block)
+
+    # 본문 안내·봉독
+    block = _make_optional_block(
+        field=data.scripture,
+        key="scripture",
+        kind=BlockKind.SCRIPTURE,
+    )
+    if block is not None:
+        content_blocks.append(block)
+
+    # 설교 제목
+    block = _make_optional_block(
+        field=data.sermon_title,
+        key="sermon_title",
+        kind=BlockKind.SERMON_TITLE,
+    )
+    if block is not None:
+        content_blocks.append(block)
+
+    # 추가 말씀
+    block = _make_optional_block(
+        field=data.additional_scripture,
+        key="additional_scripture",
+        kind=BlockKind.SCRIPTURE,
+    )
+    if block is not None:
+        content_blocks.append(block)
+
+    # 응답 찬양
+    block = _make_optional_block(
+        field=data.response_song,
+        key="response_song",
+        kind=BlockKind.ZOOM_SONG,
+    )
+    if block is not None:
+        content_blocks.append(block)
+
+    # 말씀 관련 기도
+    block = _make_optional_block(
+        field=data.word_prayer,
+        key="word_prayer",
+        kind=BlockKind.PRAYER_TOPICS,
+    )
+    if block is not None:
+        content_blocks.append(block)
+
+    # 공동체·중보기도 전 찬양
+    block = _make_optional_block(
+        field=data.intercession_song,
+        key="intercession_song",
+        kind=BlockKind.ZOOM_SONG,
+    )
+    if block is not None:
+        content_blocks.append(block)
+
+    # 공동체·중보기도
+    block = _make_optional_block(
+        field=data.community_prayer,
+        key="community_prayer",
+        kind=BlockKind.PRAYER_TOPICS,
+    )
+    if block is not None:
+        content_blocks.append(block)
+
+    # 개인 기도
+    block = _make_optional_block(
+        field=data.personal_prayer,
+        key="personal_prayer",
+        kind=BlockKind.PERSONAL_PRAYER,
+    )
+    if block is not None:
+        content_blocks.append(block)
+
+    plan = [
+        WorshipBlock(
+            kind=BlockKind.PRE_SERVICE,
+            key="pre_service",
+        )
+    ]
+
+    plan.extend(
+        _insert_transition_blanks(content_blocks)
+    )
+
+    return plan
+

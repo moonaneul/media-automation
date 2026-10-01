@@ -1,6 +1,7 @@
 from .blocks import BlockKind, WorshipBlock
 from .planner import (
     IncompletePlanError,
+    build_friday_zoom_plan,
     build_sunday_plan,
     build_wednesday_plan,
 )
@@ -11,4 +12,5 @@ __all__ = [
     "IncompletePlanError",
     "build_wednesday_plan",
     "build_sunday_plan",
+    "build_friday_zoom_plan",
 ]

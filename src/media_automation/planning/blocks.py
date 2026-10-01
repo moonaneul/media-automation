@@ -5,8 +5,14 @@ from typing import Any
 
 class BlockKind(str, Enum):
     PRE_SERVICE = "pre_service"
+
     SONG = "song"
+    ZOOM_SONG = "zoom_song"
+
     PRAYER = "prayer"
+    PRAYER_TOPICS = "prayer_topics"
+    PERSONAL_PRAYER = "personal_prayer"
+
     CHURCH_NEWS = "church_news"
     SCRIPTURE = "scripture"
     SERMON_TITLE = "sermon_title"

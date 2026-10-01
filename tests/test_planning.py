@@ -5,11 +5,13 @@ import pytest
 from media_automation.planning import (
     BlockKind,
     IncompletePlanError,
+    build_friday_zoom_plan,
     build_sunday_plan,
     build_wednesday_plan,
 )
 from media_automation.weekly_data.loader import load_yaml
 from media_automation.weekly_data.models import (
+    FridayZoomData,
     SundayData,
     WednesdayData,
     parse_weekly_data,
@@ -257,3 +259,128 @@ def test_sunday_unset_additional_scripture_stops_planning():
         match="worship.additional_scripture",
     ):
         build_sunday_plan(data)
+
+def load_friday_zoom() -> FridayZoomData:
+    raw = load_yaml(
+        SAMPLES / "friday-zoom.example.yaml"
+    )
+
+    data = parse_weekly_data(raw)
+
+    assert isinstance(data, FridayZoomData)
+
+    return data
+
+
+def test_friday_zoom_plan_order():
+    data = load_friday_zoom()
+
+    plan = build_friday_zoom_plan(data)
+
+    content_keys = [
+        block.key
+        for block in plan
+        if block.kind != BlockKind.BLANK
+    ]
+
+    assert content_keys == [
+        "pre_service",
+        "opening_songs[0]",
+        "opening_songs[1]",
+        "first_prayer",
+        "song_after_prayer",
+        "scripture",
+        "sermon_title",
+        "response_song",
+        "word_prayer",
+        "intercession_song",
+        "community_prayer",
+        "personal_prayer",
+    ]
+
+
+def test_friday_zoom_songs_use_zoom_song_kind():
+    data = load_friday_zoom()
+
+    plan = build_friday_zoom_plan(data)
+
+    song_keys = {
+        "opening_songs[0]",
+        "opening_songs[1]",
+        "song_after_prayer",
+        "response_song",
+        "intercession_song",
+    }
+
+    song_blocks = [
+        block
+        for block in plan
+        if block.key in song_keys
+    ]
+
+    assert len(song_blocks) == 5
+
+    assert all(
+        block.kind == BlockKind.ZOOM_SONG
+        for block in song_blocks
+    )
+
+
+def test_friday_zoom_prayer_topics_have_own_kind():
+    data = load_friday_zoom()
+
+    plan = build_friday_zoom_plan(data)
+
+    prayer_keys = {
+        "first_prayer",
+        "word_prayer",
+        "community_prayer",
+    }
+
+    prayer_blocks = [
+        block
+        for block in plan
+        if block.key in prayer_keys
+    ]
+
+    assert len(prayer_blocks) == 3
+
+    assert all(
+        block.kind == BlockKind.PRAYER_TOPICS
+        for block in prayer_blocks
+    )
+
+
+def test_friday_zoom_additional_scripture_none_is_skipped():
+    data = load_friday_zoom()
+
+    plan = build_friday_zoom_plan(data)
+
+    keys = [block.key for block in plan]
+
+    assert "additional_scripture" not in keys
+
+    assert (
+        "transition:sermon_title->response_song"
+        in keys
+    )
+
+
+def test_friday_zoom_unset_stops_planning():
+    raw = load_yaml(
+        SAMPLES / "friday-zoom.example.yaml"
+    )
+
+    raw["word_prayer"] = {
+        "status": "UNSET",
+    }
+
+    data = parse_weekly_data(raw)
+
+    assert isinstance(data, FridayZoomData)
+
+    with pytest.raises(
+        IncompletePlanError,
+        match="word_prayer",
+    ):
+        build_friday_zoom_plan(data)
