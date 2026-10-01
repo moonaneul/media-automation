@@ -7,6 +7,7 @@ class BlockKind(str, Enum):
     PRE_SERVICE = "pre_service"
     SONG = "song"
     PRAYER = "prayer"
+    CHURCH_NEWS = "church_news"
     SCRIPTURE = "scripture"
     SERMON_TITLE = "sermon_title"
     BLANK = "blank"

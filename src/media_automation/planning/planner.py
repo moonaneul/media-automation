@@ -3,6 +3,7 @@ from __future__ import annotations
 from typing import Any
 
 from media_automation.weekly_data.models import (
+    SundayData,
     WednesdayData,
     WeeklyStatus,
 )
@@ -173,6 +174,154 @@ def build_wednesday_plan(
 
     # 현재 기준으로 예배 전 안내와 첫 찬양 사이에는
     # 별도의 blank를 자동 삽입하지 않는다.
+    plan.extend(
+        _insert_transition_blanks(content_blocks)
+    )
+
+    return plan
+
+def build_sunday_plan(
+    data: SundayData,
+) -> list[WorshipBlock]:
+    """
+    Sunday Weekly Data를 주일 오전 2부 PPT 순서로 변환한다.
+
+    기본 흐름:
+
+    예배 전 안내
+    → 시작 찬양 3곡
+    → 별도 찬송
+    → 기도
+    → 교회 소식
+    → 봉헌 찬송
+    → 봉헌 기도
+    → 특송
+    → 설교 제목
+    → 성경 봉독
+    → 추가 말씀
+    → 결단 찬송
+
+    PPT에 필요한 담당자는
+    serving.this_week.second_service에서 가져온다.
+
+    church_news는 bulletin 데이터를 사용하지만,
+    PPT에서는 상세 내용을 표시하지 않고
+    '교회 소식' 단독 안내 화면 생성 여부에만 사용한다.
+    """
+
+    content_blocks: list[WorshipBlock] = []
+
+    worship = data.worship
+    second_service = data.serving.this_week.second_service
+
+    # 시작 찬양 3곡
+    for index, song in enumerate(worship.opening_songs):
+        block = _make_optional_block(
+            field=song,
+            key=f"worship.opening_songs[{index}]",
+            kind=BlockKind.SONG,
+        )
+
+        if block is not None:
+            content_blocks.append(block)
+
+    # 별도 찬송
+    block = _make_optional_block(
+        field=worship.separate_hymn,
+        key="worship.separate_hymn",
+        kind=BlockKind.SONG,
+    )
+    if block is not None:
+        content_blocks.append(block)
+
+    # 2부 기도
+    block = _make_optional_block(
+        field=second_service.prayer,
+        key="serving.this_week.second_service.prayer",
+        kind=BlockKind.PRAYER,
+    )
+    if block is not None:
+        content_blocks.append(block)
+
+    # 교회 소식
+    block = _make_optional_block(
+        field=data.bulletin.church_news,
+        key="bulletin.church_news",
+        kind=BlockKind.CHURCH_NEWS,
+    )
+    if block is not None:
+        content_blocks.append(block)
+
+    # 봉헌 찬송
+    block = _make_optional_block(
+        field=worship.offering_hymn,
+        key="worship.offering_hymn",
+        kind=BlockKind.SONG,
+    )
+    if block is not None:
+        content_blocks.append(block)
+
+    # 2부 봉헌기도
+    block = _make_optional_block(
+        field=second_service.offering_prayer,
+        key="serving.this_week.second_service.offering_prayer",
+        kind=BlockKind.PRAYER,
+    )
+    if block is not None:
+        content_blocks.append(block)
+
+    # 특송
+    block = _make_optional_block(
+        field=worship.special_song,
+        key="worship.special_song",
+        kind=BlockKind.SONG,
+    )
+    if block is not None:
+        content_blocks.append(block)
+
+    # 설교 제목
+    block = _make_optional_block(
+        field=worship.sermon_title,
+        key="worship.sermon_title",
+        kind=BlockKind.SERMON_TITLE,
+    )
+    if block is not None:
+        content_blocks.append(block)
+
+    # 성경 봉독
+    block = _make_optional_block(
+        field=worship.scripture,
+        key="worship.scripture",
+        kind=BlockKind.SCRIPTURE,
+    )
+    if block is not None:
+        content_blocks.append(block)
+
+    # 추가 말씀
+    block = _make_optional_block(
+        field=worship.additional_scripture,
+        key="worship.additional_scripture",
+        kind=BlockKind.SCRIPTURE,
+    )
+    if block is not None:
+        content_blocks.append(block)
+
+    # 결단 찬송
+    block = _make_optional_block(
+        field=worship.decision_hymn,
+        key="worship.decision_hymn",
+        kind=BlockKind.SONG,
+    )
+    if block is not None:
+        content_blocks.append(block)
+
+    plan = [
+        WorshipBlock(
+            kind=BlockKind.PRE_SERVICE,
+            key="pre_service",
+        )
+    ]
+
     plan.extend(
         _insert_transition_blanks(content_blocks)
     )
