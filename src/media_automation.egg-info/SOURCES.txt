@@ -1,0 +1,13 @@
+README.md
+pyproject.toml
+src/media_automation/__init__.py
+src/media_automation.egg-info/PKG-INFO
+src/media_automation.egg-info/SOURCES.txt
+src/media_automation.egg-info/dependency_links.txt
+src/media_automation.egg-info/requires.txt
+src/media_automation.egg-info/top_level.txt
+src/media_automation/weekly_data/__init__.py
+src/media_automation/weekly_data/loader.py
+src/media_automation/weekly_data/models.py
+src/media_automation/weekly_data/validator.py
+tests/test_weekly_data.py
