@@ -1,0 +1,74 @@
+service: friday
+date: 2026-10-09
+mode: zoom
+
+songs:
+  opening:
+    - status: VALUE
+      title: 찬양 1
+      media:
+        status: VALUE
+        type: video
+        source_id: null
+
+    - status: VALUE
+      title: 찬양 2
+      media:
+        status: VALUE
+        type: video
+        source_id: null
+
+first_prayer:
+  status: VALUE
+  topics:
+    - 첫 번째 기도 제목
+    - 두 번째 기도 제목
+
+song_after_prayer:
+  status: VALUE
+  title: 찬양 3
+  media:
+    status: VALUE
+    type: video
+    source_id: null
+
+scripture:
+  status: VALUE
+  reference: 요 3:16-18
+
+sermon_title:
+  status: VALUE
+  text: 설교 제목
+
+additional_scripture:
+  status: NONE
+
+response_song:
+  status: VALUE
+  title: 응답 찬양
+  media:
+    status: VALUE
+    type: video
+    source_id: null
+
+word_prayer:
+  status: VALUE
+  topics:
+    - 말씀 관련 기도 제목
+
+intercession_song:
+  status: VALUE
+  title: 찬양 5
+  media:
+    status: VALUE
+    type: video
+    source_id: null
+
+community_prayer:
+  status: VALUE
+  topics:
+    - 공동체 기도 제목
+    - 중보기도 제목
+
+personal_prayer:
+  status: VALUE
