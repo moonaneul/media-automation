@@ -1,0 +1,37 @@
+# Original / private church materials
+sources/
+source/
+
+# Generated files
+output/
+outputs/
+tmp/
+temp/
+
+# Office / media
+*.ppt
+*.pptx
+*.hwp
+*.hwpx
+*.mp3
+*.mp4
+*.mov
+*.wav
+*.m4a
+
+# Private data
+data/private/
+assets/private/
+
+# Environment
+.env
+.env.*
+.venv/
+venv/
+__pycache__/
+
+# OS / IDE
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
