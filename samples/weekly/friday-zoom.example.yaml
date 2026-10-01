@@ -2,73 +2,84 @@ service: friday
 date: 2026-10-09
 mode: zoom
 
-songs:
-  opening:
-    - status: VALUE
-      title: 찬양 1
-      media:
-        status: VALUE
-        type: video
-        source_id: null
+opening_songs:
+  - status: VALUE
+    title: 예시 찬양 1
+    media:
+      status: VALUE
+      file_status: AVAILABLE
+      technical_check: UNVERIFIED
+      church_review: UNVERIFIED
+      usage_permission: UNKNOWN
 
-    - status: VALUE
-      title: 찬양 2
-      media:
-        status: VALUE
-        type: video
-        source_id: null
+  - status: VALUE
+    title: 예시 찬양 2
+    media:
+      status: VALUE
+      file_status: AVAILABLE
+      technical_check: UNVERIFIED
+      church_review: UNVERIFIED
+      usage_permission: UNKNOWN
 
 first_prayer:
   status: VALUE
   topics:
-    - 첫 번째 기도 제목
-    - 두 번째 기도 제목
+    - 예시 첫 번째 기도 제목
+    - 예시 두 번째 기도 제목
 
 song_after_prayer:
   status: VALUE
-  title: 찬양 3
+  title: 예시 찬양 3
   media:
     status: VALUE
-    type: video
-    source_id: null
+    file_status: AVAILABLE
+    technical_check: UNVERIFIED
+    church_review: UNVERIFIED
+    usage_permission: UNKNOWN
 
 scripture:
   status: VALUE
-  reference: 요 3:16-18
+  reference: "요 3:16-18"
 
 sermon_title:
   status: VALUE
-  text: 설교 제목
+  text: 예시 설교 제목
 
 additional_scripture:
   status: NONE
 
 response_song:
   status: VALUE
-  title: 응답 찬양
+  title: 예시 응답 찬양
   media:
     status: VALUE
-    type: video
-    source_id: null
+    file_status: AVAILABLE
+    technical_check: UNVERIFIED
+    church_review: UNVERIFIED
+    usage_permission: UNKNOWN
 
 word_prayer:
   status: VALUE
   topics:
-    - 말씀 관련 기도 제목
+    - 예시 말씀 관련 기도 제목 1
+    - 예시 말씀 관련 기도 제목 2
 
 intercession_song:
   status: VALUE
-  title: 찬양 5
+  title: 예시 찬양 5
   media:
     status: VALUE
-    type: video
-    source_id: null
+    file_status: AVAILABLE
+    technical_check: UNVERIFIED
+    church_review: UNVERIFIED
+    usage_permission: UNKNOWN
 
 community_prayer:
   status: VALUE
   topics:
-    - 공동체 기도 제목
-    - 중보기도 제목
+    - 예시 공동체 기도 제목
+    - 예시 중보기도 제목
 
 personal_prayer:
   status: VALUE
+  text: null

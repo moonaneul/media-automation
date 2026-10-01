@@ -8,7 +8,7 @@
 
 ---
 
-## 1. 기본 원칙
+# 1. 기본 원칙
 
 매주 예배 자료는 과거 주차의 값을 자동으로 복사하여 만들지 않는다.
 
@@ -17,6 +17,10 @@
 동일한 항목에 여러 수정 지시가 있을 경우 `AGENTS.md`에서 정의한 우선순위를 따른다.
 
 주일예배 PPT와 주일 주보처럼 동일한 주간 정보를 공유하는 산출물은 가능한 한 하나의 Weekly Data에서 생성한다.
+
+같은 의미의 정보를 여러 위치에 중복 저장하지 않는다.
+
+예를 들어 주일 2부 기도 담당자는 PPT용과 주보용으로 따로 입력하지 않고 하나의 담당자 데이터를 두 산출물이 함께 사용한다.
 
 ---
 
@@ -132,9 +136,7 @@ additional_scripture
 decision_hymn
 ```
 
-## 세부 항목
-
-### `opening_songs`
+## `opening_songs`
 
 기본 시작 찬양 3곡.
 
@@ -151,7 +153,7 @@ verses
 
 ---
 
-### `prayer`
+## `prayer`
 
 기도 담당자.
 
@@ -162,7 +164,7 @@ person
 
 ---
 
-### `additional_song`
+## `additional_song`
 
 기도 이후 추가 찬양.
 
@@ -175,7 +177,7 @@ verses
 
 ---
 
-### `scripture`
+## `scripture`
 
 설교 본문.
 
@@ -188,7 +190,7 @@ reference
 
 ---
 
-### `sermon_title`
+## `sermon_title`
 
 설교 제목.
 
@@ -199,7 +201,7 @@ text
 
 ---
 
-### `additional_scripture`
+## `additional_scripture`
 
 설교 중 추가로 표시할 말씀.
 
@@ -212,7 +214,7 @@ reference
 
 ---
 
-### `decision_hymn`
+## `decision_hymn`
 
 결단 찬송.
 
@@ -239,188 +241,279 @@ Sunday Weekly Data
         └── 주일 주보 PDF
 ```
 
-이를 통해 본문, 설교 제목, 담당자, 찬양 등 공통 정보의 불일치를 줄인다.
+Sunday Weekly Data는 다음 세 영역으로 구분한다.
+
+```text
+worship
+serving
+bulletin
+```
+
+각 영역의 역할:
+
+- `worship`: 예배 순서, 찬양, 말씀 등 예배 내용
+- `serving`: 이번 주와 다음 주 담당자 정보
+- `bulletin`: 주보에만 필요한 상세 정보
+
+같은 의미의 데이터를 PPT용과 주보용으로 중복 입력하지 않는다.
 
 ---
 
-## 5.1 주일 공통 정보
+# 6. 주일 `worship`
 
-주일 PPT와 주보에서 함께 사용할 수 있는 정보:
+주일예배 자체의 내용을 관리한다.
+
+기본 구조:
 
 ```text
-date
-bulletin_number
-annual_slogan
-
-opening_songs[3]
-separate_hymn
-
-prayer
-offering_hymn
-offering_prayer
-special_song
-
-sermon_title
-scripture
-additional_scripture
-decision_hymn
-
-church_news
-afternoon_service
+worship
+├── opening_songs[3]
+├── separate_hymn
+├── offering_hymn
+├── special_song
+├── sermon_title
+├── scripture
+├── additional_scripture
+└── decision_hymn
 ```
+
+기도 담당자와 봉헌기도 담당자는 `worship`에 저장하지 않는다.
+
+해당 값은 `serving.this_week.second_service`에서 가져온다.
 
 ---
 
-## 5.2 주일예배 PPT 관련 정보
-
-주일 오전 2부 PPT에서 사용하는 주요 데이터:
-
-```text
-opening_songs[3]
-separate_hymn
-prayer
-church_news
-offering_hymn
-offering_prayer
-special_song
-sermon_title
-scripture
-additional_scripture
-decision_hymn
-```
-
-### `opening_songs`
+## `opening_songs`
 
 시작 찬양 3곡.
 
-### `separate_hymn`
+각 곡은 다음 정보를 가질 수 있다.
+
+```text
+status
+title
+hymn_number
+verses
+```
+
+---
+
+## `separate_hymn`
 
 시작 찬양 이후 별도 찬송.
 
-### `prayer`
+```text
+status
+title
+hymn_number
+verses
+```
 
-주일 오전 2부 기도 담당자.
+---
 
-### `church_news`
-
-PPT에서는 기본적으로 `교회 소식` 단독 안내 화면 생성 여부에 사용한다.
-
-주보에서 사용할 상세 내용은 동일한 Weekly Data 안에 관리한다.
-
-### `offering_hymn`
+## `offering_hymn`
 
 봉헌 찬송.
 
-### `offering_prayer`
+```text
+status
+title
+hymn_number
+verses
+```
 
-봉헌기도 담당자.
+---
 
-### `special_song`
+## `special_song`
 
 특송.
 
-없는 주는:
+예:
 
 ```yaml
-status: NONE
+special_song:
+  status: NONE
 ```
 
-으로 표현한다.
+`NONE`이면 해당 주에 특송 순서를 생성하지 않는다.
 
-### `sermon_title`
+`UNSET`이면 특송 여부가 아직 확인되지 않은 상태로 본다.
+
+---
+
+## `sermon_title`
 
 설교 제목.
 
-### `scripture`
-
-설교 본문.
-
-### `additional_scripture`
-
-추가 말씀.
-
-### `decision_hymn`
-
-결단 찬송.
-
----
-
-# 6. 주보 관련 정보
-
-Sunday Weekly Data 안에서 주보에 추가로 필요한 데이터:
-
 ```text
-bulletin_number
-annual_slogan
-
-afternoon_service
-
-this_week_service
-next_week_service
-
-church_news
-monthly_schedule
-
-cell_group
+status
+text
 ```
 
 ---
 
-## `bulletin_number`
+## `scripture`
+
+설교 본문.
+
+```text
+status
+reference
+```
+
+---
+
+## `additional_scripture`
+
+추가 말씀.
+
+```text
+status
+reference
+```
+
+---
+
+## `decision_hymn`
+
+결단 찬송.
+
+```text
+status
+title
+hymn_number
+verses
+```
+
+---
+
+# 7. 주일 `serving`
+
+주일 담당자 정보는 PPT와 주보가 함께 사용할 수 있도록 한 곳에서 관리한다.
+
+기본 구조:
+
+```text
+serving
+├── this_week
+│   ├── first_service
+│   ├── second_service
+│   └── dishwashing
+│
+└── next_week
+    ├── first_service
+    ├── second_service
+    └── dishwashing
+```
+
+---
+
+## `this_week`
+
+이번 주 담당자 정보.
+
+예:
+
+```yaml
+serving:
+  this_week:
+    first_service:
+      prayer:
+        status: VALUE
+        person: 홍길동
+
+    second_service:
+      prayer:
+        status: VALUE
+        person: 김철수
+
+      offering_prayer:
+        status: VALUE
+        person: 이영희
+
+    dishwashing:
+      status: VALUE
+      person: 박민수
+```
+
+주일 오전 2부 PPT는 다음 값을 직접 사용한다.
+
+```text
+serving.this_week.second_service.prayer
+serving.this_week.second_service.offering_prayer
+```
+
+따라서 PPT용 기도 담당자를 별도로 저장하지 않는다.
+
+---
+
+## `next_week`
+
+다음 주 담당자 정보.
+
+구조는 `this_week`과 동일하게 관리할 수 있다.
+
+전달되지 않은 담당자를 과거 순번이나 이전 주 자료로 추정하지 않는다.
+
+예:
+
+```yaml
+serving:
+  next_week:
+    first_service:
+      prayer:
+        status: VALUE
+        person: 홍길동
+
+    second_service:
+      prayer:
+        status: VALUE
+        person: 김철수
+
+      offering_prayer:
+        status: VALUE
+        person: 이영희
+
+    dishwashing:
+      status: VALUE
+      person: 박민수
+```
+
+실제 담당 항목이 더 확인되면 구조를 확장한다.
+
+---
+
+# 8. 주일 `bulletin`
+
+주보에만 필요한 상세 정보를 관리한다.
+
+기본 구조:
+
+```text
+bulletin
+├── number
+├── church_news
+├── afternoon_service
+├── monthly_schedule
+└── cell_group
+```
+
+---
+
+## `number`
 
 주보 호수.
 
 예:
 
 ```yaml
-bulletin_number:
-  status: VALUE
-  value: "13-39"
+bulletin:
+  number:
+    status: VALUE
+    value: "13-39"
 ```
 
-제공되지 않은 경우 과거 번호에서 증가시키거나 날짜로 계산하지 않는다.
-
----
-
-## `annual_slogan`
-
-당해 연도 교회 표어.
-
-```text
-status
-text
-subtext
-```
-
-`subtext`는 보조 문구가 있는 경우에만 사용한다.
-
-연도 변경 시 이전 연도 값을 자동 승계하지 않는다.
-
----
-
-## `afternoon_service`
-
-주일 오후예배 관련 정보.
-
-구체적인 구조는 실제 전달 자료에서 필요한 항목에 맞추어 확장한다.
-
----
-
-## `this_week_service`
-
-이번 주 섬김 정보.
-
-기도, 봉헌기도, 설거지 등 전달되는 항목을 기록한다.
-
-세부 담당 항목은 실제 주보 입력 구조를 분석하면서 확정한다.
-
----
-
-## `next_week_service`
-
-다음 주 섬김 정보.
-
-과거 순환 규칙으로 추정하지 않고 전달된 값만 사용한다.
+제공되지 않은 경우 과거 번호를 증가시키거나 날짜만으로 계산하지 않는다.
 
 ---
 
@@ -433,12 +526,44 @@ subtext
 예:
 
 ```yaml
-church_news:
-  status: VALUE
-  items:
-    - text: 첫 번째 공지
-    - text: 두 번째 공지
+bulletin:
+  church_news:
+    status: VALUE
+    items:
+      - text: 첫 번째 공지
+      - text: 두 번째 공지
 ```
+
+주일 PPT에서는 상세 공지 내용을 그대로 표시하지 않는다.
+
+`church_news`가 있는 경우 PPT 생성기는 기본적으로 `교회 소식` 단독 안내 화면을 생성한다.
+
+즉 하나의 데이터가 다음처럼 사용된다.
+
+```text
+church_news
+    │
+    ├── PPT → "교회 소식" 안내 화면
+    └── 주보 → 실제 상세 공지
+```
+
+---
+
+## `afternoon_service`
+
+주일 오후예배 관련 정보.
+
+예:
+
+```yaml
+bulletin:
+  afternoon_service:
+    status: VALUE
+    title: 예시 오후예배
+    description: 예시 안내
+```
+
+실제 전달 자료에서 필요한 구조가 추가로 확인되면 확장한다.
 
 ---
 
@@ -446,20 +571,34 @@ church_news:
 
 월간 사역 일정.
 
-예:
+기본 항목:
 
 ```text
 date
 content
 ```
 
-형태의 항목 배열을 기본으로 한다.
+예:
+
+```yaml
+bulletin:
+  monthly_schedule:
+    status: VALUE
+    items:
+      - date: 2026-10-11
+        content: 예시 일정
+
+      - date: 2026-10-18
+        content: 예시 일정
+```
 
 ---
 
 ## `cell_group`
 
 목장 말씀 나누기.
+
+기본 구조:
 
 ```text
 status
@@ -468,13 +607,63 @@ title
 questions[4]
 ```
 
+예:
+
+```yaml
+bulletin:
+  cell_group:
+    status: VALUE
+    scripture: "요 3:16-18"
+    title: 예시 목장 말씀 제목
+    questions:
+      - 예시 질문 1
+      - 예시 질문 2
+      - 예시 질문 3
+      - 예시 질문 4
+```
+
+목장 본문과 제목이 설교 본문·제목과 같아 보이더라도 자동 복사하지 않는다.
+
+전달받은 목장 말씀 정보를 별도로 사용한다.
+
 질문은 전달받은 원문을 사용한다.
 
 새 질문은 사용자가 별도로 요청한 경우에만 작성한다.
 
 ---
 
-# 7. 금요기도회
+# 9. 연도별 고정 정보
+
+당해 연도 교회 표어처럼 매주 바뀌지 않는 값은 Weekly Data에 반복 입력하지 않는 방향을 우선한다.
+
+예:
+
+```text
+annual_slogan
+annual_slogan_subtext
+```
+
+이러한 값은 향후 별도 교회 설정 데이터로 관리할 수 있다.
+
+예시 구조:
+
+```yaml
+yearly:
+  2026:
+    slogan:
+      text: 확정된 2026년 교회 표어
+      subtext: null
+```
+
+새 연도가 시작되면 이전 연도 값을 자동 승계하지 않는다.
+
+해당 연도의 확정 값이 없는 경우 임의로 생성하지 않는다.
+
+구체적인 설정 파일 위치와 저장 방식은 실제 구현 단계에서 확정한다.
+
+---
+
+# 10. 금요기도회
 
 금요기도회는 `mode`에 따라 구조를 구분한다.
 
@@ -507,7 +696,7 @@ mode: zoom
 
 ---
 
-# 8. 금요 Zoom
+# 11. 금요 Zoom
 
 현재 확인된 기본 흐름을 기준으로 다음 데이터를 사용한다.
 
@@ -621,7 +810,7 @@ topics[]
 
 ---
 
-# 9. 금요 미디어 데이터
+# 12. 금요 미디어 데이터
 
 금요 Zoom 찬양의 영상·음원은 단순히 파일 경로만으로 관리하지 않는다.
 
@@ -653,7 +842,7 @@ media:
 
 ---
 
-# 10. 금요 대면
+# 13. 금요 대면
 
 금요 대면은 Zoom의 영상 자료를 악보로 교체하는 구조로 간주하지 않는다.
 
@@ -673,7 +862,7 @@ mode: in_person
 
 ---
 
-# 11. 예시 파일
+# 14. 예시 파일
 
 Weekly Data 구조 확인을 위해 실제 교회 자료와 분리된 예시 데이터를 관리한다.
 
@@ -691,7 +880,7 @@ samples/
 
 ---
 
-# 12. 향후 확장
+# 15. 향후 확장
 
 현재 스키마는 POC를 통해 확인된 구조를 기준으로 한다.
 
@@ -700,7 +889,7 @@ samples/
 - 복수 추가 말씀
 - 찬양별 절/후렴 정보
 - 찬양 라이브러리 참조 ID
-- 주보 상세 섬김 구조
+- 추가 주일 섬김 항목
 - 미디어 검수 상태
 - 원본 자료 참조 정보
 - 입력 출처
