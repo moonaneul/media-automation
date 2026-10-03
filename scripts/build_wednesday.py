@@ -274,12 +274,12 @@ def main() -> None:
     pre_service_provider = (
         FilePreServiceSlideProvider(
             {
-                "wednesday": (
+                "pre_service": (
                     args.source
                 ),
             },
             slide_counts={
-                "wednesday": 4,
+                "pre_service": 4,
             },
         )
     )
