@@ -17,8 +17,10 @@ from .assets import (
     PreServiceSlideProvider,
 )
 from .slide_merge import (
+    MacPowerPointAppleScriptSlideMerger,
     PowerPointComSlideMerger,
     SlideMerger,
+    create_platform_slide_merger,
 )
 from .song_assets import (
     FileSongAssetProvider,
@@ -59,4 +61,6 @@ __all__ = [
     "UnsupportedPlanError",
     "build_presentation_from_plan",
     "build_presentation_file_from_plan",
+    "MacPowerPointAppleScriptSlideMerger",
+    "create_platform_slide_merger",
 ]

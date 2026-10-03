@@ -163,3 +163,46 @@ def test_insert_all_delegates_full_slide_range(
             "end_slide": 3,
         }
     ]
+from media_automation.ppt import (
+    MacPowerPointAppleScriptSlideMerger,
+    create_platform_slide_merger,
+)
+
+
+def test_platform_merger_returns_mac_merger_on_darwin(
+    monkeypatch,
+):
+    monkeypatch.setattr(
+        "media_automation.ppt.slide_merge.platform.system",
+        lambda: "Darwin",
+    )
+
+    merger = create_platform_slide_merger()
+
+    assert isinstance(
+        merger,
+        MacPowerPointAppleScriptSlideMerger,
+    )
+
+
+def test_mac_merger_rejects_insert_before_first_slide():
+    if platform.system() != "Darwin":
+        pytest.skip(
+            "macOS 전용 검증"
+        )
+
+    merger = (
+        MacPowerPointAppleScriptSlideMerger()
+    )
+
+    with pytest.raises(
+        ValueError,
+        match="첫 슬라이드 앞",
+    ):
+        merger.insert_range(
+            "destination.pptx",
+            "source.pptx",
+            after_slide=0,
+            start_slide=1,
+            end_slide=1,
+        )

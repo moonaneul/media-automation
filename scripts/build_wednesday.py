@@ -18,7 +18,7 @@ from media_automation.planning import (
 from media_automation.ppt import (
     FilePreServiceSlideProvider,
     MissingSongAssetError,
-    PowerPointComSlideMerger,
+    create_platform_slide_merger,
     build_presentation_file_from_plan,
     load_song_asset_provider,
 )
@@ -285,7 +285,7 @@ def main() -> None:
     )
 
     merger = (
-        PowerPointComSlideMerger()
+    create_platform_slide_merger()
     )
 
     # -------------------------
