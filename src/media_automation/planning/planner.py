@@ -9,8 +9,11 @@ from media_automation.weekly_data.models import (
     WeeklyStatus,
 )
 
-from .blocks import BlockKind, WorshipBlock
-
+from .blocks import (
+    BlockKind,
+    SermonTitleContent,
+    WorshipBlock,
+)
 
 class IncompletePlanError(ValueError):
     """
@@ -47,6 +50,40 @@ def _make_optional_block(
         value=field,
     )
 
+def _make_sermon_title_block(
+    *,
+    title_field: Any,
+    scripture_field: Any,
+    key: str,
+) -> WorshipBlock | None:
+    if title_field.status == WeeklyStatus.UNSET:
+        raise IncompletePlanError(
+            f"{key}가 아직 UNSET 상태입니다."
+        )
+
+    if title_field.status == WeeklyStatus.NONE:
+        return None
+
+    if scripture_field.status == WeeklyStatus.UNSET:
+        raise IncompletePlanError(
+            f"{key}의 대표 본문이 아직 UNSET 상태입니다."
+        )
+
+    if scripture_field.status == WeeklyStatus.NONE:
+        raise ValueError(
+            f"{key}가 있는데 대표 본문이 NONE입니다."
+        )
+
+    return WorshipBlock(
+        kind=BlockKind.SERMON_TITLE,
+        key=key,
+        value=SermonTitleContent(
+            title=title_field.text,
+            scripture_reference=(
+                scripture_field.reference
+            ),
+        ),
+    )
 
 def _insert_transition_blanks(
     blocks: list[WorshipBlock],
@@ -140,10 +177,10 @@ def build_wednesday_plan(
         content_blocks.append(block)
 
     # 설교 제목
-    block = _make_optional_block(
-        field=data.sermon_title,
+    block = _make_sermon_title_block(
+        title_field=data.sermon_title,
+        scripture_field=data.scripture,
         key="sermon_title",
-        kind=BlockKind.SERMON_TITLE,
     )
     if block is not None:
         content_blocks.append(block)
@@ -281,10 +318,10 @@ def build_sunday_plan(
         content_blocks.append(block)
 
     # 설교 제목
-    block = _make_optional_block(
-        field=worship.sermon_title,
+    block = _make_sermon_title_block(
+        title_field=worship.sermon_title,
+        scripture_field=worship.scripture,
         key="worship.sermon_title",
-        kind=BlockKind.SERMON_TITLE,
     )
     if block is not None:
         content_blocks.append(block)
@@ -396,10 +433,10 @@ def build_friday_zoom_plan(
         content_blocks.append(block)
 
     # 설교 제목
-    block = _make_optional_block(
-        field=data.sermon_title,
+    block = _make_sermon_title_block(
+        title_field=data.sermon_title,
+        scripture_field=data.scripture,
         key="sermon_title",
-        kind=BlockKind.SERMON_TITLE,
     )
     if block is not None:
         content_blocks.append(block)

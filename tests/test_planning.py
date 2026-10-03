@@ -384,3 +384,100 @@ def test_friday_zoom_unset_stops_planning():
         match="word_prayer",
     ):
         build_friday_zoom_plan(data)
+
+from media_automation.planning import (
+    BlockKind,
+    SermonTitleContent,
+)
+from media_automation.planning.planner import (
+    IncompletePlanError,
+    _make_sermon_title_block,
+)
+from media_automation.weekly_data.models import (
+    ScriptureField,
+    TextField,
+)
+
+
+def test_sermon_title_block_contains_title_and_scripture_reference():
+    block = _make_sermon_title_block(
+        title_field=TextField(
+            status="VALUE",
+            text="외모와 중심",
+        ),
+        scripture_field=ScriptureField(
+            status="VALUE",
+            reference="삼상 16:6-7",
+        ),
+        key="sermon_title",
+    )
+
+    assert block is not None
+    assert (
+        block.kind
+        == BlockKind.SERMON_TITLE
+    )
+
+    assert isinstance(
+        block.value,
+        SermonTitleContent,
+    )
+
+    assert (
+        block.value.title
+        == "외모와 중심"
+    )
+
+    assert (
+        block.value.scripture_reference
+        == "삼상 16:6-7"
+    )
+
+
+def test_sermon_title_unset_is_incomplete():
+    with pytest.raises(
+        IncompletePlanError
+    ):
+        _make_sermon_title_block(
+            title_field=TextField(
+                status="UNSET",
+            ),
+            scripture_field=ScriptureField(
+                status="VALUE",
+                reference="삼상 16:6-7",
+            ),
+            key="sermon_title",
+        )
+
+
+def test_sermon_title_requires_confirmed_scripture():
+    with pytest.raises(
+        IncompletePlanError
+    ):
+        _make_sermon_title_block(
+            title_field=TextField(
+                status="VALUE",
+                text="외모와 중심",
+            ),
+            scripture_field=ScriptureField(
+                status="UNSET",
+            ),
+            key="sermon_title",
+        )
+
+
+def test_sermon_title_rejects_none_scripture():
+    with pytest.raises(
+        ValueError,
+        match="대표 본문",
+    ):
+        _make_sermon_title_block(
+            title_field=TextField(
+                status="VALUE",
+                text="외모와 중심",
+            ),
+            scripture_field=ScriptureField(
+                status="NONE",
+            ),
+            key="sermon_title",
+        )

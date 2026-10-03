@@ -20,6 +20,12 @@ class BlockKind(str, Enum):
 
 
 @dataclass(frozen=True, slots=True)
+class SermonTitleContent:
+    title: str
+    scripture_reference: str
+
+
+@dataclass(frozen=True, slots=True)
 class WorshipBlock:
     """
     PPT를 만들기 전 단계의 예배 순서 단위.
