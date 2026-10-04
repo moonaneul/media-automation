@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from dataclasses import dataclass
+
 from pathlib import Path
 
 from pptx import Presentation
@@ -10,12 +12,28 @@ from media_automation.planning import (
     WorshipBlock,
 )
 
-from .base import create_16x9_presentation
+from .base import (
+    add_blank_slide,
+    create_16x9_presentation,
+)
 from .friday_zoom import (
     add_zoom_centered_text_slide,
     render_friday_zoom_block,
 )
 
+@dataclass(frozen=True, slots=True)
+class FridayZoomSlideRange:
+    start: int
+    end: int
+
+
+@dataclass(frozen=True, slots=True)
+class FridayZoomStructureResult:
+    output_path: Path
+    slide_ranges: dict[
+        str,
+        FridayZoomSlideRange,
+    ]
 
 ZOOM_PREVIEW_SUPPORTED_BLOCK_KINDS = {
     BlockKind.PRE_SERVICE,
@@ -145,3 +163,91 @@ def build_friday_zoom_preview(
     prs.save(output_path)
 
     return output_path
+
+def build_friday_zoom_structure(
+    plan: list[WorshipBlock],
+    output_path: str | Path,
+    *,
+    bible_provider: BibleProvider,
+) -> FridayZoomStructureResult:
+    """
+    실제 미디어 삽입 직전 단계의
+    금요 Zoom 16:9 PPT 구조를 생성한다.
+
+    ZOOM_SONG은 미디어가 들어갈
+    빈 슬라이드 1장을 확보한다.
+
+    각 WorshipBlock이 생성한 실제
+    슬라이드 번호 범위도 함께 반환한다.
+    """
+
+    output_path = Path(output_path)
+
+    prs = create_16x9_presentation()
+
+    slide_ranges: dict[
+        str,
+        FridayZoomSlideRange,
+    ] = {}
+
+    for block in plan:
+        if block.key in slide_ranges:
+            raise ValueError(
+                "중복된 금요 Zoom block key입니다: "
+                f"{block.key}"
+            )
+
+        before_count = len(prs.slides)
+
+        if block.kind == BlockKind.PRE_SERVICE:
+            add_zoom_centered_text_slide(
+                prs,
+                "예배 준비",
+                font_size=36,
+            )
+
+        elif block.kind == BlockKind.ZOOM_SONG:
+            # 다음 단계에서 이 슬라이드 전체에
+            # 실제 MP4를 삽입한다.
+            add_blank_slide(prs)
+
+        else:
+            render_friday_zoom_block(
+                prs,
+                block,
+                bible_provider=bible_provider,
+                include_scripture_reference_slide=(
+                    block.kind
+                    == BlockKind.SCRIPTURE
+                    and block.key
+                    == "scripture"
+                ),
+            )
+
+        after_count = len(prs.slides)
+
+        if after_count <= before_count:
+            raise RuntimeError(
+                "금요 Zoom block이 슬라이드를 "
+                "생성하지 않았습니다: "
+                f"{block.kind}:{block.key}"
+            )
+
+        slide_ranges[
+            block.key
+        ] = FridayZoomSlideRange(
+            start=before_count + 1,
+            end=after_count,
+        )
+
+    output_path.parent.mkdir(
+        parents=True,
+        exist_ok=True,
+    )
+
+    prs.save(output_path)
+
+    return FridayZoomStructureResult(
+        output_path=output_path,
+        slide_ranges=slide_ranges,
+    )

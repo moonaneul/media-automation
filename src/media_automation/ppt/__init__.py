@@ -41,7 +41,10 @@ from .file_builder import (
     build_presentation_file_from_plan,
 )
 from .friday_zoom_builder import (
+    FridayZoomSlideRange,
+    FridayZoomStructureResult,
     build_friday_zoom_preview,
+    build_friday_zoom_structure,
 )
 
 from .zoom_media_assets import (
@@ -60,6 +63,19 @@ from .friday_zoom_media import (
     FRIDAY_ZOOM_AUDIO_KEYS,
     get_friday_zoom_media_key,
     get_friday_zoom_media_type,
+)
+from .media_embed import (
+    MediaEmbedder,
+    PowerPointComMediaEmbedder,
+    create_platform_media_embedder,
+)
+from .friday_zoom_media_plan import (
+    FridayZoomMediaPlacement,
+    plan_friday_zoom_media_placements,
+)
+from .friday_zoom_final import (
+    FridayZoomFinalBuildResult,
+    build_friday_zoom_with_media,
 )
 __all__ = [
     "add_blank_slide",
@@ -97,4 +113,14 @@ __all__ = [
     "FRIDAY_ZOOM_AUDIO_KEYS",
     "get_friday_zoom_media_key",
     "get_friday_zoom_media_type",
+    "MediaEmbedder",
+    "PowerPointComMediaEmbedder",
+    "create_platform_media_embedder",
+    "FridayZoomSlideRange",
+    "FridayZoomStructureResult",
+    "build_friday_zoom_structure",
+    "FridayZoomMediaPlacement",
+    "plan_friday_zoom_media_placements",
+    "FridayZoomFinalBuildResult",
+    "build_friday_zoom_with_media",
 ]
