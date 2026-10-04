@@ -502,9 +502,9 @@ def build_friday_zoom_plan(
         )
     ]
 
-    plan.extend(
-        _insert_transition_blanks(content_blocks)
-    )
+    # 금요 Zoom 기존 자료는
+    # 수요/주일처럼 순서 사이에
+    # 별도 빈 화면을 넣지 않는다.
+    plan.extend(content_blocks)
 
     return plan
-

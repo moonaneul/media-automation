@@ -7,6 +7,7 @@ import yaml
 from .zoom_media_assets import (
     FileZoomMediaAssetProvider,
     ZoomMediaAsset,
+    ZoomMediaType,
 )
 
 
@@ -44,69 +45,57 @@ def load_zoom_media_asset_provider(
         ZoomMediaAsset,
     ] = {}
 
-    for title, value in media.items():
-        if not isinstance(title, str):
+    for key, value in media.items():
+        if not isinstance(key, str):
             raise ValueError(
-                "Zoom 찬양 제목은 "
+                "Zoom media key는 "
                 "문자열이어야 합니다."
             )
 
         if not isinstance(value, dict):
             raise ValueError(
-                f"{title}의 media manifest "
+                f"{key}의 media manifest "
                 "형식이 잘못되었습니다."
             )
 
-        video_raw = value.get("video")
+        type_raw = value.get("type")
+        path_raw = value.get("path")
+        title = value.get("title")
 
-        if not isinstance(
-            video_raw,
-            str,
+        try:
+            media_type = ZoomMediaType(
+                type_raw
+            )
+        except ValueError as error:
+            raise ValueError(
+                f"{key}의 type은 "
+                "video 또는 audio여야 합니다."
+            ) from error
+
+        if not isinstance(path_raw, str):
+            raise ValueError(
+                f"{key}에 path가 필요합니다."
+            )
+
+        if (
+            title is not None
+            and not isinstance(title, str)
         ):
             raise ValueError(
-                f"{title}에 video가 "
-                "필요합니다."
+                f"{key}의 title은 "
+                "문자열이어야 합니다."
             )
 
-        video_path = Path(
-            video_raw
-        )
+        path = Path(path_raw)
 
-        if not video_path.is_absolute():
-            video_path = (
-                base_dir / video_path
-            )
+        if not path.is_absolute():
+            path = base_dir / path
 
-        audio_raw = value.get(
-            "audio"
-        )
-
-        audio_path = None
-
-        if audio_raw is not None:
-            if not isinstance(
-                audio_raw,
-                str,
-            ):
-                raise ValueError(
-                    f"{title}의 audio는 "
-                    "문자열이어야 합니다."
-                )
-
-            audio_path = Path(
-                audio_raw
-            )
-
-            if not audio_path.is_absolute():
-                audio_path = (
-                    base_dir
-                    / audio_path
-                )
-
-        assets[title] = ZoomMediaAsset(
+        assets[key] = ZoomMediaAsset(
+            key=key,
+            media_type=media_type,
+            path=path,
             title=title,
-            video_path=video_path,
-            audio_path=audio_path,
         )
 
     return FileZoomMediaAssetProvider(

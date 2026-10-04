@@ -1,8 +1,14 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from enum import Enum
 from pathlib import Path
 from typing import Protocol
+
+
+class ZoomMediaType(str, Enum):
+    VIDEO = "video"
+    AUDIO = "audio"
 
 
 class MissingZoomMediaAssetError(
@@ -19,15 +25,16 @@ class InvalidZoomMediaAssetError(
 
 @dataclass(frozen=True, slots=True)
 class ZoomMediaAsset:
-    title: str
-    video_path: Path
-    audio_path: Path | None = None
+    key: str
+    media_type: ZoomMediaType
+    path: Path
+    title: str | None = None
 
 
 class ZoomMediaAssetProvider(Protocol):
     def get_media_asset(
         self,
-        title: str,
+        key: str,
     ) -> ZoomMediaAsset:
         ...
 
@@ -44,46 +51,27 @@ class FileZoomMediaAssetProvider:
 
     def get_media_asset(
         self,
-        title: str,
+        key: str,
     ) -> ZoomMediaAsset:
-        asset = self._assets.get(title)
+        asset = self._assets.get(key)
 
         if asset is None:
             raise MissingZoomMediaAssetError(
-                "등록된 Zoom 찬양 미디어가 "
-                f"없습니다: {title}"
+                "등록된 Zoom 미디어가 "
+                f"없습니다: {key}"
             )
 
-        if not asset.video_path.exists():
+        if not asset.path.exists():
             raise MissingZoomMediaAssetError(
-                "Zoom 찬양 영상 파일이 "
+                "Zoom 미디어 파일이 "
                 "존재하지 않습니다: "
-                f"{title} -> "
-                f"{asset.video_path}"
+                f"{key} -> {asset.path}"
             )
 
-        if asset.video_path.stat().st_size == 0:
+        if asset.path.stat().st_size == 0:
             raise InvalidZoomMediaAssetError(
-                "Zoom 찬양 영상 파일이 "
-                f"비어 있습니다: {title}"
+                "Zoom 미디어 파일이 "
+                f"비어 있습니다: {key}"
             )
-
-        if asset.audio_path is not None:
-            if not asset.audio_path.exists():
-                raise MissingZoomMediaAssetError(
-                    "Zoom 찬양 음원 파일이 "
-                    "존재하지 않습니다: "
-                    f"{title} -> "
-                    f"{asset.audio_path}"
-                )
-
-            if (
-                asset.audio_path.stat().st_size
-                == 0
-            ):
-                raise InvalidZoomMediaAssetError(
-                    "Zoom 찬양 음원 파일이 "
-                    f"비어 있습니다: {title}"
-                )
 
         return asset

@@ -27,6 +27,9 @@ from media_automation.weekly_data.models import (
 from media_automation.ppt import (
     InvalidZoomMediaAssetError,
     MissingZoomMediaAssetError,
+    ZoomMediaType,
+    get_friday_zoom_media_key,
+    get_friday_zoom_media_type,
     load_zoom_media_asset_provider,
 )
 def load_bible_provider(
@@ -287,7 +290,8 @@ def main() -> None:
             permission_pending.append(
                 song.title
             )
-        # -------------------------
+    
+    # -------------------------
     # 실제 media manifest 검사
     # -------------------------
 
@@ -295,7 +299,11 @@ def main() -> None:
     actual_media_ok: list[str] = []
     actual_media_missing: list[str] = []
     actual_media_invalid: list[str] = []
-
+    actual_audio_ok: list[str] = []
+    actual_audio_missing: list[str] = []
+    actual_audio_invalid: list[str] = []
+    actual_audio_expected_count = 0
+    
     if args.media is not None:
         actual_media_checked = True
 
@@ -305,32 +313,152 @@ def main() -> None:
             )
         )
 
+        # -------------------------
+        # 찬양 영상 검사
+        # -------------------------
+
         for block in plan:
             if block.kind != BlockKind.ZOOM_SONG:
                 continue
 
+            key = get_friday_zoom_media_key(
+                block
+            )
+            expected_type = (
+                get_friday_zoom_media_type(
+                    block
+                )
+            )
             title = block.value.title
 
+            if (
+                key is None
+                or expected_type
+                != ZoomMediaType.VIDEO
+            ):
+                actual_media_invalid.append(
+                    f"{block.key} ({title}) "
+                    "[video 규칙이 없음]"
+                )
+                continue
+
             try:
-                media_provider.get_media_asset(
-                    title
+                asset = (
+                    media_provider.get_media_asset(
+                        key
+                    )
                 )
 
             except MissingZoomMediaAssetError:
                 actual_media_missing.append(
-                    title
+                    f"{key} ({title})"
                 )
+                continue
 
             except InvalidZoomMediaAssetError:
                 actual_media_invalid.append(
-                    title
+                    f"{key} ({title})"
+                )
+                continue
+
+            if (
+                asset.media_type
+                != ZoomMediaType.VIDEO
+            ):
+                actual_media_invalid.append(
+                    f"{key} ({title}) "
+                    "[video가 아님]"
+                )
+                continue
+
+            if (
+                asset.title is not None
+                and asset.title != title
+            ):
+                actual_media_invalid.append(
+                    f"{key} ({title}) "
+                    f"[manifest title: {asset.title}]"
+                )
+                continue
+
+            actual_media_ok.append(
+                f"{key} ({title})"
+            )
+
+        # -------------------------
+        # 기도 음원 검사
+        # -------------------------
+
+        for block in plan:
+            # 실제 09-11, 09-18 원본의
+            # pre_service_audio는 CRC 오류 상태이므로
+            # 현재 정상 자산 검증에서는 제외한다.
+            if block.key == "pre_service":
+                continue
+
+            expected_type = (
+                get_friday_zoom_media_type(
+                    block
+                )
+            )
+
+            # AUDIO 블록만 검사한다.
+            # ZOOM_SONG은 VIDEO이므로 여기서 제외됨.
+            if (
+                expected_type
+                != ZoomMediaType.AUDIO
+            ):
+                continue
+
+            media_key = (
+                get_friday_zoom_media_key(
+                    block
+                )
+            )
+
+            if media_key is None:
+                actual_audio_invalid.append(
+                    f"{block.key} "
+                    "[audio key가 없음]"
+                )
+                continue
+
+            actual_audio_expected_count += 1
+
+            try:
+                asset = (
+                    media_provider.get_media_asset(
+                        media_key
+                    )
                 )
 
-            else:
-                actual_media_ok.append(
-                    title
+            except MissingZoomMediaAssetError:
+                actual_audio_missing.append(
+                    f"{block.key} -> {media_key}"
                 )
+                continue
 
+            except InvalidZoomMediaAssetError:
+                actual_audio_invalid.append(
+                    f"{block.key} -> {media_key}"
+                )
+                continue
+
+            if (
+                asset.media_type
+                != ZoomMediaType.AUDIO
+            ):
+                actual_audio_invalid.append(
+                    f"{block.key} -> {media_key} "
+                    "[audio가 아님]"
+                )
+                continue
+
+            actual_audio_ok.append(
+                f"{block.key} -> {media_key}"
+            )
+
+        
     # -------------------------
     # 출력
     # -------------------------
@@ -439,8 +567,8 @@ def main() -> None:
                 "=== Actual Media Missing ==="
             )
 
-            for title in actual_media_missing:
-                print(f"- {title}")
+            for item in actual_media_missing:
+                print(f"- {item}")
 
         if actual_media_invalid:
             print()
@@ -448,9 +576,39 @@ def main() -> None:
                 "=== Actual Media Invalid ==="
             )
 
-            for title in actual_media_invalid:
-                print(f"- {title}")
+            for item in actual_media_invalid:
+                print(f"- {item}")
 
+        print()
+        print(
+            "=== Actual Prayer Audio Files ==="
+        )
+
+        print(
+            "actual prayer audio OK : "
+            f"{len(actual_audio_ok)}/"
+            f"{actual_audio_expected_count}"
+        )
+
+        if actual_audio_missing:
+            print()
+            print(
+                "=== Actual Prayer Audio Missing ==="
+            )
+
+            for item in actual_audio_missing:
+                print(f"- {item}")
+
+        if actual_audio_invalid:
+            print()
+            print(
+                "=== Actual Prayer Audio Invalid ==="
+            )
+
+            for item in actual_audio_invalid:
+                print(f"- {item}")
+
+        
     print()
     print(
         "금요 Zoom 입력 검증 완료."

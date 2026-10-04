@@ -1,53 +1,14 @@
-from pathlib import Path
-
 import pytest
 
 from media_automation.ppt import (
     InvalidZoomMediaAssetError,
     MissingZoomMediaAssetError,
+    ZoomMediaType,
     load_zoom_media_asset_provider,
 )
 
 
-def test_zoom_media_manifest_resolves_relative_paths(
-    tmp_path,
-):
-    media_dir = tmp_path / "media"
-    media_dir.mkdir()
-
-    video = media_dir / "song.mp4"
-    audio = media_dir / "song.mp3"
-
-    video.write_bytes(b"video")
-    audio.write_bytes(b"audio")
-
-    manifest = tmp_path / "zoom-media.yaml"
-
-    manifest.write_text(
-        """
-media:
-  예시 찬양:
-    video: media/song.mp4
-    audio: media/song.mp3
-""",
-        encoding="utf-8",
-    )
-
-    provider = (
-        load_zoom_media_asset_provider(
-            manifest
-        )
-    )
-
-    asset = provider.get_media_asset(
-        "예시 찬양"
-    )
-
-    assert asset.video_path == video
-    assert asset.audio_path == audio
-
-
-def test_zoom_media_audio_is_optional(
+def test_zoom_video_asset(
     tmp_path,
 ):
     video = tmp_path / "song.mp4"
@@ -58,8 +19,10 @@ def test_zoom_media_audio_is_optional(
     manifest.write_text(
         """
 media:
-  예시 찬양:
-    video: song.mp4
+  opening_song_1:
+    type: video
+    title: 예시 찬양
+    path: song.mp4
 """,
         encoding="utf-8",
     )
@@ -71,14 +34,54 @@ media:
     )
 
     asset = provider.get_media_asset(
-        "예시 찬양"
+        "opening_song_1"
     )
 
-    assert asset.video_path == video
-    assert asset.audio_path is None
+    assert (
+        asset.media_type
+        == ZoomMediaType.VIDEO
+    )
+    assert asset.title == "예시 찬양"
+    assert asset.path == video
 
 
-def test_zoom_media_missing_video_fails(
+def test_zoom_audio_asset(
+    tmp_path,
+):
+    audio = tmp_path / "prayer.mp3"
+    audio.write_bytes(b"audio")
+
+    manifest = tmp_path / "zoom-media.yaml"
+
+    manifest.write_text(
+        """
+media:
+  first_prayer_audio:
+    type: audio
+    path: prayer.mp3
+""",
+        encoding="utf-8",
+    )
+
+    provider = (
+        load_zoom_media_asset_provider(
+            manifest
+        )
+    )
+
+    asset = provider.get_media_asset(
+        "first_prayer_audio"
+    )
+
+    assert (
+        asset.media_type
+        == ZoomMediaType.AUDIO
+    )
+    assert asset.title is None
+    assert asset.path == audio
+
+
+def test_zoom_media_missing_file_fails(
     tmp_path,
 ):
     manifest = tmp_path / "zoom-media.yaml"
@@ -86,8 +89,10 @@ def test_zoom_media_missing_video_fails(
     manifest.write_text(
         """
 media:
-  예시 찬양:
-    video: missing.mp4
+  opening_song_1:
+    type: video
+    title: 예시 찬양
+    path: missing.mp4
 """,
         encoding="utf-8",
     )
@@ -100,14 +105,14 @@ media:
 
     with pytest.raises(
         MissingZoomMediaAssetError,
-        match="영상 파일",
+        match="미디어 파일",
     ):
         provider.get_media_asset(
-            "예시 찬양"
+            "opening_song_1"
         )
 
 
-def test_zoom_media_empty_video_fails(
+def test_zoom_media_empty_file_fails(
     tmp_path,
 ):
     video = tmp_path / "empty.mp4"
@@ -118,8 +123,10 @@ def test_zoom_media_empty_video_fails(
     manifest.write_text(
         """
 media:
-  예시 찬양:
-    video: empty.mp4
+  opening_song_1:
+    type: video
+    title: 예시 찬양
+    path: empty.mp4
 """,
         encoding="utf-8",
     )
@@ -135,5 +142,5 @@ media:
         match="비어 있습니다",
     ):
         provider.get_media_asset(
-            "예시 찬양"
+            "opening_song_1"
         )

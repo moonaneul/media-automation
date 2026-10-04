@@ -50,9 +50,16 @@ from .zoom_media_assets import (
     MissingZoomMediaAssetError,
     ZoomMediaAsset,
     ZoomMediaAssetProvider,
+    ZoomMediaType,
 )
 from .zoom_media_manifest import (
     load_zoom_media_asset_provider,
+
+)
+from .friday_zoom_media import (
+    FRIDAY_ZOOM_AUDIO_KEYS,
+    get_friday_zoom_media_key,
+    get_friday_zoom_media_type,
 )
 __all__ = [
     "add_blank_slide",
@@ -86,4 +93,8 @@ __all__ = [
     "ZoomMediaAsset",
     "ZoomMediaAssetProvider",
     "load_zoom_media_asset_provider",
+    "ZoomMediaType",
+    "FRIDAY_ZOOM_AUDIO_KEYS",
+    "get_friday_zoom_media_key",
+    "get_friday_zoom_media_type",
 ]

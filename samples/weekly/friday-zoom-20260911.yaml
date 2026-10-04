@@ -1,0 +1,105 @@
+service: friday
+date: 2026-09-11
+mode: zoom
+
+opening_songs:
+  - status: VALUE
+    title: 주님의 임재 앞에서
+    media:
+      status: VALUE
+      file_status: AVAILABLE
+      technical_check: UNVERIFIED
+      church_review: UNVERIFIED
+      usage_permission: UNKNOWN
+
+  - status: VALUE
+    title: 나는 믿네
+    media:
+      status: VALUE
+      file_status: AVAILABLE
+      technical_check: UNVERIFIED
+      church_review: UNVERIFIED
+      usage_permission: UNKNOWN
+
+first_prayer:
+  status: VALUE
+  topics:
+    - |-
+      이 자리까지 인도해 주신 은혜에 감사하며
+      - 그러나 내가 나 된 것은 하나님의 은혜로 된 것이니
+        (고전 15:10)
+    - |-
+      하나님의 말씀이 내 삶을 이끌어 가는 은혜를 누리도록
+      - 주의 말씀은 내 발에 등이요 내 길에 빛이니이다
+        (시 119:105)
+
+song_after_prayer:
+  status: VALUE
+  title: 예수 십자가에 흘린 피로써(새 찬송가 259장)
+  media:
+    status: VALUE
+    file_status: AVAILABLE
+    technical_check: UNVERIFIED
+    church_review: UNVERIFIED
+    usage_permission: UNKNOWN
+
+scripture:
+  status: VALUE
+  reference: "민 21:1-9"
+
+sermon_title:
+  status: VALUE
+  text: 호르마에서 경험하는 영적 반전
+
+additional_scripture:
+  status: VALUE
+  reference: "요 3:14-15"
+
+response_song:
+  status: VALUE
+  title: 오직 예수
+  media:
+    status: VALUE
+    file_status: AVAILABLE
+    technical_check: UNVERIFIED
+    church_review: UNVERIFIED
+    usage_permission: UNKNOWN
+
+word_prayer:
+  status: VALUE
+  topics:
+    - |-
+      실패의 자리에서 승리로
+      - 과거의 아픔과 실패가 하나님의 은혜로 새로운 믿음의 출발점이 되도록
+    - |-
+      원망 대신 감사와 기도
+      - 광야 같은 삶 속에서도 불평이 아닌 감사와 기도로 반응할 수 있도록
+
+intercession_song:
+  status: VALUE
+  title: 선한 능력으로
+  media:
+    status: VALUE
+    file_status: AVAILABLE
+    technical_check: UNVERIFIED
+    church_review: UNVERIFIED
+    usage_permission: UNKNOWN
+
+community_prayer:
+  status: VALUE
+  topics:
+    - |-
+      교회 안에 있는 다음 세대를 위하여
+      - 학생부 교사 : 임현희(부장), 조서희, 문호성, 이하은, 황예찬, 장호준
+    - |-
+      ‘생명의 삶’ 개강(9/13)
+      - 삶 공부를 통하여 삶의 자리에 변화의 바람이 불도록 함께해 주소서.
+    - |-
+      국가를 위하여
+      - 극한 대립에서 화합으로 나아갈 수 있도록 위정자들을 도와주소서.
+
+personal_prayer:
+  status: VALUE
+  text: |-
+    더 깊은 주님과의 친밀함 가운데 나아가시기 바랍니다.
+    지금은 개인 기도 시간입니다.
