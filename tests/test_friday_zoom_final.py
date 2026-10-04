@@ -36,18 +36,16 @@ class FakeMediaEmbedder:
     def __init__(self):
         self.calls = []
 
-    def embed(
+    def embed_many(
         self,
         presentation_path,
         *,
-        slide_number,
-        asset,
+        requests,
     ):
         self.calls.append(
             (
                 Path(presentation_path),
-                slide_number,
-                asset,
+                list(requests),
             )
         )
 
@@ -136,10 +134,18 @@ def test_final_builder_embeds_media_on_generated_slides(
         result.media_placements
     ) == 2
 
-    assert len(embedder.calls) == 2
+    assert len(embedder.calls) == 1
 
-    assert embedder.calls[0][1] == 2
-    assert embedder.calls[0][2] is video
+    presentation_path, requests = (
+        embedder.calls[0]
+    )
 
-    assert embedder.calls[1][1] == 3
-    assert embedder.calls[1][2] is audio
+    assert presentation_path == output
+
+    assert len(requests) == 2
+
+    assert requests[0].slide_number == 2
+    assert requests[0].asset is video
+
+    assert requests[1].slide_number == 3
+    assert requests[1].asset is audio

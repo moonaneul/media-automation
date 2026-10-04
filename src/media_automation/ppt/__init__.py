@@ -68,6 +68,7 @@ from .media_embed import (
     MediaEmbedder,
     PowerPointComMediaEmbedder,
     create_platform_media_embedder,
+    MediaEmbedRequest,
 )
 from .friday_zoom_media_plan import (
     FridayZoomMediaPlacement,
@@ -123,4 +124,5 @@ __all__ = [
     "plan_friday_zoom_media_placements",
     "FridayZoomFinalBuildResult",
     "build_friday_zoom_with_media",
+    "MediaEmbedRequest",
 ]

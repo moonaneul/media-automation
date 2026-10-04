@@ -19,6 +19,7 @@ from .friday_zoom_media_plan import (
     plan_friday_zoom_media_placements,
 )
 from .media_embed import (
+    MediaEmbedRequest,
     MediaEmbedder,
     create_platform_media_embedder,
 )
@@ -81,14 +82,20 @@ def build_friday_zoom_with_media(
         )
     )
 
-    for placement in placements:
-        media_embedder.embed(
-            structure.output_path,
+    requests = [
+        MediaEmbedRequest(
             slide_number=(
                 placement.slide_number
             ),
             asset=placement.asset,
         )
+        for placement in placements
+    ]
+
+    media_embedder.embed_many(
+        structure.output_path,
+        requests=requests,
+    )
 
     return FridayZoomFinalBuildResult(
         output_path=structure.output_path,

@@ -1,8 +1,9 @@
 from __future__ import annotations
 
 import platform
+from dataclasses import dataclass
 from pathlib import Path
-from typing import Protocol
+from typing import Protocol, Sequence
 
 from .zoom_media_assets import (
     ZoomMediaAsset,
@@ -10,13 +11,18 @@ from .zoom_media_assets import (
 )
 
 
+@dataclass(frozen=True, slots=True)
+class MediaEmbedRequest:
+    slide_number: int
+    asset: ZoomMediaAsset
+
+
 class MediaEmbedder(Protocol):
-    def embed(
+    def embed_many(
         self,
         presentation_path: str | Path,
         *,
-        slide_number: int,
-        asset: ZoomMediaAsset,
+        requests: Sequence[MediaEmbedRequest],
     ) -> None:
         ...
 
@@ -25,6 +31,9 @@ class PowerPointComMediaEmbedder:
     """
     Windows + Microsoft PowerPoint용
     MP4/MP3 삽입기.
+
+    하나의 PowerPoint 세션에서
+    여러 미디어를 삽입하고 한 번 저장한다.
 
     실제 재생 성공 여부는 별도 검수한다.
     """
@@ -43,17 +52,32 @@ class PowerPointComMediaEmbedder:
         slide_number: int,
         asset: ZoomMediaAsset,
     ) -> None:
+        """
+        단일 삽입 호환용 메서드.
+        내부적으로 embed_many를 사용한다.
+        """
+
+        self.embed_many(
+            presentation_path,
+            requests=[
+                MediaEmbedRequest(
+                    slide_number=slide_number,
+                    asset=asset,
+                )
+            ],
+        )
+
+    def embed_many(
+        self,
+        presentation_path: str | Path,
+        *,
+        requests: Sequence[MediaEmbedRequest],
+    ) -> None:
         self._require_windows()
 
         presentation_path = (
             Path(presentation_path).resolve()
         )
-        media_path = asset.path.resolve()
-
-        if slide_number < 1:
-            raise ValueError(
-                "slide_number는 1 이상이어야 합니다."
-            )
 
         if not presentation_path.exists():
             raise FileNotFoundError(
@@ -61,16 +85,44 @@ class PowerPointComMediaEmbedder:
                 f"{presentation_path}"
             )
 
-        if not media_path.exists():
-            raise FileNotFoundError(
-                "미디어 파일이 없습니다: "
-                f"{media_path}"
+        if not requests:
+            return
+
+        resolved_requests: list[
+            tuple[
+                MediaEmbedRequest,
+                Path,
+            ]
+        ] = []
+
+        for request in requests:
+            if request.slide_number < 1:
+                raise ValueError(
+                    "slide_number는 "
+                    "1 이상이어야 합니다."
+                )
+
+            media_path = (
+                request.asset.path.resolve()
             )
 
-        if media_path.stat().st_size == 0:
-            raise RuntimeError(
-                "미디어 파일이 비어 있습니다: "
-                f"{media_path}"
+            if not media_path.exists():
+                raise FileNotFoundError(
+                    "미디어 파일이 없습니다: "
+                    f"{media_path}"
+                )
+
+            if media_path.stat().st_size == 0:
+                raise RuntimeError(
+                    "미디어 파일이 비어 있습니다: "
+                    f"{media_path}"
+                )
+
+            resolved_requests.append(
+                (
+                    request,
+                    media_path,
+                )
             )
 
         try:
@@ -100,41 +152,53 @@ class PowerPointComMediaEmbedder:
                 )
             )
 
-            if slide_number > presentation.Slides.Count:
-                raise ValueError(
-                    "존재하지 않는 슬라이드 번호입니다: "
-                    f"{slide_number}"
+            for (
+                request,
+                media_path,
+            ) in resolved_requests:
+                if (
+                    request.slide_number
+                    > presentation.Slides.Count
+                ):
+                    raise ValueError(
+                        "존재하지 않는 슬라이드 "
+                        "번호입니다: "
+                        f"{request.slide_number}"
+                    )
+
+                slide = presentation.Slides(
+                    request.slide_number
                 )
 
-            slide = presentation.Slides(
-                slide_number
-            )
+                asset = request.asset
 
-            if (
-                asset.media_type
-                == ZoomMediaType.VIDEO
-            ):
-                self._embed_video(
-                    slide,
-                    media_path,
-                    presentation,
-                )
+                if (
+                    asset.media_type
+                    == ZoomMediaType.VIDEO
+                ):
+                    self._embed_video(
+                        slide,
+                        media_path,
+                        presentation,
+                    )
 
-            elif (
-                asset.media_type
-                == ZoomMediaType.AUDIO
-            ):
-                self._embed_audio(
-                    slide,
-                    media_path,
-                )
+                elif (
+                    asset.media_type
+                    == ZoomMediaType.AUDIO
+                ):
+                    self._embed_audio(
+                        slide,
+                        media_path,
+                    )
 
-            else:
-                raise ValueError(
-                    "지원하지 않는 Zoom 미디어 "
-                    f"유형입니다: {asset.media_type}"
-                )
+                else:
+                    raise ValueError(
+                        "지원하지 않는 Zoom 미디어 "
+                        "유형입니다: "
+                        f"{asset.media_type}"
+                    )
 
+            # 모든 삽입이 끝난 뒤 한 번만 저장
             presentation.Save()
 
         finally:
@@ -150,10 +214,14 @@ class PowerPointComMediaEmbedder:
         media_path: Path,
         presentation,
     ) -> None:
-        width = presentation.PageSetup.SlideWidth
-        height = presentation.PageSetup.SlideHeight
+        width = (
+            presentation.PageSetup.SlideWidth
+        )
+        height = (
+            presentation.PageSetup.SlideHeight
+        )
 
-        slide.Shapes.AddMediaObject2(
+        shape = slide.Shapes.AddMediaObject2(
             str(media_path),
             False,
             True,
@@ -163,14 +231,22 @@ class PowerPointComMediaEmbedder:
             height,
         )
 
+        play_settings = (
+            shape.AnimationSettings.PlaySettings
+        )
+
+        # 과거 금요 Zoom PPT 기준:
+        # 영상은 자동재생하지 않고 클릭 재생한다.
+        play_settings.PlayOnEntry = False
+        play_settings.LoopUntilStopped = False
+
+
     def _embed_audio(
         self,
         slide,
         media_path: Path,
     ) -> None:
-        # 화면 밖에 가까운 작은 크기로 배치.
-        # 실제 예배 화면에서 아이콘이 눈에 띄지 않도록 한다.
-        slide.Shapes.AddMediaObject2(
+        shape = slide.Shapes.AddMediaObject2(
             str(media_path),
             False,
             True,
@@ -179,6 +255,20 @@ class PowerPointComMediaEmbedder:
             1,
             1,
         )
+
+        play_settings = (
+            shape.AnimationSettings.PlaySettings
+        )
+
+        # 과거 금요 Zoom PPT 기준:
+        # 기도 음원은 슬라이드 진입 시 자동재생하고
+        # 슬라이드가 유지되는 동안 반복한다.
+        play_settings.PlayOnEntry = True
+        play_settings.PauseAnimation = False
+        play_settings.LoopUntilStopped = True
+
+        # 예배 화면에서 음원 아이콘을 노출하지 않는다.
+        play_settings.HideWhileNotPlaying = True
 
 
 def create_platform_media_embedder() -> MediaEmbedder:
