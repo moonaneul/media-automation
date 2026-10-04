@@ -303,7 +303,13 @@ def create_platform_slide_merger() -> SlideMerger:
         return PowerPointComSlideMerger()
 
     if system == "Darwin":
-        return MacPowerPointAppleScriptSlideMerger()
+        raise RuntimeError(
+            "최종 악보 PPT 병합은 현재 "
+            "Microsoft PowerPoint가 설치된 "
+            "Windows 제작 환경에서만 지원합니다. "
+            "Mac에서는 --validate-only로 "
+            "입력 자료를 검증해주세요."
+        )
 
     raise RuntimeError(
         f"지원하지 않는 운영체제입니다: {system}"

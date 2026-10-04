@@ -8,6 +8,7 @@ from pptx import Presentation
 
 from media_automation.bible import (
     BiblePassage,
+    BiblePassageNotFoundError,
     BibleVerse,
     InMemoryBibleProvider,
 )
@@ -207,6 +208,14 @@ def main() -> None:
         required=True,
         help="생성할 수요예배 PPT 경로",
     )
+    parser.add_argument(
+        "--validate-only",
+        action="store_true",
+        help=(
+            "PPT를 생성하지 않고 "
+            "Weekly Data, 성경 본문, 찬양 자료를 검증합니다."
+        ),
+    )
 
     args = parser.parse_args()
 
@@ -284,13 +293,11 @@ def main() -> None:
         )
     )
 
-    merger = (
-    create_platform_slide_merger()
-    )
 
     # -------------------------
     # 찬양 자료 사전 확인
     # -------------------------
+
 
     missing_songs: list[str] = []
 
@@ -307,6 +314,22 @@ def main() -> None:
         except MissingSongAssetError:
             missing_songs.append(
                 title
+            )
+    missing_bible_passages: list[str] = []
+
+    for block in plan:
+        if block.kind != BlockKind.SCRIPTURE:
+            continue
+
+        reference = block.value.reference
+
+        try:
+            bible_provider.get_passage(
+                reference
+            )
+        except BiblePassageNotFoundError:
+            missing_bible_passages.append(
+                reference
             )
 
     print()
@@ -343,7 +366,46 @@ def main() -> None:
             "누락된 찬양은 PPT에 "
             "임의 대체하지 않고 생략합니다."
         )
+    if missing_bible_passages:
+        print()
+        print(
+            "=== Missing Bible Passages ==="
+        )
 
+        for reference in missing_bible_passages:
+            print(
+                f"- {reference}"
+            )
+
+        raise RuntimeError(
+            "필요한 개역개정 성경 본문이 "
+            "Bible YAML에 없습니다."
+        )
+
+    if args.validate_only:
+        print()
+        print("=== Validation Result ===")
+        print(
+            f"plan blocks : {len(plan)}"
+        )
+        print(
+            f"missing songs : {len(missing_songs)}"
+        )
+        print(
+            "bible passages : OK"
+        )
+
+        print()
+        print(
+            "입력 검증 완료. "
+            "PPT는 생성하지 않았습니다."
+        )
+
+        return
+
+    merger = (
+        create_platform_slide_merger()
+    )
     # -------------------------
     # 실제 PPT 생성
     # -------------------------

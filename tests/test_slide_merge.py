@@ -169,7 +169,7 @@ from media_automation.ppt import (
 )
 
 
-def test_platform_merger_returns_mac_merger_on_darwin(
+def test_platform_merger_rejects_macos_for_final_build(
     monkeypatch,
 ):
     monkeypatch.setattr(
@@ -177,12 +177,11 @@ def test_platform_merger_returns_mac_merger_on_darwin(
         lambda: "Darwin",
     )
 
-    merger = create_platform_slide_merger()
-
-    assert isinstance(
-        merger,
-        MacPowerPointAppleScriptSlideMerger,
-    )
+    with pytest.raises(
+        RuntimeError,
+        match="Windows 제작 환경",
+    ):
+        create_platform_slide_merger()
 
 
 def test_mac_merger_rejects_insert_before_first_slide():
