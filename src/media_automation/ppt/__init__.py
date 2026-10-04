@@ -3,6 +3,7 @@ from .base import (
     add_centered_text_slide,
     add_sermon_title_slide,
     create_4x3_presentation,
+    create_16x9_presentation,
     get_blank_layout,
 )
 from .scripture import (
@@ -39,6 +40,20 @@ from .builder import (
 from .file_builder import (
     build_presentation_file_from_plan,
 )
+from .friday_zoom_builder import (
+    build_friday_zoom_preview,
+)
+
+from .zoom_media_assets import (
+    FileZoomMediaAssetProvider,
+    InvalidZoomMediaAssetError,
+    MissingZoomMediaAssetError,
+    ZoomMediaAsset,
+    ZoomMediaAssetProvider,
+)
+from .zoom_media_manifest import (
+    load_zoom_media_asset_provider,
+)
 __all__ = [
     "add_blank_slide",
     "add_centered_text_slide",
@@ -63,4 +78,12 @@ __all__ = [
     "build_presentation_file_from_plan",
     "MacPowerPointAppleScriptSlideMerger",
     "create_platform_slide_merger",
+    "create_16x9_presentation",
+    "build_friday_zoom_preview",
+    "FileZoomMediaAssetProvider",
+    "InvalidZoomMediaAssetError",
+    "MissingZoomMediaAssetError",
+    "ZoomMediaAsset",
+    "ZoomMediaAssetProvider",
+    "load_zoom_media_asset_provider",
 ]

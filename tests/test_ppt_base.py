@@ -9,6 +9,7 @@ from media_automation.ppt import (
     add_centered_text_slide,
     add_sermon_title_slide,
     create_4x3_presentation,
+    create_16x9_presentation,
     get_blank_layout,
 )
 
@@ -22,7 +23,15 @@ def test_create_4x3_presentation():
     )
 
     assert round(ratio, 2) == 1.33
+def test_create_16x9_presentation():
+    prs = create_16x9_presentation()
 
+    ratio = (
+        prs.slide_width
+        / prs.slide_height
+    )
+
+    assert round(ratio, 2) == 1.78
 
 def test_get_blank_layout_returns_layout():
     prs = Presentation()

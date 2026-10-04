@@ -360,10 +360,27 @@ def test_friday_zoom_additional_scripture_none_is_skipped():
 
     assert "additional_scripture" not in keys
 
-    assert (
-        "transition:sermon_title->response_song"
-        in keys
+    sermon_index = keys.index(
+        "sermon_title"
     )
+
+    assert (
+        keys[sermon_index + 1]
+        == "response_song"
+    )
+
+
+def test_friday_zoom_has_no_transition_blanks():
+    data = load_friday_zoom()
+
+    plan = build_friday_zoom_plan(data)
+
+    assert not any(
+        block.kind == BlockKind.BLANK
+        for block in plan
+    )
+
+    assert len(plan) == 12
 
 
 def test_friday_zoom_unset_stops_planning():

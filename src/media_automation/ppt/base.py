@@ -18,7 +18,14 @@ def create_4x3_presentation() -> Presentation:
     # 첫 슬라이드가 없으므로 그대로 사용한다.
     return prs
 
+def create_16x9_presentation() -> Presentation:
+    prs = Presentation()
 
+    prs.slide_width = Inches(13.333333)
+    prs.slide_height = Inches(7.5)
+
+    return prs
+    
 def get_blank_layout(prs: Presentation):
     """
     특정 템플릿에서 blank layout의 위치가 달라도
