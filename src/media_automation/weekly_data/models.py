@@ -225,6 +225,7 @@ class WednesdayData(StrictModel):
 
 class FirstService(StrictModel):
     prayer: PersonField
+    offering_prayer: PersonField
 
 
 class SecondService(StrictModel):
@@ -236,6 +237,7 @@ class WeekServing(StrictModel):
     first_service: FirstService
     second_service: SecondService
     dishwashing: PersonField
+    wednesday_prayer: PersonField
 
 
 class Serving(StrictModel):

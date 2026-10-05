@@ -49,6 +49,10 @@ serving:
         status: VALUE
         person: 홍길동
 
+      offering_prayer:
+        status: VALUE
+        person: 예시1부봉헌기도
+
     second_service:
       prayer:
         status: VALUE
@@ -62,11 +66,19 @@ serving:
       status: VALUE
       person: 박민수
 
+    wednesday_prayer:
+      status: VALUE
+      person: 예시수요기도
+
   next_week:
     first_service:
       prayer:
         status: VALUE
         person: 최지혜
+
+      offering_prayer:
+        status: VALUE
+        person: 예시다음주1부봉헌기도
 
     second_service:
       prayer:
@@ -80,6 +92,10 @@ serving:
     dishwashing:
       status: VALUE
       person: 김하늘
+
+    wednesday_prayer:
+      status: VALUE
+      person: 예시다음주수요기도
 
 
 bulletin:

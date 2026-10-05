@@ -1,3 +1,4 @@
+import pytest
 from pathlib import Path
 
 from media_automation.weekly_data import (
@@ -100,3 +101,134 @@ decision_hymn:
     result = validate_weekly_file(sample)
 
     assert result.state == ValidationState.INVALID
+
+def test_sunday_requires_bulletin_serving_fields():
+    from pydantic import ValidationError
+
+    from media_automation.weekly_data.models import (
+        parse_weekly_data,
+    )
+
+    data = {
+        "service": "sunday",
+        "date": "2026-09-27",
+        "worship": {
+            "opening_songs": [
+                {"status": "VALUE", "title": "찬양1"},
+                {"status": "VALUE", "title": "찬양2"},
+                {"status": "VALUE", "title": "찬양3"},
+            ],
+            "separate_hymn": {
+                "status": "VALUE",
+                "title": "찬송",
+            },
+            "offering_hymn": {
+                "status": "VALUE",
+                "title": "봉헌찬송",
+            },
+            "special_song": {
+                "status": "NONE",
+            },
+            "sermon_title": {
+                "status": "VALUE",
+                "text": "설교 제목",
+            },
+            "scripture": {
+                "status": "VALUE",
+                "reference": "히 11:1-3",
+            },
+            "additional_scripture": {
+                "status": "NONE",
+            },
+            "decision_hymn": {
+                "status": "VALUE",
+                "title": "결단찬송",
+            },
+        },
+        "serving": {
+            "this_week": {
+                "first_service": {
+                    "prayer": {
+                        "status": "VALUE",
+                        "person": "인도자",
+                    },
+                },
+                "second_service": {
+                    "prayer": {
+                        "status": "VALUE",
+                        "person": "위윤기",
+                    },
+                    "offering_prayer": {
+                        "status": "VALUE",
+                        "person": "문호성",
+                    },
+                },
+                "dishwashing": {
+                    "status": "VALUE",
+                    "person": "이광민",
+                },
+            },
+            "next_week": {
+                "first_service": {
+                    "prayer": {
+                        "status": "VALUE",
+                        "person": "인도자",
+                    },
+                },
+                "second_service": {
+                    "prayer": {
+                        "status": "VALUE",
+                        "person": "문희재",
+                    },
+                    "offering_prayer": {
+                        "status": "VALUE",
+                        "person": "장기훈",
+                    },
+                },
+                "dishwashing": {
+                    "status": "VALUE",
+                    "person": "김진아",
+                },
+            },
+        },
+        "bulletin": {
+            "number": {
+                "status": "VALUE",
+                "value": "13-39",
+            },
+            "church_news": {
+                "status": "VALUE",
+                "items": [
+                    {"text": "교회 소식"},
+                ],
+            },
+            "afternoon_service": {
+                "status": "VALUE",
+                "title": "생명의 삶 3주차",
+            },
+            "monthly_schedule": {
+                "status": "VALUE",
+                "items": [
+                    {
+                        "date": "2026-09-06",
+                        "content": "집사 부부 모임",
+                    },
+                ],
+            },
+            "cell_group": {
+                "status": "VALUE",
+                "scripture": "히 11:1-3",
+                "title": "살아 있는 믿음",
+                "questions": [
+                    "질문1",
+                    "질문2",
+                    "질문3",
+                    "질문4",
+                ],
+            },
+        },
+    }
+
+    with pytest.raises(ValidationError):
+        parse_weekly_data(data)
+
