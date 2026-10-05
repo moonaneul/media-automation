@@ -426,3 +426,98 @@ def test_file_builder_renders_scripture(
     prs = Presentation(result)
 
     assert len(prs.slides) == 2
+
+def test_file_builder_can_preserve_sunday_edge_blanks(
+    tmp_path,
+):
+    pre_service = (
+        tmp_path
+        / "pre_service.pptx"
+    )
+    output = (
+        tmp_path
+        / "sunday-result.pptx"
+    )
+
+    make_ppt(
+        pre_service,
+        "PRE SERVICE",
+    )
+
+    provider = (
+        FilePreServiceSlideProvider(
+            {
+                "pre_service": (
+                    pre_service
+                ),
+            },
+            slide_counts={
+                "pre_service": 1,
+            },
+        )
+    )
+
+    plan = [
+        WorshipBlock(
+            kind=BlockKind.PRE_SERVICE,
+            key="pre_service",
+        ),
+        WorshipBlock(
+            kind=BlockKind.BLANK,
+            key=(
+                "transition:"
+                "pre_service->prayer"
+            ),
+        ),
+        WorshipBlock(
+            kind=BlockKind.PRAYER,
+            key="prayer",
+            value=PersonField(
+                status="VALUE",
+                person="홍길동",
+            ),
+        ),
+        WorshipBlock(
+            kind=BlockKind.BLANK,
+            key=(
+                "transition:"
+                "prayer->end"
+            ),
+        ),
+    ]
+
+    result = (
+        build_presentation_file_from_plan(
+            plan,
+            output,
+            pre_service_provider=provider,
+            preserve_blank_after_pre_service=True,
+            preserve_trailing_blank=True,
+        )
+    )
+
+    prs = Presentation(result)
+
+    assert len(prs.slides) == 4
+
+    assert (
+        "PRE SERVICE"
+        in prs.slides[0].shapes[0].text
+    )
+
+    assert not any(
+        getattr(shape, "text", "").strip()
+        for shape in prs.slides[1].shapes
+    )
+
+    assert any(
+        "기 도 : 홍길동"
+        in getattr(shape, "text", "")
+        for shape in prs.slides[2].shapes
+    )
+
+    assert not any(
+        getattr(shape, "text", "").strip()
+        for shape in prs.slides[3].shapes
+    )
+
