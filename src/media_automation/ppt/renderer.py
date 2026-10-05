@@ -14,9 +14,9 @@ from .base import (
     add_sermon_title_slide,
 )
 from .scripture import (
+    _display_bible_reference,
     add_scripture_passage_slides,
 )
-
 
 class MissingRenderDependencyError(
     RuntimeError
@@ -55,7 +55,9 @@ def render_block(
         return add_sermon_title_slide(
             prs,
             block.value.title,
-            block.value.scripture_reference,
+            _display_bible_reference(
+                block.value.scripture_reference
+            ),
         )
 
     if block.kind == BlockKind.SCRIPTURE:

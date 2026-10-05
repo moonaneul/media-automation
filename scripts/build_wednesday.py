@@ -19,9 +19,11 @@ from media_automation.planning import (
 from media_automation.ppt import (
     FilePreServiceSlideProvider,
     MissingSongAssetError,
-    create_platform_slide_merger,
     build_presentation_file_from_plan,
+    build_wednesday_structure,
+    create_platform_slide_merger,
     load_song_asset_provider,
+    validate_wednesday_structure,
 )
 from media_automation.weekly_data.models import (
     WednesdayData,
@@ -217,7 +219,26 @@ def main() -> None:
         ),
     )
 
+    parser.add_argument(
+        "--structure-only",
+        action="store_true",
+        help=(
+            "Mac에서도 확인 가능한 수요예배 구조 PPT를 생성합니다. "
+            "찬양은 실제 악보 PPT의 장수만 반영한 "
+            "빈 placeholder로 표시합니다."
+        ),
+    )
+
     args = parser.parse_args()
+
+    if (
+        args.validate_only
+        and args.structure_only
+    ):
+        parser.error(
+            "--validate-only와 --structure-only는 "
+            "동시에 사용할 수 없습니다."
+        )
 
     # -------------------------
     # 입력 파일 존재 확인
@@ -402,7 +423,126 @@ def main() -> None:
         )
 
         return
+    if args.structure_only:
+        result = build_wednesday_structure(
+            plan,
+            args.output,
+            bible_provider=bible_provider,
+            pre_service_provider=(
+                pre_service_provider
+            ),
+            song_asset_provider=(
+                song_provider
+            ),
+            skip_missing_songs=True,
+        )
 
+        reopened = Presentation(
+            result.output_path
+        )
+        scripture_passages = {}
+
+        for block in plan:
+            if block.kind != BlockKind.SCRIPTURE:
+                continue
+
+            scripture_passages[
+                block.key
+            ] = bible_provider.get_passage(
+                block.value.reference
+            )
+        qa_result = validate_wednesday_structure(
+            result.output_path,
+            slide_ranges=result.slide_ranges,
+            scripture_passages=(
+                scripture_passages
+            ),
+        )
+        print()
+        print(
+            "=== Wednesday Structure Preview ==="
+        )
+        print(
+            f"slides : {len(reopened.slides)}"
+        )
+        print(
+            f"output : {result.output_path}"
+        )
+
+        print()
+        print(
+            "=== Slide Ranges ==="
+        )
+
+        for key, slide_range in sorted(
+            result.slide_ranges.items(),
+            key=lambda item: item[1].start,
+        ):
+            if (
+                slide_range.start
+                == slide_range.end
+            ):
+                location = str(
+                    slide_range.start
+                )
+            else:
+                location = (
+                    f"{slide_range.start}"
+                    f"-{slide_range.end}"
+                )
+
+            print(
+                f"{location:>7} | {key}"
+            )
+
+        print()
+        print("=== Wednesday QA ===")
+
+        if qa_result.ok:
+            print("QA PASSED")
+            print("- aspect ratio : OK")
+            print("- transition blanks : OK")
+            print("- baptism term : OK")
+            print("- scripture slides : OK")
+            print("- standalone alignment : OK")
+            print("- scripture layout : OK")
+            print("- blue background shapes : OK")
+            print("- hyperlinks / URLs : OK")
+        else:
+            print(
+                f"QA FAILED : {len(qa_result.issues)} issue(s)"
+            )
+
+            for issue in qa_result.issues:
+                location = (
+                    f"slide {issue.slide_number}"
+                    if issue.slide_number is not None
+                    else "presentation"
+                )
+
+                print(
+                    f"- [{issue.code}] "
+                    f"{location} | "
+                    f"{issue.message}"
+                )
+
+            raise RuntimeError(
+                "수요예배 구조 QA에서 오류가 발견되었습니다."
+            )
+        print()
+        print(
+            "수요예배 구조 프리뷰 생성 완료."
+        )
+        print(
+            "찬양 화면은 실제 악보가 아니라 "
+            "악보 PPT의 장수만 반영한 빈 화면입니다."
+        )
+        print(
+            "최종 악보 병합은 Windows PowerPoint "
+            "제작 환경에서 별도 수행합니다."
+        )
+
+        return
     merger = (
         create_platform_slide_merger()
     )
@@ -461,7 +601,6 @@ def main() -> None:
         "악보·본문·빈 화면·잘림을 "
         "최종 확인해주세요."
     )
-
 
 if __name__ == "__main__":
     main()

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import re
 from pptx import Presentation
 from pptx.dml.color import RGBColor
 from pptx.enum.text import PP_ALIGN
@@ -9,7 +10,14 @@ from media_automation.bible import BiblePassage
 
 from .base import add_blank_slide
 
-
+def _display_bible_reference(
+    reference: str,
+) -> str:
+    return re.sub(
+        r"(?<=\d)-(?=\d)",
+        "~",
+        reference,
+    )
 def _display_bible_text(text: str) -> str:
     """
     교회 표기 원칙:

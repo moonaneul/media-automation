@@ -78,6 +78,17 @@ from .friday_zoom_final import (
     FridayZoomFinalBuildResult,
     build_friday_zoom_with_media,
 )
+
+from .wednesday_structure import (
+    WednesdaySlideRange,
+    WednesdayStructureResult,
+    build_wednesday_structure,
+)
+from .wednesday_qa import (
+    WednesdayQaIssue,
+    WednesdayQaResult,
+    validate_wednesday_structure,
+)
 __all__ = [
     "add_blank_slide",
     "add_centered_text_slide",
@@ -125,4 +136,10 @@ __all__ = [
     "FridayZoomFinalBuildResult",
     "build_friday_zoom_with_media",
     "MediaEmbedRequest",
+    "WednesdaySlideRange",
+    "WednesdayStructureResult",
+    "build_wednesday_structure",
+    "WednesdayQaIssue",
+    "WednesdayQaResult",
+    "validate_wednesday_structure",
 ]

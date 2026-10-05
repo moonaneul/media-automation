@@ -83,7 +83,8 @@ def test_render_sermon_title():
         .text
     )
 
-    assert "삼상 16:6-7" in text
+    assert "삼상 16:6~7" in text
+    assert "삼상 16:6-7" not in text
     assert "외모와 중심" in text
 
 
