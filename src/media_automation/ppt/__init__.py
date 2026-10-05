@@ -89,6 +89,16 @@ from .wednesday_qa import (
     WednesdayQaResult,
     validate_wednesday_structure,
 )
+from .in_person_structure import (
+    InPersonSlideRange,
+    InPersonStructureResult,
+    build_in_person_structure,
+)
+from .in_person_qa import (
+    InPersonQaIssue,
+    InPersonQaResult,
+    validate_in_person_structure,
+)
 __all__ = [
     "add_blank_slide",
     "add_centered_text_slide",
@@ -142,4 +152,10 @@ __all__ = [
     "WednesdayQaIssue",
     "WednesdayQaResult",
     "validate_wednesday_structure",
+    "InPersonSlideRange",
+    "InPersonStructureResult",
+    "build_in_person_structure",
+    "InPersonQaIssue",
+    "InPersonQaResult",
+    "validate_in_person_structure",
 ]

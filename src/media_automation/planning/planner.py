@@ -360,8 +360,58 @@ def build_sunday_plan(
         )
     ]
 
+    if not content_blocks:
+        return plan
+
+    # 실제 주일 자료(1/4, 1/11, 1/18)에서
+    # 예배 전 안내와 첫 찬양 사이에
+    # 빈 화면 한 장이 반복해서 확인됨.
+    plan.append(
+        WorshipBlock(
+            kind=BlockKind.BLANK,
+            key=(
+                "transition:pre_service->"
+                f"{content_blocks[0].key}"
+            ),
+        )
+    )
+
+    sunday_content = (
+        _insert_transition_blanks(
+            content_blocks
+        )
+    )
+
+    # 실제 주일 오전 2부 자료
+    # 2026-01-04, 01-11, 01-18에서
+    # 설교 제목과 성경 봉독은
+    # 빈 화면 없이 바로 이어진다.
+    sunday_content = [
+        block
+        for block in sunday_content
+        if block.key
+        != (
+            "transition:"
+            "worship.sermon_title"
+            "->worship.scripture"
+        )
+    ]
+
     plan.extend(
-        _insert_transition_blanks(content_blocks)
+        sunday_content
+)
+
+    # 실제 주일 자료에서
+    # 마지막 결단 찬송 뒤에도
+    # 빈 화면 한 장이 반복해서 확인됨.
+    plan.append(
+        WorshipBlock(
+            kind=BlockKind.BLANK,
+            key=(
+                f"transition:{content_blocks[-1].key}"
+                "->end"
+            ),
+        )
     )
 
     return plan

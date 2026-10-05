@@ -48,6 +48,8 @@ def build_presentation_file_from_plan(
     song_asset_provider: SongAssetProvider | None = None,
     slide_merger: SlideMerger | None = None,
     skip_missing_songs: bool = False,
+    preserve_blank_after_pre_service: bool = False,
+    preserve_trailing_blank: bool = False,
 ) -> Path:
     """
     Worship Plan을 실제 PPTX 파일로 조립한다.
@@ -206,10 +208,17 @@ def build_presentation_file_from_plan(
                 effective_plan[-1][1]
             )
 
-            if previous_block.kind in {
-                BlockKind.BLANK,
-                BlockKind.PRE_SERVICE,
-            }:
+            if (
+                previous_block.kind
+                == BlockKind.BLANK
+            ):
+                continue
+
+            if (
+                previous_block.kind
+                == BlockKind.PRE_SERVICE
+                and not preserve_blank_after_pre_service
+            ):
                 continue
 
         effective_plan.append(
@@ -225,6 +234,7 @@ def build_presentation_file_from_plan(
         effective_plan
         and effective_plan[-1][1].kind
         == BlockKind.BLANK
+        and not preserve_trailing_blank
     ):
         effective_plan.pop()
 

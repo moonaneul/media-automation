@@ -498,3 +498,59 @@ def test_sermon_title_rejects_none_scripture():
             ),
             key="sermon_title",
         )
+def test_sunday_keeps_leading_and_trailing_blanks():
+    data = (
+        load_sunday_with_no_additional_scripture()
+    )
+
+    plan = build_sunday_plan(data)
+
+    assert (
+        plan[0].kind
+        == BlockKind.PRE_SERVICE
+    )
+
+    assert (
+        plan[1].kind
+        == BlockKind.BLANK
+    )
+
+    assert plan[1].key.startswith(
+        "transition:pre_service->"
+    )
+
+    assert (
+        plan[-1].kind
+        == BlockKind.BLANK
+    )
+
+    assert plan[-1].key.endswith(
+        "->end"
+    )
+def test_sunday_has_no_blank_between_sermon_and_scripture():
+    data = (
+        load_sunday_with_no_additional_scripture()
+    )
+
+    plan = build_sunday_plan(data)
+
+    keys = [
+        block.key
+        for block in plan
+    ]
+
+    sermon_index = keys.index(
+        "worship.sermon_title"
+    )
+
+    assert (
+        keys[sermon_index + 1]
+        == "worship.scripture"
+    )
+
+    assert (
+        "transition:"
+        "worship.sermon_title"
+        "->worship.scripture"
+        not in keys
+    )

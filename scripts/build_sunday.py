@@ -22,6 +22,8 @@ from media_automation.ppt import (
     build_presentation_file_from_plan,
     create_platform_slide_merger,
     load_song_asset_provider,
+    build_in_person_structure,
+    validate_in_person_structure,
 )
 from media_automation.weekly_data.models import (
     SundayData,
@@ -169,9 +171,24 @@ def main() -> None:
             "Weekly Data, 성경 본문, 찬양 자료를 검증합니다."
         ),
     )
-
+    parser.add_argument(
+        "--structure-only",
+        action="store_true",
+        help=(
+            "Mac에서도 확인 가능한 "
+            "주일예배 구조 프리뷰를 생성합니다."
+        ),
+    )
     args = parser.parse_args()
 
+    if (
+        args.validate_only
+        and args.structure_only
+    ):
+        raise ValueError(
+            "--validate-only와 "
+            "--structure-only는 함께 사용할 수 없습니다."
+        )
     # 항상 필요한 입력
     for name, path in {
         "weekly": args.weekly,
@@ -322,7 +339,115 @@ def main() -> None:
             },
         )
     )
+    
+    if args.structure_only:
+        result = build_in_person_structure(
+            plan,
+            args.output,
+            bible_provider=bible_provider,
+            pre_service_provider=(
+                pre_service_provider
+            ),
+            song_asset_provider=(
+                song_provider
+            ),
+            skip_missing_songs=True,
+            preserve_blank_after_pre_service=True,
+            preserve_trailing_blank=True,
+        )
 
+        reopened = Presentation(
+            result.output_path
+        )
+        scripture_passages = {}
+
+        for block in plan:
+            if block.kind != BlockKind.SCRIPTURE:
+                continue
+
+            scripture_passages[
+                block.key
+            ] = bible_provider.get_passage(
+                block.value.reference
+            )
+
+        qa = validate_in_person_structure(
+            result.output_path,
+            slide_ranges=result.slide_ranges,
+            scripture_passages=(
+                scripture_passages
+            ),
+            standalone_keys=(
+                (
+                    "serving.this_week."
+                    "second_service.prayer"
+                ),
+                (
+                    "serving.this_week."
+                    "second_service.offering_prayer"
+                ),
+                "worship.sermon_title",
+            ),
+            generated_keys=(
+                (
+                    "serving.this_week."
+                    "second_service.prayer"
+                ),
+                (
+                    "serving.this_week."
+                    "second_service.offering_prayer"
+                ),
+                "worship.sermon_title",
+                "worship.scripture",
+                "worship.additional_scripture",
+            ),
+        )
+        print()
+        print(
+            "=== Sunday Structure Preview ==="
+        )
+        print(
+            f"slides : {len(reopened.slides)}"
+        )
+
+        for key, slide_range in (
+            result.slide_ranges.items()
+        ):
+            print(
+                f"{slide_range.start}-"
+                f"{slide_range.end} "
+                f"{key}"
+            )
+
+        print()
+        print("=== Sunday QA ===")
+
+        if qa.ok:
+            print("PASSED")
+        else:
+            for issue in qa.issues:
+                location = (
+                    f"slide {issue.slide_number}"
+                    if issue.slide_number
+                    is not None
+                    else "presentation"
+                )
+
+                print(
+                    f"- [{issue.code}] "
+                    f"{location}: "
+                    f"{issue.message}"
+                )
+
+            raise RuntimeError(
+                "Sunday structure QA에 실패했습니다."
+            )
+        print()
+        print(
+            f"output : {result.output_path}"
+        )
+
+        return
     # 현재 production 병합은 Windows + PowerPoint
     merger = create_platform_slide_merger()
 
@@ -340,6 +465,8 @@ def main() -> None:
                 ),
                 slide_merger=merger,
                 skip_missing_songs=True,
+                preserve_blank_after_pre_service=True,
+                preserve_trailing_blank=True,
             )
         )
     except PermissionError as error:
