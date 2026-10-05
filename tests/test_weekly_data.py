@@ -232,3 +232,37 @@ def test_sunday_requires_bulletin_serving_fields():
     with pytest.raises(ValidationError):
         parse_weekly_data(data)
 
+
+
+def test_monthly_schedule_can_preserve_date_range():
+    from media_automation.weekly_data.models import (
+        ScheduleItem,
+    )
+
+    item = ScheduleItem(
+        display_date="9/24(목)~26(토)",
+        content="추석 연휴",
+    )
+
+    assert item.date is None
+    assert (
+        item.display_date
+        == "9/24(목)~26(토)"
+    )
+    assert item.content == "추석 연휴"
+
+
+def test_person_field_can_preserve_title():
+    from media_automation.weekly_data.models import (
+        PersonField,
+        WeeklyStatus,
+    )
+
+    person = PersonField(
+        status=WeeklyStatus.VALUE,
+        person="김한섭",
+        title="집사",
+    )
+
+    assert person.person == "김한섭"
+    assert person.title == "집사"

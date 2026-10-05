@@ -1,9 +1,0 @@
-pydantic<3,>=2.8
-PyYAML<7,>=6
-python-pptx<2,>=1.0
-
-[:platform_system == "Windows"]
-pywin32>=306
-
-[dev]
-pytest<9,>=8

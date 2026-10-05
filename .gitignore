@@ -35,3 +35,5 @@ __pycache__/
 Thumbs.db
 .vscode/
 .idea/
+# Python package metadata
+*.egg-info/

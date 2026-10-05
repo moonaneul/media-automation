@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import date
+from datetime import date as Date
 from enum import Enum
 from typing import Any, Literal
 
@@ -70,16 +70,24 @@ class Song(StrictModel):
 class PersonField(StrictModel):
     status: WeeklyStatus
     person: str | None = None
+    title: str | None = None
 
     @model_validator(mode="after")
     def validate_payload(self):
         if self.status == WeeklyStatus.VALUE and not self.person:
-            raise ValueError("VALUE인 담당자에는 person이 필요합니다.")
-
-        if self.status != WeeklyStatus.VALUE and self.person is not None:
             raise ValueError(
-                "UNSET/NONE인 담당자에는 person을 넣을 수 없습니다."
+                "VALUE인 담당자에는 person이 필요합니다."
             )
+
+        if self.status != WeeklyStatus.VALUE:
+            if (
+                self.person is not None
+                or self.title is not None
+            ):
+                raise ValueError(
+                    "UNSET/NONE인 담당자에는 "
+                    "person/title을 넣을 수 없습니다."
+                )
 
         return self
 
@@ -208,7 +216,7 @@ class ZoomSong(StrictModel):
 
 class WednesdayData(StrictModel):
     service: Literal["wednesday"]
-    date: date
+    date: Date
 
     opening_songs: list[Song] = Field(min_length=3, max_length=3)
     prayer: PersonField
@@ -246,6 +254,32 @@ class Serving(StrictModel):
 
 
 class SundayWorship(StrictModel):
+    leader: PersonField = Field(
+        default_factory=lambda: PersonField(
+            status=WeeklyStatus.UNSET
+        )
+    )
+    praise_first: PersonField = Field(
+        default_factory=lambda: PersonField(
+            status=WeeklyStatus.UNSET
+        )
+    )
+    praise_second: PersonField = Field(
+        default_factory=lambda: PersonField(
+            status=WeeklyStatus.UNSET
+        )
+    )
+    preacher: PersonField = Field(
+        default_factory=lambda: PersonField(
+            status=WeeklyStatus.UNSET
+        )
+    )
+    closing_prayer: PersonField = Field(
+        default_factory=lambda: PersonField(
+            status=WeeklyStatus.UNSET
+        )
+    )
+
     opening_songs: list[Song] = Field(min_length=3, max_length=3)
     separate_hymn: Song
     offering_hymn: Song
@@ -316,8 +350,22 @@ class AfternoonService(StrictModel):
 
 
 class ScheduleItem(StrictModel):
-    date: date
+    date: Date | None = None
+    display_date: str | None = None
     content: str
+
+    @model_validator(mode="after")
+    def validate_date_value(self):
+        if (
+            self.date is None
+            and not self.display_date
+        ):
+            raise ValueError(
+                "월간 일정에는 date 또는 "
+                "display_date가 필요합니다."
+            )
+
+        return self
 
 
 class MonthlySchedule(StrictModel):
@@ -379,7 +427,7 @@ class Bulletin(StrictModel):
 
 class SundayData(StrictModel):
     service: Literal["sunday"]
-    date: date
+    date: Date
     worship: SundayWorship
     serving: Serving
     bulletin: Bulletin
@@ -391,7 +439,7 @@ class SundayData(StrictModel):
 
 class FridayZoomData(StrictModel):
     service: Literal["friday"]
-    date: date
+    date: Date
     mode: Literal["zoom"]
 
     opening_songs: list[ZoomSong] = Field(min_length=2, max_length=2)
@@ -413,7 +461,7 @@ class FridayZoomData(StrictModel):
 
 class FridayInPersonData(StrictModel):
     service: Literal["friday"]
-    date: date
+    date: Date
     mode: Literal["in_person"]
 
 
