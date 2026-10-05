@@ -1,0 +1,103 @@
+service: friday
+date: 2026-09-04
+mode: zoom
+
+opening_songs:
+  - status: VALUE
+    title: 나의 가장 낮은 마음
+    media:
+      status: VALUE
+      file_status: AVAILABLE
+      technical_check: UNVERIFIED
+      church_review: UNVERIFIED
+      usage_permission: UNKNOWN
+
+  - status: VALUE
+    title: 주의 사랑을 주의 선하심을
+    media:
+      status: VALUE
+      file_status: AVAILABLE
+      technical_check: UNVERIFIED
+      church_review: UNVERIFIED
+      usage_permission: UNKNOWN
+
+first_prayer:
+  status: VALUE
+  topics:
+    - |-
+      일상을 이어갈 수 있는 은혜에 감사하며
+      - 일상이라는 하나님의 특별한 은혜에 감사하며 살게 하소서.
+    - |-
+      하나님을 의지하고 믿음으로 걸어가는 매일의 삶이 되도록
+      - “믿음이 없이는 하나님을 기쁘시게 하지 못하나니”
+
+song_after_prayer:
+  status: VALUE
+  title: 주 내 아버지
+  media:
+    status: VALUE
+    file_status: AVAILABLE
+    technical_check: UNVERIFIED
+    church_review: UNVERIFIED
+    usage_permission: UNKNOWN
+
+scripture:
+  status: VALUE
+  reference: "창 29:15-30"
+
+sermon_title:
+  status: VALUE
+  text: 사랑하는 까닭에
+
+additional_scripture:
+  status: NONE
+
+response_song:
+  status: VALUE
+  title: 십자가 그 사랑
+  media:
+    status: VALUE
+    file_status: AVAILABLE
+    technical_check: UNVERIFIED
+    church_review: UNVERIFIED
+    usage_permission: UNKNOWN
+
+word_prayer:
+  status: VALUE
+  topics:
+    - |-
+      믿음의 인내
+      - 사랑 때문에 기꺼이 기다리고 수고하는 인내를 배우는 삶이 되도록
+    - |-
+      복음의 기쁨 회복
+      - 십자가의 사랑을 깊이 깨닫고 감사와 기쁨으로 살아가도록
+
+intercession_song:
+  status: VALUE
+  title: 하늘의 것을 구하게 하소서
+  media:
+    status: VALUE
+    file_status: AVAILABLE
+    technical_check: UNVERIFIED
+    church_review: UNVERIFIED
+    usage_permission: UNKNOWN
+
+community_prayer:
+  status: VALUE
+  topics:
+    - |-
+      교회 안에 있는 다음 세대를 위하여
+      - 유초등부 교사 : 이광민(부장), 신무순, 김진아, 이하선, 문하늘
+      - 젭스 교사 : 문호성, 박진경, 이은혜
+    - |-
+      하늘빛기쁨교회를 위하여
+      - 영혼 구원하여 제자 삼는 교회로 쓰임 받을 수 있도록
+    - |-
+      국가와 민족을 위하여
+      - 국가의 체계가 흔들리지 않고 대립에서 화합으로 나아갈 수 있도록 도와주소서.
+
+personal_prayer:
+  status: VALUE
+  text: |-
+    더 깊은 주님과의 친밀함 가운데 나아가시기 바랍니다.
+    지금은 개인 기도 시간입니다.

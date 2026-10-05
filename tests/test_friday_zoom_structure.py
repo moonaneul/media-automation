@@ -201,3 +201,57 @@ def test_20260918_structure_matches_real_ppt(
     assert ranges["intercession_song"].start == 15
     assert ranges["community_prayer"].start == 16
     assert ranges["personal_prayer"].start == 17
+
+def test_20260904_structure_matches_real_ppt(
+    tmp_path,
+):
+    weekly = load_weekly(
+        "friday-zoom-20260904.yaml"
+    )
+
+    bible = load_bible(
+        "friday-zoom-20260904-bible.yaml"
+    )
+
+    plan = build_friday_zoom_plan(
+        weekly
+    )
+
+    output = (
+        tmp_path
+        / "20260904.pptx"
+    )
+
+    result = build_friday_zoom_structure(
+        plan,
+        output,
+        bible_provider=bible,
+    )
+
+    prs = Presentation(output)
+
+    assert len(prs.slides) == 18
+
+    ranges = result.slide_ranges
+
+    assert ranges["pre_service"].start == 1
+    assert ranges["opening_songs[0]"].start == 2
+    assert ranges["opening_songs[1]"].start == 3
+    assert ranges["first_prayer"].start == 4
+    assert ranges["song_after_prayer"].start == 5
+
+    assert ranges["scripture"].start == 6
+    assert ranges["scripture"].end == 12
+
+    assert ranges["sermon_title"].start == 13
+
+    assert (
+        "additional_scripture"
+        not in ranges
+    )
+
+    assert ranges["response_song"].start == 14
+    assert ranges["word_prayer"].start == 15
+    assert ranges["intercession_song"].start == 16
+    assert ranges["community_prayer"].start == 17
+    assert ranges["personal_prayer"].start == 18

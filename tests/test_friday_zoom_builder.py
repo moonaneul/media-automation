@@ -174,9 +174,9 @@ def test_zoom_preview_renders_scripture_and_title(
     prs = Presentation(output)
 
     # 본문 범위 안내 1장
-    # + 본문 2장
+    # + 짧은 본문 1장
     # + 설교 제목 1장
-    assert len(prs.slides) == 4
+    assert len(prs.slides) == 3
 
     all_text = "\n".join(
         shape.text

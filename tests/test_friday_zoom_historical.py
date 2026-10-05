@@ -126,3 +126,44 @@ def test_20260911_friday_zoom_structure():
         "민 21:1-9",
         "요 3:14-15",
     ]
+def test_20260904_friday_zoom_structure():
+    weekly = load_weekly(
+        "friday-zoom-20260904.yaml"
+    )
+
+    plan = build_friday_zoom_plan(
+        weekly
+    )
+
+    assert len(plan) == 12
+
+    assert [
+        block.key
+        for block in plan
+    ] == [
+        "pre_service",
+        "opening_songs[0]",
+        "opening_songs[1]",
+        "first_prayer",
+        "song_after_prayer",
+        "scripture",
+        "sermon_title",
+        "response_song",
+        "word_prayer",
+        "intercession_song",
+        "community_prayer",
+        "personal_prayer",
+    ]
+
+    scripture_references = [
+        block.value.reference
+        for block in plan
+        if hasattr(
+            block.value,
+            "reference",
+        )
+    ]
+
+    assert scripture_references == [
+        "창 29:15-30",
+    ]

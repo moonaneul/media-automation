@@ -279,45 +279,63 @@ def add_zoom_sermon_title_slide(
 def _group_zoom_verses(
     passage: BiblePassage,
     *,
-    max_characters: int = 340,
-    max_verses: int = 2,
+    max_verses: int = 3,
+    max_lines: int = 7,
+    characters_per_line: int = 30,
 ):
+    """
+    금요 Zoom 본문을 실제 화면 분량에 맞춰 묶는다.
+
+    2026-09-04 / 09-11 / 09-18 실제 PPT를 기준으로
+    한 화면에 최대 3절까지 허용하되,
+    예상 줄 수가 너무 많으면 먼저 분리한다.
+
+    실제 렌더링 QA는 별도 수행한다.
+    """
+
     groups = []
     current = []
-    current_length = 0
+    current_lines = 0
 
     for verse in passage.verses:
         display_text = _display_bible_text(
             verse.text
         )
 
-        verse_length = (
-            len(display_text) + 8
-        )
-
-        would_be_too_long = (
-            current
-            and (
-                current_length + verse_length
-                > max_characters
+        estimated_lines = max(
+            1,
+            (
+                len(display_text)
+                + characters_per_line
+                - 1
             )
+            // characters_per_line,
         )
 
-        would_have_too_many = (
+        too_many_verses = (
             current
             and len(current) >= max_verses
         )
 
+        too_many_lines = (
+            current
+            and (
+                current_lines
+                + estimated_lines
+                > max_lines
+            )
+        )
+
         if (
-            would_be_too_long
-            or would_have_too_many
+            too_many_verses
+            or too_many_lines
         ):
             groups.append(current)
             current = []
-            current_length = 0
+            current_lines = 0
 
         current.append(verse)
-        current_length += verse_length
+        current_lines += estimated_lines
 
     if current:
         groups.append(current)
