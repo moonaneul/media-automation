@@ -57,15 +57,16 @@ def rebuild_derivatives(intake_path: Path, date_token: str):
     items = []
     for field, filename in slots:
         record = fields[field]
-        if record["status"] == "provided" and record.get("value"):
-            items.append(
-                {
-                    "field": field,
-                    "title": record["value"],
-                    "expected_filename": filename,
-                    "file": None,
-                }
-            )
+        if record["status"] not in {"provided", "asset_required"}:
+            continue
+        items.append(
+            {
+                "field": field,
+                "title": record.get("value"),
+                "expected_filename": filename,
+                "file": None,
+            }
+        )
 
     (INTAKE_DIR / f"wednesday_{date_token}_bible_requests.yaml").write_text(
         yaml.safe_dump({"requests": bible_requests}, allow_unicode=True, sort_keys=False),
