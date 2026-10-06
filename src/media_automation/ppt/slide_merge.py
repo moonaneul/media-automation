@@ -148,8 +148,9 @@ class MacPowerPointAppleScriptSlideMerger:
     """
     macOS + Microsoft PowerPoint용 슬라이드 병합기.
 
-    PowerPoint 자체의 copy 기능과 macOS의 실제 Command+V UI 입력을
-    함께 사용해서 원본 악보 슬라이드를 재구성하지 않고 복사한다.
+    source와 destination을 모두 Slide Sorter로 전환한 뒤,
+    macOS UI의 실제 Command+C / Command+V를 사용해 원본 악보
+    슬라이드를 재구성하지 않고 복사한다.
     """
 
     def _require_macos(self) -> None:
@@ -223,11 +224,11 @@ class MacPowerPointAppleScriptSlideMerger:
                 f"삽입할 PPT가 없습니다: {source}"
             )
 
-        # PowerPoint for Mac의 `paste object view ...`가 일부 버전에서
-        # 전체 슬라이드를 실제 슬라이드로 삽입하지 않는 사례가 있다.
-        # source slide는 PowerPoint 자체 copy 명령으로 복사하고,
-        # destination document window를 전면 선택한 뒤 실제 Command+V를
-        # System Events로 보내는 방식으로 우회한다.
+        # PowerPoint for Mac에서는 `copy object`가 PowerPoint 내부
+        # 클립보드에만 복사되고 macOS의 일반 Command+V로 이어지지 않는
+        # 경우가 있다. 따라서 source slide도 Slide Sorter에서 직접
+        # 선택한 뒤 Command+C를 보내고, destination에서도 같은 방식으로
+        # Command+V를 보내 사람의 복사/붙여넣기 동작을 그대로 재현한다.
         script = r'''
 on run argv
     set destinationPath to item 1 of argv
@@ -251,9 +252,10 @@ on run argv
 
         set sourcePresentation to presentation sourceName
         set destinationPresentation to presentation destinationName
+        set sourceWindow to document window 1 of sourcePresentation
         set destinationWindow to document window 1 of destinationPresentation
 
-        select destinationWindow
+        set view type of sourceWindow to slide sorter view
         set view type of destinationWindow to slide sorter view
         delay 0.3
 
@@ -262,9 +264,20 @@ on run argv
         repeat with sourceSlideNumber from startSlideNumber to endSlideNumber
             set beforeCount to count slides of destinationPresentation
 
-            copy object slide sourceSlideNumber of sourcePresentation
+            -- 실제 source 창/슬라이드를 선택하고 Command+C
+            select sourceWindow
+            select slide sourceSlideNumber of sourcePresentation
             delay 0.2
 
+            tell application "System Events"
+                tell process "Microsoft PowerPoint"
+                    set frontmost to true
+                    keystroke "c" using command down
+                end tell
+            end tell
+            delay 0.5
+
+            -- destination의 삽입 지점을 선택하고 Command+V
             select destinationWindow
             select slide insertionPoint of destinationPresentation
             delay 0.2
@@ -275,17 +288,17 @@ on run argv
                     keystroke "v" using command down
                 end tell
             end tell
-
-            delay 0.5
+            delay 0.7
 
             set afterCount to count slides of destinationPresentation
             if afterCount is not (beforeCount + 1) then
-                error "Command+V 후 대상 PPT의 슬라이드 수가 증가하지 않았습니다."
+                error "Command+C/Command+V 후 대상 PPT의 슬라이드 수가 증가하지 않았습니다."
             end if
 
             set insertionPoint to insertionPoint + 1
         end repeat
 
+        set view type of sourceWindow to normal view
         set view type of destinationWindow to normal view
 
         close sourcePresentation saving no
