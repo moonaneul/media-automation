@@ -14,6 +14,7 @@ SCRIPTS = ROOT / "scripts"
 INTAKE_DIR = ROOT / "output" / "wednesday_intake"
 SONG_ROOT = ROOT / "input" / "wednesday"
 DEFAULT_SOURCE = ROOT / "sources" / "수요예배.pptx"
+BIBLE_MASTER = ROOT / "data" / "private" / "bible_master.yaml"
 
 
 def run_script(name, *args, allow=(0,)):
@@ -41,6 +42,48 @@ def load_yaml(path):
     if not path.exists():
         return {}
     return yaml.safe_load(path.read_text(encoding="utf-8-sig")) or {}
+
+
+def bible_master_summary():
+    master = load_yaml(BIBLE_MASTER)
+    if not master:
+        return None
+
+    books = master.get("books", {})
+    if not isinstance(books, dict):
+        return None
+
+    chapters = sum(
+        len(value)
+        for value in books.values()
+        if isinstance(value, dict)
+    )
+    verses = sum(
+        len(verse_map)
+        for chapter_map in books.values()
+        if isinstance(chapter_map, dict)
+        for verse_map in chapter_map.values()
+        if isinstance(verse_map, dict)
+    )
+    return {
+        "translation": master.get("translation"),
+        "validated": master.get("validated") is True,
+        "books": len(books),
+        "chapters": chapters,
+        "verses": verses,
+    }
+
+
+def print_bible_next(date_value):
+    if BIBLE_MASTER.exists():
+        print(
+            f"\n공용 Bible master에 요청 본문이 없거나 현재 지원 범위를 벗어났습니다.\n"
+            f"비상 보완이 필요하면: python wednesday.py bible {date_value}"
+        )
+    else:
+        print("\n공용 개역개정 Bible master가 아직 없습니다.")
+        print("교회가 보유한 검증본 YAML/JSON을 준비한 뒤:")
+        print("  python wednesday.py bible-master-import <파일경로>")
 
 
 def newest_intake():
@@ -78,7 +121,7 @@ def parse_notice(notice: Path):
     )
 
     if result == 2:
-        print(f"\nNEXT: python wednesday.py bible {date_value}")
+        print_bible_next(date_value)
         return
 
     print(f"\nNEXT: add score PPT files under {SONG_ROOT / token(date_value)}")
@@ -166,7 +209,7 @@ def resume(args):
         allow=(0, 2),
     )
     if result == 2:
-        print(f"\nNEXT: python wednesday.py bible {args.date}")
+        print_bible_next(args.date)
 
 
 def bible(args):
@@ -185,8 +228,38 @@ def bible_register(args):
     )
     run_script("build_bible_library.py")
 
-    print("\n검증 본문이 로컬 라이브러리에 등록되었습니다.")
+    print("\n비상 보완 본문이 로컬 라이브러리에 등록되었습니다.")
     print(f"NEXT: python wednesday.py resume {args.date}")
+
+
+def bible_master_import(args):
+    command_args = [args.input]
+    if args.replace:
+        command_args.append("--replace")
+    run_script("import_bible_master.py", *command_args)
+    bible_master_status(args)
+
+
+def bible_master_status(args):
+    summary = bible_master_summary()
+    print("\n=== Bible Master Status ===")
+    if summary is None:
+        print("status      : NOT REGISTERED")
+        print(f"expected    : {BIBLE_MASTER}")
+        print("translation : 개역개정")
+        print("NEXT: python wednesday.py bible-master-import <검증본.yaml|json>")
+        return
+
+    print("status      : READY" if summary["validated"] else "status      : INVALID")
+    print(f"translation : {summary['translation']}")
+    print(f"books       : {summary['books']}")
+    print(f"chapters    : {summary['chapters']}")
+    print(f"verses      : {summary['verses']}")
+    print(f"path        : {BIBLE_MASTER}")
+    if summary["translation"] != "개역개정" or not summary["validated"]:
+        print("WARNING: 검증 완료된 개역개정 마스터가 아니므로 자동 사용하지 않습니다.")
+    elif summary["books"] != 66:
+        print("WARNING: 66권 전체가 아니므로 일부 본문은 여전히 중단될 수 있습니다.")
 
 
 def status(args):
@@ -230,7 +303,7 @@ def status(args):
         print(f"folder : {SONG_ROOT / date_token}")
 
     if not bible_path.exists():
-        print(f"NEXT: python wednesday.py bible {date_value}")
+        print_bible_next(date_value)
     else:
         print(f"NEXT: python wednesday.py complete {date_value}")
 
@@ -305,11 +378,19 @@ def main():
     p.add_argument("date")
     p.set_defaults(func=resume)
 
-    p = sub.add_parser("bible", help="필요한 새 개역개정 본문 입력 파일 만들기")
+    p = sub.add_parser("bible-master-status", help="공용 개역개정 Bible master 상태 확인")
+    p.set_defaults(func=bible_master_status)
+
+    p = sub.add_parser("bible-master-import", help="검증된 공용 개역개정 Bible master 등록")
+    p.add_argument("input")
+    p.add_argument("--replace", action="store_true")
+    p.set_defaults(func=bible_master_import)
+
+    p = sub.add_parser("bible", help="비상용: 누락된 이번 주 본문 입력 파일 만들기")
     p.add_argument("date")
     p.set_defaults(func=bible)
 
-    p = sub.add_parser("bible-register", help="확인한 개역개정 본문을 검증/등록")
+    p = sub.add_parser("bible-register", help="비상용: 확인한 이번 주 본문을 검증/등록")
     p.add_argument("date")
     p.set_defaults(func=bible_register)
 
