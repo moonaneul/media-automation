@@ -52,6 +52,14 @@ SLOTS = {
     },
 }
 
+SHARED_COMMUNITY_PERSONAL_SLOT = (
+    "community_personal_prayer"
+)
+SHARED_COMMUNITY_PERSONAL_FIELDS = {
+    "community_prayer",
+    "personal_prayer",
+}
+
 
 def parse_args():
     parser = argparse.ArgumentParser()
@@ -148,6 +156,12 @@ def main():
         )
     }
 
+    shared_audio = find_exact_slot_file(
+        media_dir,
+        SHARED_COMMUNITY_PERSONAL_SLOT,
+        SLOTS["community_prayer"]["extensions"],
+    )
+
     assignments = []
     missing = []
 
@@ -172,6 +186,16 @@ def main():
             slot,
             config["extensions"],
         )
+
+        # community/personal 기도에서 같은 음원을
+        # 의도적으로 사용할 때만 명시적 공유 파일명을 허용한다.
+        # 일반 파일을 비슷하다는 이유로 추정해서 공유하지 않는다.
+        if (
+            path is None
+            and slot in SHARED_COMMUNITY_PERSONAL_FIELDS
+            and shared_audio is not None
+        ):
+            path = shared_audio
 
         if path is None:
             if not optional:
