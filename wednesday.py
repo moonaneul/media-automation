@@ -71,7 +71,16 @@ def parse_notice(notice: Path):
         print(f"\nNEXT: python wednesday.py review {date_value}")
         return
 
-    run_script("resume_wednesday_week.py", "--date", date_value)
+    result = run_script(
+        "resume_wednesday_week.py",
+        "--date", date_value,
+        allow=(0, 2),
+    )
+
+    if result == 2:
+        print(f"\nNEXT: python wednesday.py bible {date_value}")
+        return
+
     print(f"\nNEXT: add score PPT files under {SONG_ROOT / token(date_value)}")
     print(f"      then python wednesday.py complete {date_value}")
 
@@ -151,7 +160,33 @@ def assign(args):
 
 
 def resume(args):
-    run_script("resume_wednesday_week.py", "--date", args.date)
+    result = run_script(
+        "resume_wednesday_week.py",
+        "--date", args.date,
+        allow=(0, 2),
+    )
+    if result == 2:
+        print(f"\nNEXT: python wednesday.py bible {args.date}")
+
+
+def bible(args):
+    run_script(
+        "manage_wednesday_bible.py",
+        "scaffold",
+        "--date", args.date,
+    )
+
+
+def bible_register(args):
+    run_script(
+        "manage_wednesday_bible.py",
+        "register",
+        "--date", args.date,
+    )
+    run_script("build_bible_library.py")
+
+    print("\n검증 본문이 로컬 라이브러리에 등록되었습니다.")
+    print(f"NEXT: python wednesday.py resume {args.date}")
 
 
 def status(args):
@@ -177,11 +212,11 @@ def status(args):
 
     print("review : COMPLETE")
     weekly = INTAKE_DIR / f"wednesday-{date_token}.yaml"
-    bible = INTAKE_DIR / f"wednesday-{date_token}-bible.yaml"
+    bible_path = INTAKE_DIR / f"wednesday-{date_token}-bible.yaml"
     manifest = INTAKE_DIR / f"wednesday-{date_token}-songs.yaml"
 
     print(f"weekly : {'READY' if weekly.exists() else 'NOT READY'}")
-    print(f"bible  : {'READY' if bible.exists() else 'NOT READY'}")
+    print(f"bible  : {'READY' if bible_path.exists() else 'NOT READY'}")
     print(f"songs  : {'READY' if manifest.exists() else 'NOT READY'}")
 
     checklist = load_yaml(checklist_path(date_value))
@@ -191,10 +226,13 @@ def status(args):
         print(f"score  : {len(ready)}/{len(items)} READY")
         for item in items:
             if not item.get("file"):
-                print(f"  MISSING: {item['expected_filename']} ({item.get('title', '')})")
+                print(f"  MISSING: {item['expected_filename']} ({item.get('title') or 'title from score PPT'})")
         print(f"folder : {SONG_ROOT / date_token}")
 
-    print(f"NEXT: python wednesday.py complete {date_value}")
+    if not bible_path.exists():
+        print(f"NEXT: python wednesday.py bible {date_value}")
+    else:
+        print(f"NEXT: python wednesday.py complete {date_value}")
 
 
 def complete(args):
@@ -215,7 +253,7 @@ def complete(args):
         )
 
     weekly = INTAKE_DIR / f"wednesday-{date_token}.yaml"
-    bible = INTAKE_DIR / f"wednesday-{date_token}-bible.yaml"
+    bible_path = INTAKE_DIR / f"wednesday-{date_token}-bible.yaml"
     songs = INTAKE_DIR / f"wednesday-{date_token}-songs.yaml"
     output = ROOT / "output" / "wednesday" / f"{date_token}_수요예배.pptx"
 
@@ -223,7 +261,7 @@ def complete(args):
         "build_wednesday_operational.py",
         "--weekly", str(weekly),
         "--songs", str(songs),
-        "--bible", str(bible),
+        "--bible", str(bible_path),
         "--source", str(source),
         "--output", str(output),
     )
@@ -263,9 +301,17 @@ def main():
     p.add_argument("text")
     p.set_defaults(func=assign)
 
-    p = sub.add_parser("resume", help="REVIEW 처리 후 재개")
+    p = sub.add_parser("resume", help="REVIEW/Bible 처리 후 재개")
     p.add_argument("date")
     p.set_defaults(func=resume)
+
+    p = sub.add_parser("bible", help="필요한 새 개역개정 본문 입력 파일 만들기")
+    p.add_argument("date")
+    p.set_defaults(func=bible)
+
+    p = sub.add_parser("bible-register", help="확인한 개역개정 본문을 검증/등록")
+    p.add_argument("date")
+    p.set_defaults(func=bible_register)
 
     p = sub.add_parser("complete", help="최종 수요예배 PPT 제작")
     p.add_argument("date")
