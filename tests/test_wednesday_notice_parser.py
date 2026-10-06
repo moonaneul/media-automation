@@ -60,6 +60,29 @@ def test_known_non_slide_fields_do_not_require_review():
     assert unknown == []
 
 
+def test_parenthetical_prayer_person_is_parsed():
+    data, unknown = parse_notice(
+        "날짜: 2026-10-07\n"
+        "기도(한송희)\n"
+    )
+
+    assert data["prayer"]["status"] == "provided"
+    assert data["prayer"]["value"] == "한송희"
+    assert unknown == []
+
+
+def test_praise_count_and_leader_metadata_is_not_song_title():
+    data, unknown = parse_notice(
+        "날짜: 2026-10-07\n"
+        "찬양3(이하은)\n"
+        "찬양1\n"
+    )
+
+    assert data["opening_song_1"]["status"] == "missing"
+    assert data["opening_song_3"]["status"] == "missing"
+    assert unknown == []
+
+
 def test_unknown_sentence_requires_review():
     _, unknown = parse_notice(
         "날짜: 2026-10-07\n"
