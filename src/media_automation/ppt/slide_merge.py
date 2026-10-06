@@ -148,8 +148,8 @@ class MacPowerPointAppleScriptSlideMerger:
     """
     macOS + Microsoft PowerPoint용 슬라이드 병합기.
 
-    PowerPoint 자체의 copy/paste 기능을 AppleScript로 호출해서
-    python-pptx가 원본 악보 슬라이드를 재구성하지 않도록 한다.
+    PowerPoint 자체의 copy 기능과 macOS의 실제 Command+V UI 입력을
+    함께 사용해서 원본 악보 슬라이드를 재구성하지 않고 복사한다.
     """
 
     def _require_macos(self) -> None:
@@ -223,10 +223,11 @@ class MacPowerPointAppleScriptSlideMerger:
                 f"삽입할 PPT가 없습니다: {source}"
             )
 
-        # Mac PowerPoint는 copy 대상 presentation과 paste 대상 window를
-        # 분리해서 다뤄야 한다. select slide만으로는 destination 창이
-        # active window가 되지 않는 경우가 있으므로 document window를
-        # 명시적으로 앞으로 가져온 뒤 그 window의 view에 붙여넣는다.
+        # PowerPoint for Mac의 `paste object view ...`가 일부 버전에서
+        # 전체 슬라이드를 실제 슬라이드로 삽입하지 않는 사례가 있다.
+        # source slide는 PowerPoint 자체 copy 명령으로 복사하고,
+        # destination document window를 전면 선택한 뒤 실제 Command+V를
+        # System Events로 보내는 방식으로 우회한다.
         script = r'''
 on run argv
     set destinationPath to item 1 of argv
@@ -244,9 +245,9 @@ on run argv
         activate
 
         open sourceFile
-        delay 0.3
+        delay 0.5
         open destinationFile
-        delay 0.3
+        delay 0.5
 
         set sourcePresentation to presentation sourceName
         set destinationPresentation to presentation destinationName
@@ -254,7 +255,7 @@ on run argv
 
         select destinationWindow
         set view type of destinationWindow to slide sorter view
-        delay 0.2
+        delay 0.3
 
         set insertionPoint to afterSlideNumber
 
@@ -262,17 +263,24 @@ on run argv
             set beforeCount to count slides of destinationPresentation
 
             copy object slide sourceSlideNumber of sourcePresentation
+            delay 0.2
 
             select destinationWindow
             select slide insertionPoint of destinationPresentation
-            delay 0.1
-
-            paste object view of destinationWindow
             delay 0.2
+
+            tell application "System Events"
+                tell process "Microsoft PowerPoint"
+                    set frontmost to true
+                    keystroke "v" using command down
+                end tell
+            end tell
+
+            delay 0.5
 
             set afterCount to count slides of destinationPresentation
             if afterCount is not (beforeCount + 1) then
-                error "슬라이드 붙여넣기 후 대상 PPT의 슬라이드 수가 증가하지 않았습니다."
+                error "Command+V 후 대상 PPT의 슬라이드 수가 증가하지 않았습니다."
             end if
 
             set insertionPoint to insertionPoint + 1
@@ -309,6 +317,16 @@ end run
                 or result.stdout.strip()
                 or "알 수 없는 AppleScript 오류"
             )
+
+            if (
+                "not allowed to send keystrokes" in message.lower()
+                or "보조 접근" in message
+                or "accessibility" in message.lower()
+            ):
+                message += (
+                    " | 시스템 설정 > 개인정보 보호 및 보안 > "
+                    "손쉬운 사용에서 Terminal의 제어 권한을 허용해주세요."
+                )
 
             raise RuntimeError(
                 "Mac PowerPoint 슬라이드 병합에 "
