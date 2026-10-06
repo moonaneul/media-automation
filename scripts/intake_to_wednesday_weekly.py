@@ -47,13 +47,19 @@ def require_ready(intake):
         raise SystemExit(2)
 
 
-def weekly_status(record):
-    return "NONE" if record["status"] == "blank" else "VALUE"
+def song(record, *, fallback_title: str):
+    status = record["status"]
 
-
-def song(record):
-    if record["status"] == "blank":
+    if status == "blank":
         return {"status": "NONE"}
+
+    if status == "asset_required":
+        # 실제 곡명은 해당 주 악보 PPT가 결정한다.
+        # Weekly Data에는 자산 슬롯을 식별할 수 있는 내부 제목만 사용한다.
+        return {
+            "status": "VALUE",
+            "title": fallback_title,
+        }
 
     raw = str(record["value"]).strip()
     hymn_number = None
@@ -62,7 +68,11 @@ def song(record):
     match = re.search(r"(?:새\s*찬송가\s*)?(\d{1,3})\s*장", raw)
     if match:
         hymn_number = int(match.group(1))
-        title = re.sub(r"\(?\s*(?:새\s*찬송가\s*)?\d{1,3}\s*장\s*\)?", "", raw).strip(" -:()")
+        title = re.sub(
+            r"\(?\s*(?:새\s*찬송가\s*)?\d{1,3}\s*장\s*\)?",
+            "",
+            raw,
+        ).strip(" -:()")
     else:
         title = raw
 
@@ -102,23 +112,33 @@ def main():
 
     date_value = str(intake["date"]["value"])
     token = date_value.replace("-", "")
-    output = Path(args.output) if args.output else Path("output/wednesday_intake") / f"wednesday-{token}.yaml"
+    output = (
+        Path(args.output)
+        if args.output
+        else Path("output/wednesday_intake") / f"wednesday-{token}.yaml"
+    )
 
     field = intake["fields"]
     weekly = {
         "service": "wednesday",
         "date": date_value,
         "opening_songs": [
-            song(field["opening_song_1"]),
-            song(field["opening_song_2"]),
-            song(field["opening_song_3"]),
+            song(field["opening_song_1"], fallback_title="__opening_song_1__"),
+            song(field["opening_song_2"], fallback_title="__opening_song_2__"),
+            song(field["opening_song_3"], fallback_title="__opening_song_3__"),
         ],
         "prayer": person(field["prayer"]),
-        "additional_song": song(field["additional_song"]),
+        "additional_song": song(
+            field["additional_song"],
+            fallback_title="__additional_song__",
+        ),
         "scripture": scripture(field["scripture"]),
         "sermon_title": text(field["sermon_title"]),
         "additional_scripture": scripture(field["additional_scripture"]),
-        "decision_hymn": song(field["decision_hymn"]),
+        "decision_hymn": song(
+            field["decision_hymn"],
+            fallback_title="__decision_hymn__",
+        ),
     }
 
     output.parent.mkdir(parents=True, exist_ok=True)
