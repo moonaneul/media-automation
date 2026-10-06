@@ -60,7 +60,16 @@ def test_known_non_slide_fields_do_not_require_review():
     assert unknown == []
 
 
-def test_parenthetical_prayer_person_is_parsed():
+def test_unknown_sentence_requires_review():
+    _, unknown = parse_notice(
+        "날짜: 2026-10-07\n"
+        "이 문장은 어떤 항목인지 알 수 없음\n"
+    )
+
+    assert unknown == ["이 문장은 어떤 항목인지 알 수 없음"]
+
+
+def test_prayer_parentheses_form_is_supported():
     data, unknown = parse_notice(
         "날짜: 2026-10-07\n"
         "기도(한송희)\n"
@@ -71,22 +80,28 @@ def test_parenthetical_prayer_person_is_parsed():
     assert unknown == []
 
 
-def test_praise_count_and_leader_metadata_is_not_song_title():
+def test_opening_song_count_creates_asset_backed_slots():
     data, unknown = parse_notice(
         "날짜: 2026-10-07\n"
         "찬양3(이하은)\n"
-        "찬양1\n"
+        "기도: 한송희\n"
     )
 
-    assert data["opening_song_1"]["status"] == "missing"
-    assert data["opening_song_3"]["status"] == "missing"
+    assert [
+        data[f"opening_song_{index}"]["status"]
+        for index in (1, 2, 3)
+    ] == ["asset_required", "asset_required", "asset_required"]
+    assert data["opening_song_1"]["leader"] == "이하은"
     assert unknown == []
 
 
-def test_unknown_sentence_requires_review():
-    _, unknown = parse_notice(
+def test_song_count_after_prayer_means_additional_song():
+    data, unknown = parse_notice(
         "날짜: 2026-10-07\n"
-        "이 문장은 어떤 항목인지 알 수 없음\n"
+        "찬양3(이하은)\n"
+        "기도: 한송희\n"
+        "찬양1\n"
     )
 
-    assert unknown == ["이 문장은 어떤 항목인지 알 수 없음"]
+    assert data["additional_song"]["status"] == "asset_required"
+    assert unknown == []
