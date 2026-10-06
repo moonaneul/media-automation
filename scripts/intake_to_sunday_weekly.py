@@ -7,58 +7,26 @@ from pathlib import Path
 import yaml
 
 
-PPT_FIELDS = (
-    "opening_song_1",
-    "opening_song_2",
-    "opening_song_3",
-    "separate_hymn",
-    "second_service_prayer",
-    "church_news",
-    "offering_hymn",
-    "second_service_offering_prayer",
-    "special_song",
-    "sermon_title",
-    "scripture",
-    "additional_scripture",
-    "decision_hymn",
-)
-
-
 def load(path: Path):
     return yaml.safe_load(path.read_text(encoding="utf-8-sig")) or {}
 
 
-def require_ready(intake):
+def require_parse_ready(intake):
     if intake.get("review_required"):
         print("STOP: REVIEW 항목을 먼저 처리해야 합니다.")
         for item in intake.get("review_items", []):
             print(f"  - {item}")
         raise SystemExit(3)
 
-    missing = []
-
-    if intake.get("date", {}).get("status") == "missing":
-        missing.append("date")
-
-    fields = intake.get("fields", {})
-    for field in PPT_FIELDS:
-        record = fields.get(field, {})
-        if record.get("status") == "missing":
-            missing.append(field)
-
-    if missing:
-        print("STOP: 주일 안내에 아직 없는 PPT 항목이 있습니다.")
-        for field in missing:
-            print(f"  - {field}")
-        print(
-            "같은 주 전달 주보 또는 추가 안내로 확인하기 전에는 "
-            "지난주 값을 자동 승계하지 않습니다."
-        )
-        raise SystemExit(2)
+    if intake.get("date", {}).get("status") != "provided":
+        raise SystemExit("STOP: 주일 안내에서 날짜를 확인할 수 없습니다.")
 
 
 def song(record, *, fallback_title: str):
     status = record["status"]
+
+    if status == "missing":
+        return {"status": "UNSET"}
 
     if status == "blank":
         return {"status": "NONE"}
@@ -100,6 +68,9 @@ def song(record, *, fallback_title: str):
 
 
 def person(record):
+    if record["status"] == "missing":
+        return {"status": "UNSET"}
+
     if record["status"] == "blank":
         return {"status": "NONE"}
 
@@ -110,6 +81,9 @@ def person(record):
 
 
 def scripture(record):
+    if record["status"] == "missing":
+        return {"status": "UNSET"}
+
     if record["status"] == "blank":
         return {"status": "NONE"}
 
@@ -120,6 +94,9 @@ def scripture(record):
 
 
 def text(record):
+    if record["status"] == "missing":
+        return {"status": "UNSET"}
+
     if record["status"] == "blank":
         return {"status": "NONE"}
 
@@ -130,11 +107,14 @@ def text(record):
 
 
 def church_news(record):
+    if record["status"] == "missing":
+        return {"status": "UNSET"}
+
     if record["status"] == "blank":
         return {"status": "NONE"}
 
     # PPT는 세부 광고 내용을 표시하지 않고 '교회 소식' 화면 존재 여부만
-    # 사용한다. 실제 주보 데이터와 병합할 때는 전달 주보의 항목들로 교체한다.
+    # 사용한다. 전달 주보가 있으면 세부 items는 주보 데이터로 보완할 수 있다.
     return {
         "status": "VALUE",
         "items": [
@@ -178,7 +158,7 @@ def main():
 
     intake_path = Path(args.intake)
     intake = load(intake_path)
-    require_ready(intake)
+    require_parse_ready(intake)
 
     date_value = str(intake["date"]["value"])
     token = date_value.replace("-", "")
@@ -186,7 +166,7 @@ def main():
         Path(args.output)
         if args.output
         else Path("output/sunday_intake")
-        / f"sunday-{token}.yaml"
+        / f"sunday-{token}-base.yaml"
     )
 
     field = intake["fields"]
@@ -283,7 +263,7 @@ def main():
         encoding="utf-8",
     )
 
-    print(f"SUNDAY WEEKLY READY: {output}")
+    print(f"SUNDAY BASE WEEKLY READY: {output}")
 
 
 if __name__ == "__main__":
