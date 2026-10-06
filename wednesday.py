@@ -295,12 +295,21 @@ def status(args):
     checklist = load_yaml(checklist_path(date_value))
     items = checklist.get("items", [])
     if items:
-        ready = [item for item in items if item.get("file")]
-        print(f"score  : {len(ready)}/{len(items)} READY")
+        song_dir = SONG_ROOT / date_token
+        ready_count = 0
         for item in items:
-            if not item.get("file"):
+            expected = item.get("expected_filename")
+            candidate = song_dir / expected if expected else None
+            is_ready = bool(candidate and candidate.is_file())
+            item["_status_ready"] = is_ready
+            if is_ready:
+                ready_count += 1
+
+        print(f"score  : {ready_count}/{len(items)} READY")
+        for item in items:
+            if not item.get("_status_ready"):
                 print(f"  MISSING: {item['expected_filename']} ({item.get('title') or 'title from score PPT'})")
-        print(f"folder : {SONG_ROOT / date_token}")
+        print(f"folder : {song_dir}")
 
     if not bible_path.exists():
         print_bible_next(date_value)
