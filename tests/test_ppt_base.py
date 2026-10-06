@@ -23,6 +23,8 @@ def test_create_4x3_presentation():
     )
 
     assert round(ratio, 2) == 1.33
+
+
 def test_create_16x9_presentation():
     prs = create_16x9_presentation()
 
@@ -32,6 +34,7 @@ def test_create_16x9_presentation():
     )
 
     assert round(ratio, 2) == 1.78
+
 
 def test_get_blank_layout_returns_layout():
     prs = Presentation()
@@ -74,6 +77,12 @@ def test_centered_text_slide():
         == "기 도 : 홍길동"
     )
 
+    assert all(
+        run.font.bold is True
+        for run in frame.paragraphs[0].runs
+        if run.text.strip()
+    )
+
 
 def test_sermon_title_slide_contains_reference_and_title():
     prs = create_4x3_presentation()
@@ -84,12 +93,22 @@ def test_sermon_title_slide_contains_reference_and_title():
         "삼상 16:6-7",
     )
 
+    paragraphs = (
+        slide.shapes[0]
+        .text_frame.paragraphs
+    )
+
     text = "\n".join(
         paragraph.text
-        for paragraph
-        in slide.shapes[0]
-        .text_frame.paragraphs
+        for paragraph in paragraphs
     )
 
     assert "삼상 16:6-7" in text
     assert "외모와 중심" in text
+
+    assert all(
+        run.font.bold is True
+        for paragraph in paragraphs
+        for run in paragraph.runs
+        if run.text.strip()
+    )
