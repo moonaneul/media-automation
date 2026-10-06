@@ -24,6 +24,9 @@ from media_automation.ppt import (
 from media_automation.ppt.file_builder import (
     build_presentation_file_from_plan,
 )
+from media_automation.ppt.hyperlinks import (
+    remove_presentation_hyperlinks,
+)
 from media_automation.ppt.in_person_structure import (
     build_in_person_structure,
 )
@@ -139,6 +142,10 @@ def main():
         preserve_blank_after_pre_service=True,
     )
 
+    # 외부 악보 PPT에는 내부 슬라이드 점프나 오래된 외부 링크가 남아 있을 수 있다.
+    # 수요예배 대면용 최종본에는 클릭 링크가 필요하지 않으므로 모두 제거한 뒤 QA한다.
+    removed_hyperlinks = remove_presentation_hyperlinks(result)
+
     # 구조 프리뷰와 실제 병합본은 같은 plan/악보 장수를 사용하므로 range가 동일하다.
     final_qa = validate_wednesday_structure(
         result,
@@ -156,6 +163,7 @@ def main():
     reopened = Presentation(result)
     print("\n=== Wednesday Final QA: PASS ===")
     print(f"slides : {len(reopened.slides)}")
+    print(f"links  : {removed_hyperlinks} removed")
     print(f"output : {result}")
     print("- 4:3 / transition blanks / Bible / alignment / blue shapes / URLs: OK")
     print("- 실제 PowerPoint 렌더링에서 악보 잘림과 화면 가독성은 최종 확인 필요")
