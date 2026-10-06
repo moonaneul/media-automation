@@ -207,9 +207,6 @@ class MacPowerPointAppleScriptSlideMerger:
                 "작을 수 없습니다."
             )
 
-        # 현재 실제 예배 PPT는 PRE_SERVICE 뒤에 찬양이 들어가므로
-        # after_slide >= 1이다.
-        # 0번 위치 삽입은 별도 구현 전까지 명시적으로 막는다.
         if after_slide < 1:
             raise ValueError(
                 "Mac PowerPoint 병합은 현재 "
@@ -226,10 +223,10 @@ class MacPowerPointAppleScriptSlideMerger:
                 f"삽입할 PPT가 없습니다: {source}"
             )
 
-        # Mac PowerPoint에서는 두 번째 파일을 연 뒤 이전의
-        # `active presentation` 객체 참조가 불안정해질 수 있다.
-        # 따라서 열린 프레젠테이션을 파일명으로 다시 찾아서
-        # copy/select/paste 한다.
+        # Mac PowerPoint는 copy 대상 presentation과 paste 대상 window를
+        # 분리해서 다뤄야 한다. select slide만으로는 destination 창이
+        # active window가 되지 않는 경우가 있으므로 document window를
+        # 명시적으로 앞으로 가져온 뒤 그 window의 view에 붙여넣는다.
         script = r'''
 on run argv
     set destinationPath to item 1 of argv
@@ -247,27 +244,33 @@ on run argv
         activate
 
         open sourceFile
-        delay 0.2
+        delay 0.3
         open destinationFile
+        delay 0.3
+
+        set sourcePresentation to presentation sourceName
+        set destinationPresentation to presentation destinationName
+        set destinationWindow to document window 1 of destinationPresentation
+
+        select destinationWindow
+        set view type of destinationWindow to slide sorter view
         delay 0.2
 
         set insertionPoint to afterSlideNumber
 
         repeat with sourceSlideNumber from startSlideNumber to endSlideNumber
-            set beforeCount to count slides of presentation destinationName
+            set beforeCount to count slides of destinationPresentation
 
-            copy object slide sourceSlideNumber of presentation sourceName
-            select slide insertionPoint of presentation destinationName
+            copy object slide sourceSlideNumber of sourcePresentation
 
-            tell active window
-                set view type to slide sorter view
-                paste object its view
-                set view type to normal view
-            end tell
-
+            select destinationWindow
+            select slide insertionPoint of destinationPresentation
             delay 0.1
 
-            set afterCount to count slides of presentation destinationName
+            paste object view of destinationWindow
+            delay 0.2
+
+            set afterCount to count slides of destinationPresentation
             if afterCount is not (beforeCount + 1) then
                 error "슬라이드 붙여넣기 후 대상 PPT의 슬라이드 수가 증가하지 않았습니다."
             end if
@@ -275,8 +278,10 @@ on run argv
             set insertionPoint to insertionPoint + 1
         end repeat
 
-        close presentation sourceName saving no
-        close presentation destinationName saving yes
+        set view type of destinationWindow to normal view
+
+        close sourcePresentation saving no
+        close destinationPresentation saving yes
     end tell
 end run
 '''
