@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import argparse
+import platform
 import subprocess
 import sys
 from pathlib import Path
@@ -41,6 +42,29 @@ def load_yaml(path):
     return yaml.safe_load(path.read_text(encoding="utf-8-sig")) or {}
 
 
+def clipboard_command() -> list[str]:
+    system = platform.system()
+
+    if system == "Darwin":
+        return ["pbpaste"]
+
+    if system == "Windows":
+        return [
+            "powershell.exe",
+            "-NoProfile",
+            "-Command",
+            (
+                "[Console]::OutputEncoding="
+                "[System.Text.Encoding]::UTF8; "
+                "Get-Clipboard -Raw"
+            ),
+        ]
+
+    raise RuntimeError(
+        f"지원하지 않는 clipboard 운영체제입니다: {system}"
+    )
+
+
 def start(args):
     notice = Path(args.notice)
     if not notice.is_absolute():
@@ -57,19 +81,8 @@ def start(args):
 def paste(args):
     from datetime import datetime
 
-    command = [
-        "powershell.exe",
-        "-NoProfile",
-        "-Command",
-        (
-            "[Console]::OutputEncoding="
-            "[System.Text.Encoding]::UTF8; "
-            "Get-Clipboard -Raw"
-        ),
-    ]
-
     result = subprocess.run(
-        command,
+        clipboard_command(),
         capture_output=True,
         encoding="utf-8",
         errors="replace",
@@ -257,7 +270,7 @@ def main():
 
     p = sub.add_parser(
         "paste",
-        help="Start from Windows clipboard",
+        help="Start from system clipboard (macOS/Windows)",
     )
     p.set_defaults(func=paste)
 
