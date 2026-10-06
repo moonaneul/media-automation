@@ -249,6 +249,46 @@ def assign(args):
     )
 
 
+def _resolved_source(value: str) -> Path:
+    source = Path(value).expanduser()
+    if not source.is_absolute():
+        source = (Path.cwd() / source).resolve()
+    if not source.exists():
+        raise SystemExit(f"ERROR: 주일 원본 PPT를 찾을 수 없습니다: {source}")
+    return source
+
+
+def structure(args):
+    source = _resolved_source(args.source)
+    run_script(
+        "complete_sunday_week.py",
+        "--date",
+        args.date,
+        "--source",
+        str(source),
+        "--structure-only",
+    )
+
+
+def complete(args):
+    if platform.system() != "Windows":
+        raise SystemExit(
+            "ERROR: 실제 주일 PPT 병합은 현재 Windows + 편집 가능한 "
+            "Microsoft PowerPoint에서 실행해야 합니다.\n"
+            "Mac에서는 'python sunday.py structure <날짜> <원본.pptx>'로 "
+            "구조와 QA까지 확인할 수 있습니다."
+        )
+
+    source = _resolved_source(args.source)
+    run_script(
+        "complete_sunday_week.py",
+        "--date",
+        args.date,
+        "--source",
+        str(source),
+    )
+
+
 def status(args):
     date_value = args.date
     date_token = token(date_value)
@@ -342,7 +382,14 @@ def status(args):
         and songs_path(date_value).exists()
     ):
         print("\nSUNDAY INPUTS READY")
-        print("다음 단계: 기존 주일예배 PPT 원본과 조립 연결")
+        print(
+            "NEXT (Mac/검증): python sunday.py structure "
+            f"{date_value} <주일원본.pptx>"
+        )
+        print(
+            "NEXT (Windows/실제 조립): python sunday.py complete "
+            f"{date_value} <주일원본.pptx>"
+        )
 
 
 def main():
@@ -385,6 +432,22 @@ def main():
     p.add_argument("field")
     p.add_argument("text")
     p.set_defaults(func=assign)
+
+    p = sub.add_parser(
+        "structure",
+        help="Mac에서도 가능한 주일 PPT 구조 프리뷰 + QA",
+    )
+    p.add_argument("date")
+    p.add_argument("source", help="과거 주일 오전 2부 원본 PPT")
+    p.set_defaults(func=structure)
+
+    p = sub.add_parser(
+        "complete",
+        help="Windows PowerPoint에서 실제 악보까지 병합한 주일 PPT 생성",
+    )
+    p.add_argument("date")
+    p.add_argument("source", help="과거 주일 오전 2부 원본 PPT")
+    p.set_defaults(func=complete)
 
     args = parser.parse_args()
     args.func(args)
