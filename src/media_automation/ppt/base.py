@@ -18,6 +18,7 @@ def create_4x3_presentation() -> Presentation:
     # 첫 슬라이드가 없으므로 그대로 사용한다.
     return prs
 
+
 def create_16x9_presentation() -> Presentation:
     prs = Presentation()
 
@@ -25,7 +26,8 @@ def create_16x9_presentation() -> Presentation:
     prs.slide_height = Inches(7.5)
 
     return prs
-    
+
+
 def get_blank_layout(prs: Presentation):
     """
     특정 템플릿에서 blank layout의 위치가 달라도
@@ -91,6 +93,7 @@ def add_centered_text_slide(
 
     for run in paragraph.runs:
         run.font.size = Pt(font_size)
+        run.font.bold = True
 
     return slide
 
@@ -120,6 +123,7 @@ def add_sermon_title_slide(
 
     for run in reference_paragraph.runs:
         run.font.size = Pt(28)
+        run.font.bold = True
 
     title_paragraph = frame.add_paragraph()
     title_paragraph.text = title
@@ -128,5 +132,6 @@ def add_sermon_title_slide(
 
     for run in title_paragraph.runs:
         run.font.size = Pt(34)
+        run.font.bold = True
 
     return slide
