@@ -10,6 +10,7 @@ from media_automation.bible import BiblePassage
 
 from .base import add_blank_slide
 
+
 def _display_bible_reference(
     reference: str,
 ) -> str:
@@ -18,6 +19,8 @@ def _display_bible_reference(
         "~",
         reference,
     )
+
+
 def _display_bible_text(text: str) -> str:
     """
     교회 표기 원칙:
@@ -137,6 +140,7 @@ def add_scripture_passage_slides(
 
         for run in reference_paragraph.runs:
             run.font.size = Pt(28)
+            run.font.bold = True
             run.font.color.rgb = RGBColor(
                 0,
                 0,
@@ -179,6 +183,7 @@ def add_scripture_passage_slides(
 
         for run in number_paragraph.runs:
             run.font.size = Pt(30)
+            run.font.bold = True
             run.font.color.rgb = RGBColor(
                 0,
                 0,
@@ -208,6 +213,7 @@ def add_scripture_passage_slides(
             run.font.size = Pt(
                 font_size
             )
+            run.font.bold = True
             run.font.color.rgb = RGBColor(
                 0,
                 0,
