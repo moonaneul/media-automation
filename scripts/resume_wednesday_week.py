@@ -107,7 +107,6 @@ def main():
         "intake_to_wednesday_weekly.py",
         "--intake", str(intake),
         "--output", str(weekly),
-        allow=(0, 2, 3),
     )
     run("build_bible_library.py")
     run(
