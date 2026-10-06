@@ -97,6 +97,34 @@ def test_scripture_keeps_number_separate_from_body():
     assert paragraphs[1].text == "본문 내용"
 
 
+def test_scripture_generated_text_is_bold():
+    prs = create_4x3_presentation()
+
+    passage = make_passage(
+        BibleVerse(
+            number=6,
+            text="본문 내용",
+        ),
+    )
+
+    slide = add_scripture_passage_slides(
+        prs,
+        passage,
+    )[0]
+
+    paragraphs = [
+        *slide.shapes[0].text_frame.paragraphs,
+        *slide.shapes[1].text_frame.paragraphs,
+    ]
+
+    assert all(
+        run.font.bold is True
+        for paragraph in paragraphs
+        for run in paragraph.runs
+        if run.text.strip()
+    )
+
+
 def test_short_verse_uses_32pt():
     prs = create_4x3_presentation()
 
