@@ -59,6 +59,27 @@ def split_label(line: str):
     if not line:
         return None
 
+    normalized = normalize_label(line)
+
+    # 실제 수요 안내에서 '기도(한송희)'처럼 담당자를 괄호로
+    # 붙이는 경우를 안전하게 처리한다.
+    prayer_match = re.fullmatch(
+        r"(?:기도|대표기도|대표 기도)\s*\(([^)]+)\)",
+        normalized,
+    )
+    if prayer_match:
+        return ("field", "prayer", prayer_match.group(1).strip())
+
+    # '찬양3(이하은)', '찬양 3곡(이하은)', '찬양1' 등은
+    # 곡 제목이 아니라 찬양 개수/인도자 메타데이터일 수 있다.
+    # 콜론 등으로 실제 곡명이 명시되지 않은 이 형태를
+    # opening_song_N으로 추정하지 않는다.
+    if re.fullmatch(
+        r"찬양\s*\d+\s*(?:곡)?\s*(?:\([^)]+\))?",
+        normalized,
+    ):
+        return ("ignored", "찬양 메타데이터", "")
+
     match = re.match(r"^\s*([^:?/]+?)\s*[:?/]\s*(.*)$", line)
     if match:
         raw_label = normalize_label(match.group(1))
@@ -69,7 +90,6 @@ def split_label(line: str):
         if raw_label in IGNORED_ALIASES:
             return ("ignored", raw_label, value)
 
-    normalized = normalize_label(line)
     field = ALIAS_LOOKUP.get(normalized)
     if field:
         return ("field", field, "")
