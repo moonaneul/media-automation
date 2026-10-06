@@ -1,4 +1,15 @@
-import friday
+from importlib.util import module_from_spec, spec_from_file_location
+from pathlib import Path
+
+
+ROOT = Path(__file__).resolve().parents[1]
+FRIDAY_PATH = ROOT / "friday.py"
+
+spec = spec_from_file_location("friday_cli", FRIDAY_PATH)
+assert spec is not None
+assert spec.loader is not None
+friday = module_from_spec(spec)
+spec.loader.exec_module(friday)
 
 
 def test_clipboard_command_uses_pbpaste_on_macos(monkeypatch):
