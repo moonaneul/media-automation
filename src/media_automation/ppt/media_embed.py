@@ -214,29 +214,38 @@ class PowerPointComMediaEmbedder:
         media_path: Path,
         presentation,
     ) -> None:
-        width = (
-            presentation.PageSetup.SlideWidth
-        )
-        height = (
-            presentation.PageSetup.SlideHeight
-        )
+        width = presentation.PageSetup.SlideWidth
+        height = presentation.PageSetup.SlideHeight
+
+        # Historical Friday Zoom PPTs use the video
+        # almost full-screen, even when the source
+        # media has a different aspect ratio.
+        margin_x = width * 0.016
+        margin_y = height * 0.03
 
         shape = slide.Shapes.AddMediaObject2(
             str(media_path),
             False,
             True,
-            0,
-            0,
-            width,
-            height,
+            margin_x,
+            margin_y,
+            width - (margin_x * 2),
+            height - (margin_y * 2),
         )
+
+        # Do not preserve the source aspect ratio.
+        # Match the existing Friday Zoom screen layout.
+        shape.LockAspectRatio = 0
+        shape.Left = margin_x
+        shape.Top = margin_y
+        shape.Width = width - (margin_x * 2)
+        shape.Height = height - (margin_y * 2)
 
         play_settings = (
             shape.AnimationSettings.PlaySettings
         )
 
-        # 과거 금요 Zoom PPT 기준:
-        # 영상은 자동재생하지 않고 클릭 재생한다.
+        # Worship videos are click-to-play.
         play_settings.PlayOnEntry = False
         play_settings.LoopUntilStopped = False
 
@@ -260,15 +269,27 @@ class PowerPointComMediaEmbedder:
             shape.AnimationSettings.PlaySettings
         )
 
-        # 과거 금요 Zoom PPT 기준:
-        # 기도 음원은 슬라이드 진입 시 자동재생하고
-        # 슬라이드가 유지되는 동안 반복한다.
-        play_settings.PlayOnEntry = True
+        # Playback behavior.
+        play_settings.PlayOnEntry = False
         play_settings.PauseAnimation = False
         play_settings.LoopUntilStopped = True
-
-        # 예배 화면에서 음원 아이콘을 노출하지 않는다.
         play_settings.HideWhileNotPlaying = True
+
+        # Modern PowerPoint needs an explicit media-play
+        # effect in the slide timeline for reliable
+        # automatic playback.
+        # 83 = msoAnimEffectMediaPlay
+        # 3  = msoAnimTriggerAfterPrevious
+        effect = (
+            slide.TimeLine.MainSequence.AddEffect(
+                shape,
+                83,
+                0,
+                2,
+            )
+        )
+
+        effect.MoveTo(1)
 
 
 def create_platform_media_embedder() -> MediaEmbedder:

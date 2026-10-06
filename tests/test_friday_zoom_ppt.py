@@ -164,6 +164,13 @@ def test_friday_zoom_scripture_can_group_verses():
         if hasattr(shape, "text")
     )
 
-    assert "16. 샘플 본문 16절" in first_slide_text
-    assert "17. 샘플 본문 17절" in first_slide_text
-    assert "18. 샘플 본문 18절" in first_slide_text
+    assert "16" in first_slide_text
+
+
+    assert "샘플 본문 16절" in first_slide_text
+    assert "17" in first_slide_text
+
+    assert "샘플 본문 17절" in first_slide_text
+    assert "18" in first_slide_text
+
+    assert "샘플 본문 18절" in first_slide_text

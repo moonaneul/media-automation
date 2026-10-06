@@ -37,3 +37,7 @@ Thumbs.db
 .idea/
 # Python package metadata
 *.egg-info/
+# Runtime weekly inputs
+input/
+# Generated Bible cache
+data/bible_library.yaml

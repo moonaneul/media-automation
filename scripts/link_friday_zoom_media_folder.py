@@ -1,0 +1,259 @@
+﻿from __future__ import annotations
+
+import argparse
+from pathlib import Path
+import subprocess
+import sys
+
+import yaml
+
+
+SLOTS = {
+    "opening_song_1": {
+        "type": "video",
+        "extensions": [".mp4", ".wmv", ".mov", ".m4v"],
+    },
+    "opening_song_2": {
+        "type": "video",
+        "extensions": [".mp4", ".wmv", ".mov", ".m4v"],
+    },
+    "first_prayer": {
+        "type": "audio",
+        "extensions": [".mp3", ".wav", ".m4a", ".aac"],
+    },
+    "song_after_prayer": {
+        "type": "video",
+        "extensions": [".mp4", ".wmv", ".mov", ".m4v"],
+    },
+    "response_song": {
+        "type": "video",
+        "extensions": [".mp4", ".wmv", ".mov", ".m4v"],
+    },
+    "word_prayer": {
+        "type": "audio",
+        "extensions": [".mp3", ".wav", ".m4a", ".aac"],
+    },
+    "intercession_song": {
+        "type": "video",
+        "extensions": [".mp4", ".wmv", ".mov", ".m4v"],
+    },
+    "community_prayer": {
+        "type": "audio",
+        "extensions": [".mp3", ".wav", ".m4a", ".aac"],
+    },
+    "personal_prayer": {
+        "type": "audio",
+        "extensions": [".mp3", ".wav", ".m4a", ".aac"],
+    },
+    "pre_service_audio": {
+        "type": "audio",
+        "extensions": [".mp3", ".wav", ".m4a", ".aac"],
+        "optional": True,
+    },
+}
+
+
+def parse_args():
+    parser = argparse.ArgumentParser()
+
+    parser.add_argument(
+        "--checklist",
+        required=True,
+    )
+
+    parser.add_argument(
+        "--media-dir",
+        required=True,
+    )
+
+    return parser.parse_args()
+
+
+def find_exact_slot_file(
+    directory: Path,
+    slot: str,
+    extensions: list[str],
+):
+    matches = []
+
+    for extension in extensions:
+        candidate = (
+            directory
+            / f"{slot}{extension}"
+        )
+
+        if candidate.exists():
+            matches.append(candidate)
+
+    if len(matches) > 1:
+        raise SystemExit(
+            f"ERROR: multiple files for {slot}: "
+            + ", ".join(
+                str(path)
+                for path in matches
+            )
+        )
+
+    return (
+        matches[0]
+        if matches
+        else None
+    )
+
+
+def main():
+    args = parse_args()
+
+    checklist = Path(
+        args.checklist
+    )
+
+    media_dir = Path(
+        args.media_dir
+    )
+
+    if not checklist.exists():
+        raise SystemExit(
+            f"ERROR: checklist not found: {checklist}"
+        )
+
+    if not media_dir.exists():
+        media_dir.mkdir(
+            parents=True,
+            exist_ok=True,
+        )
+
+        print(
+            f"CREATED: {media_dir}"
+        )
+        print()
+        print(
+            "Put this week's media files "
+            "into this folder and run again."
+        )
+
+        return
+
+    data = yaml.safe_load(
+        checklist.read_text(
+            encoding="utf-8-sig"
+        )
+    ) or {}
+
+    checklist_fields = {
+        item.get("field")
+        for item in data.get(
+            "items",
+            []
+        )
+    }
+
+    assignments = []
+    missing = []
+
+    for slot, config in (
+        SLOTS.items()
+    ):
+        optional = config.get(
+            "optional",
+            False,
+        )
+
+        # 이번 주 체크리스트에 없는 슬롯은
+        # 자동으로 만들거나 승계하지 않는다.
+        if (
+            slot not in checklist_fields
+            and slot != "pre_service_audio"
+        ):
+            continue
+
+        path = find_exact_slot_file(
+            media_dir,
+            slot,
+            config["extensions"],
+        )
+
+        if path is None:
+            if not optional:
+                missing.append(slot)
+
+            continue
+
+        assignments.append(
+            (
+                slot,
+                path,
+            )
+        )
+
+    if assignments:
+        command = [
+            sys.executable,
+            "scripts/set_friday_zoom_media.py",
+            "--checklist",
+            str(checklist),
+        ]
+
+        for slot, path in assignments:
+            command += [
+                "--set",
+                f"{slot}={path}",
+            ]
+
+        print()
+        print("=== AUTO MEDIA LINK ===")
+
+        for slot, path in assignments:
+            print(
+                f"FOUND : {slot:<24} "
+                f"{path.name}"
+            )
+
+        result = subprocess.run(
+            command,
+            check=False,
+        )
+
+        if result.returncode != 0:
+            raise SystemExit(
+                result.returncode
+            )
+
+    print()
+    print(
+        "=" * 68
+    )
+
+    if missing:
+        print(
+            "MEDIA FOLDER: NOT READY"
+        )
+
+        for slot in missing:
+            print(
+                f"MISSING: {slot}"
+            )
+
+        print()
+        print(
+            f"folder: {media_dir}"
+        )
+
+        print()
+        print(
+            "No similar filename or historical "
+            "media was substituted."
+        )
+
+        raise SystemExit(2)
+
+    print(
+        "MEDIA FOLDER: READY"
+    )
+    print(
+        f"folder: {media_dir}"
+    )
+
+
+if __name__ == "__main__":
+    main()

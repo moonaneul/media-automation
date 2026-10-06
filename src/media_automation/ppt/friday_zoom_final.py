@@ -47,6 +47,7 @@ def build_friday_zoom_with_media(
     bible_provider: BibleProvider,
     media_provider: ZoomMediaAssetProvider,
     media_embedder: MediaEmbedder | None = None,
+    include_pre_service_audio: bool = False,
 ) -> FridayZoomFinalBuildResult:
     """
     금요 Zoom 최종 PPT 제작 흐름.
@@ -79,6 +80,9 @@ def build_friday_zoom_with_media(
             plan,
             structure.slide_ranges,
             media_provider,
+            include_pre_service_audio=(
+                include_pre_service_audio
+            ),
         )
     )
 

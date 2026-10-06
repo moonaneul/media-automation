@@ -20,6 +20,7 @@ from media_automation.ppt import (
     load_zoom_media_asset_provider,
     plan_friday_zoom_media_placements,
 )
+from media_automation.ppt.friday_zoom_postprocess import finalize_friday_zoom_powerpoint
 from media_automation.weekly_data.models import (
     FridayZoomData,
     parse_weekly_data,
@@ -147,6 +148,15 @@ def main() -> None:
     )
 
     parser.add_argument(
+        "--include-pre-service-audio",
+        action="store_true",
+        help=(
+            "Prayer audio mapping is incomplete: "
+            "At least one required audio file is missing."
+        ),
+    )
+
+    parser.add_argument(
         "--output",
         type=Path,
         help="최종 PPT 출력 경로",
@@ -215,6 +225,9 @@ def main() -> None:
                     plan,
                     structure.slide_ranges,
                     media_provider,
+                    include_pre_service_audio=(
+                        args.include_pre_service_audio
+                    ),
                 )
             )
 
@@ -280,6 +293,17 @@ def main() -> None:
         args.output,
         bible_provider=bible_provider,
         media_provider=media_provider,
+        include_pre_service_audio=(
+            args.include_pre_service_audio
+        ),
+    )
+
+    animation_count = (
+        finalize_friday_zoom_powerpoint(
+            result.output_path,
+            weekly=weekly,
+            slide_ranges=result.slide_ranges,
+        )
     )
 
     print()
@@ -297,6 +321,11 @@ def main() -> None:
 
     print_placements(
         result.media_placements
+    )
+
+    print(
+        "prayer animations : "
+        f"{animation_count}"
     )
 
     print()

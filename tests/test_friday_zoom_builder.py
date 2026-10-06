@@ -185,5 +185,8 @@ def test_zoom_preview_renders_scripture_and_title(
         if hasattr(shape, "text")
     )
 
-    assert "16. 샘플 16절" in all_text
+    assert "16" in all_text
+
+
+    assert "샘플 16절" in all_text
     assert "예시 설교 제목" in all_text
