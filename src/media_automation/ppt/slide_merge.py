@@ -226,6 +226,10 @@ class MacPowerPointAppleScriptSlideMerger:
                 f"삽입할 PPT가 없습니다: {source}"
             )
 
+        # Mac PowerPoint에서는 두 번째 파일을 연 뒤 이전의
+        # `active presentation` 객체 참조가 불안정해질 수 있다.
+        # 따라서 열린 프레젠테이션을 파일명으로 다시 찾아서
+        # copy/select/paste 한다.
         script = r'''
 on run argv
     set destinationPath to item 1 of argv
@@ -233,6 +237,8 @@ on run argv
     set afterSlideNumber to (item 3 of argv) as integer
     set startSlideNumber to (item 4 of argv) as integer
     set endSlideNumber to (item 5 of argv) as integer
+    set destinationName to item 6 of argv
+    set sourceName to item 7 of argv
 
     set destinationFile to POSIX file destinationPath as alias
     set sourceFile to POSIX file sourcePath as alias
@@ -241,17 +247,17 @@ on run argv
         activate
 
         open sourceFile
-        set sourcePresentation to active presentation
-
+        delay 0.2
         open destinationFile
-        set destinationPresentation to active presentation
+        delay 0.2
 
         set insertionPoint to afterSlideNumber
 
         repeat with sourceSlideNumber from startSlideNumber to endSlideNumber
-            copy object slide sourceSlideNumber of sourcePresentation
+            set beforeCount to count slides of presentation destinationName
 
-            select slide insertionPoint of destinationPresentation
+            copy object slide sourceSlideNumber of presentation sourceName
+            select slide insertionPoint of presentation destinationName
 
             tell active window
                 set view type to slide sorter view
@@ -259,11 +265,18 @@ on run argv
                 set view type to normal view
             end tell
 
+            delay 0.1
+
+            set afterCount to count slides of presentation destinationName
+            if afterCount is not (beforeCount + 1) then
+                error "슬라이드 붙여넣기 후 대상 PPT의 슬라이드 수가 증가하지 않았습니다."
+            end if
+
             set insertionPoint to insertionPoint + 1
         end repeat
 
-        close sourcePresentation saving no
-        close destinationPresentation saving yes
+        close presentation sourceName saving no
+        close presentation destinationName saving yes
     end tell
 end run
 '''
@@ -278,6 +291,8 @@ end run
                 str(after_slide),
                 str(start_slide),
                 str(end_slide),
+                destination.name,
+                source.name,
             ],
             text=True,
             capture_output=True,
