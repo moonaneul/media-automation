@@ -17,6 +17,7 @@ class CompletedWorshipReference:
     offering_prayer_second: str
     scripture: str
     sermon_title: str
+    preacher: str
     decision_hymn: str
     closing_prayer: str
 
@@ -295,14 +296,19 @@ def parse_completed_bulletin_text(
         ignored=("인 도 자",),
     )
 
-    sermon_title = _first_data_line(
-        _section(
-            lines,
-            "말 씀 선 포",
-            "결 단 찬 송",
-        ),
-        ignored=("이은철 목사",),
+    sermon_section = _section(
+        lines,
+        "말 씀 선 포",
+        "결 단 찬 송",
     )
+
+    if len(sermon_section) < 2:
+        raise ValueError(
+            "완성 주보의 설교 제목/설교자를 찾지 못했습니다."
+        )
+
+    sermon_title = sermon_section[0]
+    preacher = sermon_section[-1]
 
     decision_hymn = _first_data_line(
         _section(
@@ -499,6 +505,7 @@ def parse_completed_bulletin_text(
             ),
             scripture=scripture,
             sermon_title=sermon_title,
+            preacher=preacher,
             decision_hymn=decision_hymn,
             closing_prayer=closing_prayer,
         ),

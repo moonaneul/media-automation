@@ -77,6 +77,12 @@ def test_parse_20260920_completed_bulletin():
     )
 
     assert (
+        result.worship.preacher
+        == "이은철 목사"
+    )
+
+
+    assert (
         result.worship.decision_hymn
         == "304장"
     )

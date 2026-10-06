@@ -115,7 +115,7 @@ def _section_title(
         y - 1.5 * mm,
     )
 
-    return y - 5.5 * mm
+    return y - 7.2 * mm
 
 
 def _draw_wrapped(
@@ -210,12 +210,12 @@ def draw_news_page(
             x=left,
             y=cursor,
             max_width=content_width,
-            font_size=7.2,
-            line_height=3.4 * mm,
+            font_size=7.9,
+            line_height=4.8 * mm,
             bottom=bottom,
         )
 
-        cursor -= 1.2 * mm
+        cursor -= 2.1 * mm
 
     cursor -= 1.5 * mm
 
@@ -249,12 +249,12 @@ def draw_news_page(
             x=left,
             y=cursor,
             max_width=content_width,
-            font_size=7,
-            line_height=3.3 * mm,
+            font_size=7.7,
+            line_height=4.6 * mm,
             bottom=bottom,
         )
 
-        cursor -= 0.8 * mm
+        cursor -= 1.6 * mm
 
     cursor -= 1.5 * mm
 
@@ -272,7 +272,7 @@ def draw_news_page(
 
     canvas.setFont(
         FONT_REGULAR,
-        6.8,
+        7.5,
     )
 
     label_width = 32 * mm
@@ -296,7 +296,7 @@ def draw_news_page(
             f"/ {time_text}",
         )
 
-        cursor -= 3.7 * mm
+        cursor -= 4.8 * mm
 
     cursor -= 1.5 * mm
 
@@ -318,8 +318,8 @@ def draw_news_page(
         x=left,
         y=cursor,
         max_width=content_width,
-        font_size=6.7,
-        line_height=3.2 * mm,
+        font_size=7.4,
+        line_height=4.3 * mm,
         bottom=bottom,
     )
 
@@ -339,7 +339,7 @@ def draw_news_page(
 
     canvas.setFont(
         FONT_REGULAR,
-        6.6,
+        7.3,
     )
 
     for index, value in enumerate(
@@ -358,7 +358,7 @@ def draw_news_page(
             f"{index}. {value}",
         )
 
-        cursor -= 3.4 * mm
+        cursor -= 4.4 * mm
 
     cursor -= 1 * mm
 
@@ -368,7 +368,7 @@ def draw_news_page(
         x=left,
         y=cursor,
         max_width=content_width,
-        font_size=6.2,
-        line_height=3 * mm,
+        font_size=6.9,
+        line_height=4.0 * mm,
         bottom=bottom,
     )

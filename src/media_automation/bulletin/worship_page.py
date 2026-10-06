@@ -385,26 +385,104 @@ def draw_worship_page(
         - 7 * mm
     )
 
-    # -------------------------
-    # 주일 오후
-    # -------------------------
-
-    cursor = _draw_section_title(
-        canvas,
-        text="주일 오후",
-        x=left,
-        y=cursor,
-        width=content_width,
-    )
-
     canvas.setFont(
         FONT_REGULAR,
         9,
     )
 
+    # Bottom worship information
+    # -------------------------
+
+    table_x = left
+    table_y = y + 10 * mm
+    table_width = content_width
+    table_height = 40 * mm
+
+    col_width = table_width / 3
+    header_height = 13 * mm
+    body_height = table_height - header_height
+    body_top = table_y + body_height
+
+    headers = (
+        ("\uc8fc\uc77c \uc624\uc804", "\uc624\uc804 9:00"),
+        ("\uc8fc\uc77c \uc624\ud6c4", "\uc624\ud6c4 1:30"),
+        ("\uc218\uc694 \uc608\ubc30", "\uc624\ud6c4 7:30"),
+    )
+
+    for index, (title, time_text) in enumerate(headers):
+        cell_x = table_x + index * col_width
+
+        canvas.rect(
+            cell_x,
+            table_y,
+            col_width,
+            table_height,
+        )
+
+        canvas.line(
+            cell_x,
+            body_top,
+            cell_x + col_width,
+            body_top,
+        )
+
+        canvas.setFont(FONT_BOLD, 8)
+        canvas.drawCentredString(
+            cell_x + col_width / 2,
+            body_top + 7.2 * mm,
+            title,
+        )
+
+        canvas.setFont(FONT_REGULAR, 7)
+        canvas.drawCentredString(
+            cell_x + col_width / 2,
+            body_top + 3 * mm,
+            f"({time_text})",
+        )
+
+    # Sunday morning
+    canvas.setFont(FONT_BOLD, 8.3)
+    canvas.drawCentredString(
+        table_x + col_width / 2,
+        body_top - 7 * mm,
+        "\ud559\uc0dd\ubd80 \uc608\ubc30",
+    )
+
+    # Sunday afternoon
     if page.afternoon_service:
-        canvas.drawString(
-            left,
-            cursor,
+        canvas.setFont(FONT_BOLD, 8.3)
+        canvas.drawCentredString(
+            table_x + col_width * 1.5,
+            body_top - 7 * mm,
             page.afternoon_service,
         )
+
+    # Wednesday worship
+    wed_x = table_x + col_width * 2
+    label_x = wed_x + 4 * mm
+    value_x = wed_x + col_width - 4 * mm
+
+    wednesday_rows = (
+        ("\ucc2c    \uc591", "\ub2e4   \uac19   \uc774"),
+        ("\ub9d0    \uc500", "\uc774\uc740\ucca0 \ubaa9\uc0ac"),
+        ("\ud569\uc2ec\uae30\ub3c4", "\ub2e4   \uac19   \uc774"),
+    )
+
+    wed_cursor = body_top - 5.5 * mm
+
+    for label, value in wednesday_rows:
+        canvas.setFont(FONT_BOLD, 7.1)
+        canvas.drawString(
+            label_x,
+            wed_cursor,
+            label,
+        )
+
+        canvas.setFont(FONT_REGULAR, 7.1)
+        canvas.drawRightString(
+            value_x,
+            wed_cursor,
+            value,
+        )
+
+        wed_cursor -= 6.3 * mm

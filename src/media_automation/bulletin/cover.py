@@ -26,6 +26,15 @@ class BulletinCoverStatic:
     slogan: str = (
         "영혼 구원하여 제자 삼는 교회"
     )
+    senior_pastor: str = "\uc774\uc740\ucca0 \ubaa9\uc0ac"
+    address: str = (
+        "\uc11c\uc6b8\ud2b9\ubcc4\uc2dc \uad6c\ub85c\uad6c \ucc9c\uc655\ub85c 36(\ucc9c\uc655\ub3d9) "
+        "\uc13c\ud0c0\ud504\ub77c\uc790 601\ud638"
+    )
+    phone: str = "02-2611-9191"
+    fax: str = "02-2689-9191"
+    website: str = "https://hjbbc.or.kr"
+
     verse_lines: tuple[str, ...] = (
         (
             "그러므로 너희는 가서 모든 민족을 "
@@ -133,5 +142,27 @@ def draw_cover_page(
         canvas.drawCentredString(
             x + width / 2,
             verse_y - index * 5 * mm,
+            line,
+        )
+
+    # Contact information
+    contact_lines = (
+        f"\ub2f4\uc784\ubaa9\uc0ac  {static.senior_pastor}",
+        static.address,
+        f"TEL  {static.phone}    FAX  {static.fax}",
+        static.website,
+    )
+
+    canvas.setFont(
+        FONT_REGULAR,
+        7.2,
+    )
+
+    contact_y = y + 31 * mm
+
+    for index, line in enumerate(contact_lines):
+        canvas.drawCentredString(
+            x + width / 2,
+            contact_y - index * 4.5 * mm,
             line,
         )

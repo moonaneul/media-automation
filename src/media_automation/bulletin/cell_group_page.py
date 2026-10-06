@@ -20,6 +20,7 @@ def wrap_text(
     font_name: str,
     font_size: float,
     max_width: float,
+    char_space: float = 0,
 ) -> tuple[str, ...]:
     """
     한글을 포함한 문장을 실제 PDF 글자 폭 기준으로
@@ -36,20 +37,34 @@ def wrap_text(
     for char in text:
         candidate = current + char
 
-        width = pdfmetrics.stringWidth(
-            candidate,
-            font_name,
-            font_size,
+        width = (
+            pdfmetrics.stringWidth(
+                candidate,
+                font_name,
+                font_size,
+            )
+            + max(
+                0,
+                len(candidate) - 1,
+            ) * char_space
         )
 
         if (
             current
             and width > max_width
         ):
-            lines.append(
-                current.rstrip()
-            )
-            current = char.lstrip()
+            # Do not leave punctuation alone on the next line.
+            if char in ".,?!:;)]}":
+                current += char
+                lines.append(
+                    current.rstrip()
+                )
+                current = ""
+            else:
+                lines.append(
+                    current.rstrip()
+                )
+                current = char.lstrip()
         else:
             current = candidate
 
@@ -137,6 +152,9 @@ def draw_cell_group_page(
         cursor + 3 * mm,
     )
 
+    # Keep the first question safely below the separator.
+    cursor -= 5 * mm
+
     # -------------------------
     # 질문
     # -------------------------
@@ -151,15 +169,18 @@ def draw_cell_group_page(
         )
 
     question_font_size = 9
-    line_height = 5 * mm
-    question_gap = 5 * mm
+    line_height = 6.3 * mm
+    question_gap = 5.5 * mm
     number_width = 7 * mm
 
     text_width = (
         right
         - left
         - number_width
+        - 4 * mm
     )
+
+    question_char_space = 0
 
     for index, question in enumerate(
         page.questions,
@@ -170,6 +191,7 @@ def draw_cell_group_page(
             font_name=FONT_REGULAR,
             font_size=question_font_size,
             max_width=text_width,
+            char_space=question_char_space,
         )
 
         canvas.setFont(
