@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import argparse
+import platform
 import subprocess
 import sys
 from datetime import datetime
@@ -42,6 +43,20 @@ def load_yaml(path):
     if not path.exists():
         return {}
     return yaml.safe_load(path.read_text(encoding="utf-8-sig")) or {}
+
+
+def clipboard_command():
+    system = platform.system()
+    if system == "Windows":
+        return [
+            "powershell.exe",
+            "-NoProfile",
+            "-Command",
+            "[Console]::OutputEncoding=[System.Text.Encoding]::UTF8; Get-Clipboard -Raw",
+        ]
+    if system == "Darwin":
+        return ["pbpaste"]
+    raise SystemExit(f"ERROR: clipboard input is not supported on {system}")
 
 
 def bible_master_summary():
@@ -138,14 +153,8 @@ def start(args):
 
 
 def paste(args):
-    command = [
-        "powershell.exe",
-        "-NoProfile",
-        "-Command",
-        "[Console]::OutputEncoding=[System.Text.Encoding]::UTF8; Get-Clipboard -Raw",
-    ]
     result = subprocess.run(
-        command,
+        clipboard_command(),
         capture_output=True,
         encoding="utf-8",
         errors="replace",
@@ -361,7 +370,7 @@ def main():
     p.add_argument("notice")
     p.set_defaults(func=start)
 
-    p = sub.add_parser("paste", help="Windows clipboard에서 안내 입력")
+    p = sub.add_parser("paste", help="Windows/macOS clipboard에서 안내 입력")
     p.set_defaults(func=paste)
 
     p = sub.add_parser("status", help="진행 상태 확인")
