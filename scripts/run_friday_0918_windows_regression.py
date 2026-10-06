@@ -116,6 +116,13 @@ def prepare(pptx: Path) -> None:
 
     media_dir = ROOT / "input" / "friday_zoom" / TOKEN
     intake_dir = ROOT / "output" / "friday_zoom_intake"
+
+    # 회귀 테스트는 항상 깨끗한 입력 폴더에서 시작한다.
+    # 과거 실행에서 남은 별도 prayer/pre-service 파일이 있으면
+    # 이번 테스트가 의도하지 않은 미디어를 자동 연결할 수 있다.
+    if media_dir.exists():
+        shutil.rmtree(media_dir)
+
     media_dir.mkdir(parents=True, exist_ok=True)
     intake_dir.mkdir(parents=True, exist_ok=True)
 
