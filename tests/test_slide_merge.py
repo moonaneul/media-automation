@@ -4,7 +4,9 @@ import pytest
 from pptx import Presentation
 
 from media_automation.ppt import (
+    MacPowerPointAppleScriptSlideMerger,
     PowerPointComSlideMerger,
+    create_platform_slide_merger,
 )
 
 
@@ -103,6 +105,8 @@ def test_com_merger_is_windows_only():
             start_slide=1,
             end_slide=1,
         )
+
+
 def test_insert_all_delegates_full_slide_range(
     tmp_path,
 ):
@@ -163,13 +167,9 @@ def test_insert_all_delegates_full_slide_range(
             "end_slide": 3,
         }
     ]
-from media_automation.ppt import (
-    MacPowerPointAppleScriptSlideMerger,
-    create_platform_slide_merger,
-)
 
 
-def test_platform_merger_rejects_macos_for_final_build(
+def test_platform_merger_uses_macos_powerpoint(
     monkeypatch,
 ):
     monkeypatch.setattr(
@@ -177,11 +177,26 @@ def test_platform_merger_rejects_macos_for_final_build(
         lambda: "Darwin",
     )
 
-    with pytest.raises(
-        RuntimeError,
-        match="Windows 제작 환경",
-    ):
-        create_platform_slide_merger()
+    merger = create_platform_slide_merger()
+    assert isinstance(
+        merger,
+        MacPowerPointAppleScriptSlideMerger,
+    )
+
+
+def test_platform_merger_uses_windows_powerpoint(
+    monkeypatch,
+):
+    monkeypatch.setattr(
+        "media_automation.ppt.slide_merge.platform.system",
+        lambda: "Windows",
+    )
+
+    merger = create_platform_slide_merger()
+    assert isinstance(
+        merger,
+        PowerPointComSlideMerger,
+    )
 
 
 def test_mac_merger_rejects_insert_before_first_slide():
