@@ -111,7 +111,7 @@ def main():
     )
     run("build_bible_library.py")
     run(
-        "resolve_friday_zoom_bible.py",
+        "resolve_bible_requests.py",
         "--requests", str(bible_requests),
         "--output", str(bible),
     )
