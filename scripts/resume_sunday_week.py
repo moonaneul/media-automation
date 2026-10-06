@@ -8,6 +8,7 @@ from pathlib import Path
 
 import yaml
 
+from media_automation.planning import build_sunday_plan
 from media_automation.weekly_data.models import SundayData, WeeklyStatus, parse_weekly_data
 
 
@@ -144,6 +145,11 @@ def main():
             )
         print("지난주 값으로 자동 보완하지 않습니다.")
         raise SystemExit(2)
+
+    # UNSET 유무뿐 아니라 실제 주일 오전 2부 순서가 성립하는지도 검증한다.
+    # 예: 설교 제목은 VALUE인데 대표 본문이 NONE인 모순은 여기서 중단한다.
+    build_sunday_plan(parsed)
+    print("\nSUNDAY OPERATIONAL PLAN: PASS")
 
     run_script(
         "build_sunday_bible_requests.py",
