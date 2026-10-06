@@ -35,6 +35,13 @@ IGNORED_ALIASES = {
 }
 
 
+OPENING_SONG_FIELDS = (
+    "opening_song_1",
+    "opening_song_2",
+    "opening_song_3",
+)
+
+
 def normalize_label(text: str) -> str:
     text = text.lstrip("\ufeff")
     return re.sub(r"\s+", " ", text.strip())
@@ -54,6 +61,18 @@ def empty_record():
     }
 
 
+def asset_required_record(*, source: str, leader: str | None = None):
+    record = {
+        "status": "asset_required",
+        "value": None,
+        "review_required": False,
+        "source": source,
+    }
+    if leader:
+        record["leader"] = leader
+    return record
+
+
 def split_label(line: str):
     line = line.lstrip("\ufeff").strip()
     if not line:
@@ -70,15 +89,20 @@ def split_label(line: str):
     if prayer_match:
         return ("field", "prayer", prayer_match.group(1).strip())
 
-    # '찬양3(이하은)', '찬양 3곡(이하은)', '찬양1' 등은
-    # 곡 제목이 아니라 찬양 개수/인도자 메타데이터일 수 있다.
-    # 콜론 등으로 실제 곡명이 명시되지 않은 이 형태를
-    # opening_song_N으로 추정하지 않는다.
-    if re.fullmatch(
-        r"찬양\s*\d+\s*(?:곡)?\s*(?:\([^)]+\))?",
+    # 수요 안내의 '찬양3(이하은)', '찬양 3곡(이하은)', '찬양1'은
+    # 보통 곡 제목이 아니라 '이 순서에서 몇 곡을 부르는지'와
+    # 인도자를 알려주는 메타데이터다.
+    # 실제 곡은 그 주에 전달된 악보 PPT 슬롯으로 확정한다.
+    song_count_match = re.fullmatch(
+        r"찬양\s*(\d+)\s*(?:곡)?\s*(?:\(([^)]+)\))?",
         normalized,
-    ):
-        return ("ignored", "찬양 메타데이터", "")
+    )
+    if song_count_match:
+        return (
+            "song_count",
+            int(song_count_match.group(1)),
+            (song_count_match.group(2) or "").strip(),
+        )
 
     match = re.match(r"^\s*([^:?/]+?)\s*[:?/]\s*(.*)$", line)
     if match:
@@ -126,9 +150,37 @@ def normalize_date(value):
     return f"{year:04d}-{month:02d}-{day:02d}"
 
 
+def _apply_opening_song_count(result, count: int, source: str, leader: str | None):
+    if count < 0 or count > len(OPENING_SONG_FIELDS):
+        return False
+
+    for index, field in enumerate(OPENING_SONG_FIELDS, start=1):
+        current = result[field]
+
+        # 곡명이 명시적으로 제공된 경우에는 메타데이터가 그 제목을
+        # 덮어쓰지 않는다.
+        if current["status"] == "provided":
+            continue
+
+        if index <= count:
+            result[field] = asset_required_record(
+                source=source,
+                leader=leader or None,
+            )
+        else:
+            result[field] = {
+                "status": "blank",
+                "value": None,
+                "review_required": False,
+            }
+
+    return True
+
+
 def parse_notice(text: str):
     result = {field: empty_record() for field in FIELD_ALIASES}
     unknown_lines: list[str] = []
+    prayer_seen = False
 
     for raw_line in text.splitlines():
         line = raw_line.strip()
@@ -141,7 +193,40 @@ def parse_notice(text: str):
             continue
 
         kind, name, value = parsed
+
         if kind == "ignored":
+            continue
+
+        if kind == "song_count":
+            count = int(name)
+            leader = str(value or "").strip()
+
+            if not prayer_seen:
+                if not _apply_opening_song_count(
+                    result,
+                    count,
+                    source=line,
+                    leader=leader or None,
+                ):
+                    unknown_lines.append(line)
+                continue
+
+            # 기도 뒤의 '찬양1'은 수요예배의 추가 찬양 1곡을 뜻한다.
+            # 현재 구조는 추가 찬양 한 곡을 전제로 하므로 0/1만 자동 처리한다.
+            if count == 0:
+                result["additional_song"] = {
+                    "status": "blank",
+                    "value": None,
+                    "review_required": False,
+                }
+            elif count == 1:
+                if result["additional_song"]["status"] != "provided":
+                    result["additional_song"] = asset_required_record(
+                        source=line,
+                        leader=leader or None,
+                    )
+            else:
+                unknown_lines.append(line)
             continue
 
         result[name] = {
@@ -149,6 +234,9 @@ def parse_notice(text: str):
             "value": value or None,
             "review_required": False,
         }
+
+        if name == "prayer":
+            prayer_seen = True
 
     if result["date"]["status"] == "provided":
         result["date"]["value"] = normalize_date(result["date"]["value"])
@@ -184,12 +272,12 @@ def build_song_checklist(data):
     items = []
     for field, filename in slots:
         record = data[field]
-        if record["status"] != "provided" or not record["value"]:
+        if record["status"] not in {"provided", "asset_required"}:
             continue
         items.append(
             {
                 "field": field,
-                "title": record["value"],
+                "title": record.get("value"),
                 "expected_filename": filename,
                 "file": None,
             }
