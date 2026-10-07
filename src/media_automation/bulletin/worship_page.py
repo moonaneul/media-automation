@@ -177,7 +177,7 @@ def _draw_section_title(
 ) -> float:
     canvas.setFont(
         FONT_BOLD,
-        11,
+        12.5,
     )
 
     canvas.drawString(
@@ -207,7 +207,7 @@ def draw_worship_page(
 ) -> None:
     register_korean_fonts()
 
-    margin = 10 * mm
+    margin = 8 * mm
 
     left = x + margin
     right = x + width - margin
@@ -230,7 +230,7 @@ def draw_worship_page(
     if page.leader:
         canvas.setFont(
             FONT_REGULAR,
-            8.3,
+            9.2,
         )
         canvas.drawRightString(
             right,
@@ -240,14 +240,14 @@ def draw_worship_page(
         cursor -= 6 * mm
 
     label_width = 32 * mm
-    row_height = 7 * mm
+    row_height = 8.0 * mm
 
     for label, value in (
         build_worship_order_rows(page)
     ):
         canvas.setFont(
             FONT_BOLD,
-            8.3,
+            9.2,
         )
         canvas.drawString(
             left,
@@ -276,7 +276,7 @@ def draw_worship_page(
 
         cursor -= row_height
 
-    cursor -= 3 * mm
+    cursor -= 5 * mm
 
     # -------------------------
     # 예배 / 섬김
@@ -308,19 +308,19 @@ def draw_worship_page(
 
     total_width = sum(column_widths)
 
-    if total_width > content_width:
-        scale = (
-            content_width
-            / total_width
-        )
-        column_widths = tuple(
-            value * scale
-            for value in column_widths
-        )
+    # 위/아래 표의 좌우 끝을 동일하게 맞춘다.
+    scale = (
+        content_width
+        / total_width
+    )
+    column_widths = tuple(
+        value * scale
+        for value in column_widths
+    )
 
     table_top = cursor + 3 * mm
     table_x = left
-    table_row_height = 8 * mm
+    table_row_height = 6.8 * mm
 
     rows = build_serving_rows(page)
 
@@ -364,7 +364,7 @@ def draw_worship_page(
                     if row_index == 0
                     else FONT_REGULAR
                 ),
-                6.8,
+                7.4,
             )
 
             canvas.drawCentredString(
@@ -372,7 +372,7 @@ def draw_worship_page(
                     column_x
                     + column_width / 2
                 ),
-                row_bottom + 2.7 * mm,
+                row_bottom + 2.2 * mm,
                 value,
             )
 
@@ -394,12 +394,14 @@ def draw_worship_page(
     # -------------------------
 
     table_x = left
-    table_y = y + 10 * mm
     table_width = content_width
-    table_height = 40 * mm
+    table_height = 24 * mm
+
+    # 위쪽 예배/섬김 표의 다음 위치에서 이어서 배치한다.
+    table_y = cursor - table_height
 
     col_width = table_width / 3
-    header_height = 13 * mm
+    header_height = 8 * mm
     body_height = table_height - header_height
     body_top = table_y + body_height
 
@@ -426,34 +428,34 @@ def draw_worship_page(
             body_top,
         )
 
-        canvas.setFont(FONT_BOLD, 8)
+        canvas.setFont(FONT_BOLD, 8.8)
         canvas.drawCentredString(
             cell_x + col_width / 2,
-            body_top + 7.2 * mm,
+            body_top + 4.2 * mm,
             title,
         )
 
-        canvas.setFont(FONT_REGULAR, 7)
+        canvas.setFont(FONT_REGULAR, 7.7)
         canvas.drawCentredString(
             cell_x + col_width / 2,
-            body_top + 3 * mm,
+            body_top + 1.4 * mm,
             f"({time_text})",
         )
 
     # Sunday morning
-    canvas.setFont(FONT_BOLD, 8.3)
+    canvas.setFont(FONT_BOLD, 9)
     canvas.drawCentredString(
         table_x + col_width / 2,
-        body_top - 7 * mm,
+        body_top - 4.2 * mm,
         "\ud559\uc0dd\ubd80 \uc608\ubc30",
     )
 
     # Sunday afternoon
     if page.afternoon_service:
-        canvas.setFont(FONT_BOLD, 8.3)
+        canvas.setFont(FONT_BOLD, 9)
         canvas.drawCentredString(
             table_x + col_width * 1.5,
-            body_top - 7 * mm,
+            body_top - 4.2 * mm,
             page.afternoon_service,
         )
 
@@ -468,21 +470,21 @@ def draw_worship_page(
         ("\ud569\uc2ec\uae30\ub3c4", "\ub2e4   \uac19   \uc774"),
     )
 
-    wed_cursor = body_top - 5.5 * mm
+    wed_cursor = body_top - 3.5 * mm
 
     for label, value in wednesday_rows:
-        canvas.setFont(FONT_BOLD, 7.1)
+        canvas.setFont(FONT_BOLD, 7.7)
         canvas.drawString(
             label_x,
             wed_cursor,
             label,
         )
 
-        canvas.setFont(FONT_REGULAR, 7.1)
+        canvas.setFont(FONT_REGULAR, 7.7)
         canvas.drawRightString(
             value_x,
             wed_cursor,
             value,
         )
 
-        wed_cursor -= 6.3 * mm
+        wed_cursor -= 4.2 * mm

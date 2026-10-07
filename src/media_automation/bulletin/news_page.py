@@ -99,7 +99,7 @@ def _section_title(
 ) -> float:
     canvas.setFont(
         FONT_BOLD,
-        9.5,
+        11.5,
     )
 
     canvas.drawString(
@@ -210,8 +210,8 @@ def draw_news_page(
             x=left,
             y=cursor,
             max_width=content_width,
-            font_size=7.9,
-            line_height=4.8 * mm,
+            font_size=9.0,
+            line_height=5.8 * mm,
             bottom=bottom,
         )
 
@@ -249,8 +249,8 @@ def draw_news_page(
             x=left,
             y=cursor,
             max_width=content_width,
-            font_size=7.7,
-            line_height=4.6 * mm,
+            font_size=8.7,
+            line_height=5.5 * mm,
             bottom=bottom,
         )
 
@@ -270,39 +270,82 @@ def draw_news_page(
         width=content_width,
     )
 
-    canvas.setFont(
-        FONT_REGULAR,
-        7.5,
+    # 예배 / 모임 안내는 2열로 배치한다.
+    # 세로 공간을 줄이면서도 각 항목을 한 줄로 읽을 수 있게 한다.
+    meeting_gap = 6 * mm
+    meeting_column_width = (
+        content_width - meeting_gap
+    ) / 2
+
+    meeting_columns = (
+        static.meetings[:5],
+        static.meetings[5:],
     )
 
-    label_width = 32 * mm
+    meeting_start_y = cursor
+    meeting_row_height = 6.2 * mm
 
-    for name, time_text in static.meetings:
-        if cursor < bottom:
-            raise ValueError(
-                "주보 4쪽 예배/모임 안내가 "
-                "페이지 영역을 넘습니다."
+    for column_index, meetings in enumerate(
+        meeting_columns
+    ):
+        column_x = (
+            left
+            + column_index
+            * (meeting_column_width + meeting_gap)
+        )
+
+        label_width = 24 * mm
+        row_cursor = meeting_start_y
+
+        for name, time_text in meetings:
+            if row_cursor < bottom:
+                raise ValueError(
+                    "주보 4쪽 예배/모임 안내가 "
+                    "페이지 영역을 넘습니다."
+                )
+
+            canvas.setFont(
+                FONT_BOLD,
+                7.8,
+            )
+            canvas.drawString(
+                column_x,
+                row_cursor,
+                name,
             )
 
-        canvas.drawString(
-            left,
-            cursor,
-            f"☞ {name}",
-        )
+            canvas.setFont(
+                FONT_REGULAR,
+                7.8,
+            )
+            canvas.drawString(
+                column_x + label_width,
+                row_cursor,
+                f"/ {time_text}",
+            )
 
-        canvas.drawString(
-            left + label_width,
-            cursor,
-            f"/ {time_text}",
-        )
+            row_cursor -= meeting_row_height
 
-        cursor -= 4.8 * mm
-
-    cursor -= 1.5 * mm
+    cursor = (
+        meeting_start_y
+        - 5 * meeting_row_height
+        - 7 * mm
+    )
 
     # --------------------------------
     # 사명 선언문
     # --------------------------------
+    #
+    # 공지/일정이 적은 주에도 사명선언문이 지나치게 위로
+    # 올라가지 않도록 최소 시작 위치를 둔다.
+    # 내용이 많은 주에는 기존 흐름대로 아래로 밀릴 수 있다.
+    mission_anchor = (
+        y + height - 125 * mm
+    )
+    cursor = min(
+        cursor,
+        mission_anchor,
+    )
 
     cursor = _section_title(
         canvas,
@@ -318,12 +361,12 @@ def draw_news_page(
         x=left,
         y=cursor,
         max_width=content_width,
-        font_size=7.4,
-        line_height=4.3 * mm,
+        font_size=8.2,
+        line_height=5.2 * mm,
         bottom=bottom,
     )
 
-    cursor -= 2 * mm
+    cursor -= 5 * mm
 
     # --------------------------------
     # 핵심 가치
@@ -339,7 +382,7 @@ def draw_news_page(
 
     canvas.setFont(
         FONT_REGULAR,
-        7.3,
+        8.1,
     )
 
     for index, value in enumerate(
@@ -358,9 +401,9 @@ def draw_news_page(
             f"{index}. {value}",
         )
 
-        cursor -= 4.4 * mm
+        cursor -= 5.8 * mm
 
-    cursor -= 1 * mm
+    cursor -= 3 * mm
 
     cursor = _draw_wrapped(
         canvas,
@@ -368,7 +411,7 @@ def draw_news_page(
         x=left,
         y=cursor,
         max_width=content_width,
-        font_size=6.9,
-        line_height=4.0 * mm,
+        font_size=7.6,
+        line_height=4.9 * mm,
         bottom=bottom,
     )

@@ -87,9 +87,9 @@ def draw_cell_group_page(
 ) -> None:
     register_korean_fonts()
 
-    margin_x = 12 * mm
-    margin_top = 14 * mm
-    margin_bottom = 12 * mm
+    margin_x = 9 * mm
+    margin_top = 10 * mm
+    margin_bottom = 9 * mm
 
     left = x + margin_x
     right = x + width - margin_x
@@ -104,7 +104,7 @@ def draw_cell_group_page(
 
     canvas.setFont(
         FONT_BOLD,
-        14,
+        16.5,
     )
 
     canvas.drawCentredString(
@@ -122,7 +122,7 @@ def draw_cell_group_page(
     if page.scripture:
         canvas.setFont(
             FONT_REGULAR,
-            9,
+            10.5,
         )
         canvas.drawCentredString(
             x + width / 2,
@@ -130,12 +130,12 @@ def draw_cell_group_page(
             page.scripture,
         )
 
-        cursor -= 6 * mm
+        cursor -= 9 * mm
 
     if page.title:
         canvas.setFont(
             FONT_BOLD,
-            13,
+            15,
         )
         canvas.drawCentredString(
             x + width / 2,
@@ -168,10 +168,16 @@ def draw_cell_group_page(
             "4개여야 합니다."
         )
 
-    question_font_size = 9
-    line_height = 6.3 * mm
-    question_gap = 5.5 * mm
-    number_width = 7 * mm
+    question_font_size = 10.5
+    line_height = 6.0 * mm
+
+    # 각 문항 아래에 실제 주보에서 메모할 수 있는 빈 공간을 둔다.
+    # 줄은 그리지 않고, 필기할 수 있는 여백만 확보한다.
+    answer_top_gap = 3 * mm
+    answer_space_height = 16 * mm
+    question_gap = 5 * mm
+
+    number_width = 8 * mm
 
     text_width = (
         right
@@ -230,7 +236,17 @@ def draw_cell_group_page(
 
             line_cursor -= line_height
 
-        cursor = (
+        # 문항별 필기 공간(라인 없이 빈 공간만 확보)
+        answer_bottom = (
             line_cursor
-            - question_gap
+            - answer_top_gap
+            - answer_space_height
         )
+
+        if answer_bottom < y + margin_bottom:
+            raise ValueError(
+                "목장 말씀 나누기 필기 공간이 "
+                "페이지 영역을 넘습니다."
+            )
+
+        cursor = answer_bottom - question_gap
