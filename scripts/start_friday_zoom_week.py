@@ -122,6 +122,8 @@ def main():
             str(checklist),
             "--media-dir",
             str(media_dir),
+            "--common-media-dir",
+            "assets/private/friday_zoom",
         ]
     )
 

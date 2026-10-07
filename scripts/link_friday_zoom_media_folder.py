@@ -60,6 +60,13 @@ SHARED_COMMUNITY_PERSONAL_FIELDS = {
     "personal_prayer",
 }
 
+COMMON_AUDIO_FIELDS = {
+    "first_prayer",
+    "word_prayer",
+    "community_prayer",
+    "personal_prayer",
+}
+
 
 def parse_args():
     parser = argparse.ArgumentParser()
@@ -72,6 +79,10 @@ def parse_args():
     parser.add_argument(
         "--media-dir",
         required=True,
+    )
+
+    parser.add_argument(
+        "--common-media-dir",
     )
 
     return parser.parse_args()
@@ -120,6 +131,12 @@ def main():
         args.media_dir
     )
 
+    common_media_dir = (
+        Path(args.common_media_dir)
+        if args.common_media_dir
+        else None
+    )
+
     if not checklist.exists():
         raise SystemExit(
             f"ERROR: checklist not found: {checklist}"
@@ -162,6 +179,18 @@ def main():
         SLOTS["community_prayer"]["extensions"],
     )
 
+    common_shared_audio = None
+
+    if (
+        common_media_dir is not None
+        and common_media_dir.exists()
+    ):
+        common_shared_audio = find_exact_slot_file(
+            common_media_dir,
+            SHARED_COMMUNITY_PERSONAL_SLOT,
+            SLOTS["community_prayer"]["extensions"],
+        )
+
     assignments = []
     missing = []
 
@@ -196,6 +225,27 @@ def main():
             and shared_audio is not None
         ):
             path = shared_audio
+
+        # 공통 음원은 기도 음원에만 fallback으로 사용한다.
+        # 항상 이번 주 파일이 공통 파일보다 우선한다.
+        if (
+            path is None
+            and slot in COMMON_AUDIO_FIELDS
+            and common_media_dir is not None
+            and common_media_dir.exists()
+        ):
+            path = find_exact_slot_file(
+                common_media_dir,
+                slot,
+                config["extensions"],
+            )
+
+        if (
+            path is None
+            and slot in SHARED_COMMUNITY_PERSONAL_FIELDS
+            and common_shared_audio is not None
+        ):
+            path = common_shared_audio
 
         if path is None:
             if not optional:
