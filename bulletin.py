@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import argparse
 import re
-import shutil
 from datetime import date
 from pathlib import Path
 
@@ -11,12 +10,21 @@ import yaml
 from media_automation.bulletin.build import (
     build_bulletin_from_files,
 )
-from media_automation.bulletin.hwp import (
-    extract_hwp_text,
+from media_automation.bulletin.source import (
+    find_transfer,
+    read_transfer as read_transfer_source,
+    register_transfer,
+    validate_transfer_date as validate_source_date,
 )
 from media_automation.bulletin.transfer import (
     parse_bulletin_transfer_text,
 )
+from media_automation.bulletin.weekly import (
+    alignment_differences,
+    merge_for_sunday,
+    sermon_crosscheck,
+)
+from media_automation.weekly_data.models import SundayData
 
 
 ROOT = Path(__file__).resolve().parent
@@ -24,7 +32,6 @@ INPUT_ROOT = ROOT / "input" / "bulletin"
 SUNDAY_ROOT = ROOT / "output" / "sunday_intake"
 WORK_ROOT = ROOT / "output" / "bulletin_intake"
 OUTPUT_ROOT = ROOT / "output" / "bulletin"
-ANCHOR_PATH = ROOT / "data" / "bulletin_number_anchor.yaml"
 
 
 def token(value: str) -> str:
@@ -74,46 +81,24 @@ def save_state(value: str, data: dict) -> None:
 
 
 def transfer_path(value: str) -> Path | None:
-    directory = week_dir(value)
-    if not directory.exists():
-        return None
-
-    candidates = sorted(directory.glob("transfer.*"))
-
-    if not candidates:
-        return None
-
-    if len(candidates) > 1:
-        raise SystemExit(
-            "ERROR: 전달 주보 입력이 여러 개 있습니다:\n"
-            + "\n".join(f"  - {path}" for path in candidates)
-        )
-
-    return candidates[0]
+    try:
+        return find_transfer(week_dir(value))
+    except ValueError as exc:
+        raise SystemExit(f"ERROR: {exc}") from exc
 
 
 def read_transfer(path: Path) -> str:
-    if path.suffix.lower() in {".hwp", ".hwpx"}:
-        return extract_hwp_text(path)
-
-    return path.read_text(encoding="utf-8")
+    return read_transfer_source(path)
 
 
 def validate_transfer_date(
     expected: date,
     path: Path,
 ) -> None:
-    raw = read_transfer(path)
-    parsed = parse_bulletin_transfer_text(
-        raw,
-        year=expected.year,
-    )
-
-    if parsed.date != expected:
-        raise SystemExit(
-            "ERROR: 입력한 날짜와 전달 주보 날짜가 다릅니다: "
-            f"{expected} != {parsed.date}"
-        )
+    try:
+        validate_source_date(expected, path)
+    except ValueError as exc:
+        raise SystemExit(f"ERROR: {exc}") from exc
 
 
 def start(args) -> None:
@@ -123,44 +108,13 @@ def start(args) -> None:
     if not source.is_absolute():
         source = (Path.cwd() / source).resolve()
 
-    if not source.exists():
-        raise SystemExit(
-            f"ERROR: 전달 주보 파일을 찾을 수 없습니다: {source}"
-        )
-
-    suffix = source.suffix.lower()
-    if suffix not in {".hwp", ".hwpx", ".txt"}:
-        raise SystemExit(
-            "ERROR: 전달 주보는 .hwp / .hwpx / .txt 파일이어야 합니다."
-        )
-
-    target_dir = week_dir(args.date)
-    target_dir.mkdir(parents=True, exist_ok=True)
-
-    destination = target_dir / f"transfer{suffix}"
-
-    others = [
-        path
-        for path in target_dir.glob("transfer.*")
-        if path != destination
-    ]
-    if others:
-        raise SystemExit(
-            "ERROR: 이미 다른 형식의 전달 주보가 있습니다:\n"
-            + "\n".join(f"  - {path}" for path in others)
-        )
-
-    shutil.copy2(source, destination)
-
     try:
-        validate_transfer_date(
-            expected,
-            destination,
+        destination = register_transfer(
+            source, week_dir(args.date), expected,
+            replace=getattr(args, "replace", False),
         )
-    except Exception:
-        if destination.exists():
-            destination.unlink()
-        raise
+    except ValueError as exc:
+        raise SystemExit(f"ERROR: {exc}") from exc
 
     state = load_yaml(state_path(args.date))
 
@@ -179,17 +133,12 @@ def start(args) -> None:
         f"sunday   : "
         f"{'READY' if sunday_path(args.date).exists() else 'NOT READY'}"
     )
-    number, number_source, anchor = resolve_number(
-        args.date,
-        state,
-    )
+    number, number_source = resolve_number(state)
 
     if number:
         print(
             f"number   : READY (No. {number}, {number_source})"
         )
-        if number_source == "AUTO" and anchor:
-            print(f"anchor   : {anchor}")
     else:
         print("number   : 확인 필요")
 
@@ -210,79 +159,46 @@ def normalize_number(value: str) -> str:
     if not result:
         raise SystemExit("ERROR: 주보 호수를 입력해주세요.")
 
+    if re.fullmatch(r"\d+-\d+", result) is None:
+        raise SystemExit("ERROR: 주보 호수는 13-40 같은 형식이어야 합니다.")
+
     return result
 
 
-def save_anchor(date_value: str, number: str) -> None:
-    ANCHOR_PATH.parent.mkdir(parents=True, exist_ok=True)
-    ANCHOR_PATH.write_text(
-        yaml.safe_dump(
-            {
-                "date": date_value,
-                "number": number,
-            },
-            allow_unicode=True,
-            sort_keys=False,
-        ),
-        encoding="utf-8",
-    )
-
-
-def automatic_number(
-    date_value: str,
-) -> tuple[str | None, str | None]:
-    if not ANCHOR_PATH.exists():
-        return None, None
-
-    anchor = load_yaml(ANCHOR_PATH)
-
-    anchor_date_raw = str(anchor.get("date", "")).strip()
-    anchor_number_raw = str(anchor.get("number", "")).strip()
-
-    if not anchor_date_raw or not anchor_number_raw:
-        return None, None
-
-    anchor_date = parse_date(anchor_date_raw)
-    target_date = parse_date(date_value)
-
-    match = re.fullmatch(
-        r"(\d+)-(\d+)",
-        normalize_number(anchor_number_raw),
-    )
-    if match is None:
-        return None, None
-
-    delta_days = (target_date - anchor_date).days
-
-    # 주보는 일주일에 한 번 발행하므로 정확히 7일 단위일 때만 계산한다.
-    if delta_days % 7 != 0:
-        return None, None
-
-    volume, issue_raw = match.groups()
-    issue = int(issue_raw) + (delta_days // 7)
-
-    if issue < 0:
-        return None, None
-
-    width = len(issue_raw)
-    number = f"{volume}-{issue:0{width}d}"
-
-    return number, f"{anchor_date_raw} = {anchor_number_raw}"
-
-
-def resolve_number(
-    date_value: str,
-    state: dict,
-) -> tuple[str | None, str, str | None]:
+def resolve_number(state: dict) -> tuple[str | None, str]:
     explicit = state.get("bulletin_number")
     if explicit:
-        return str(explicit), "EXPLICIT", None
+        return str(explicit), "EXPLICIT"
 
-    automatic, anchor = automatic_number(date_value)
-    if automatic:
-        return automatic, "AUTO", anchor
+    # A past issue number is not authorization to infer this week's number.
+    return None, "MISSING"
 
-    return None, "MISSING", anchor
+
+def verify_shared_weekly(date_value: str, actual_raw: dict, transfer: Path) -> None:
+    """Require the Sunday PPT data to reflect this registered transfer."""
+    date_token = token(date_value)
+    intake_path = SUNDAY_ROOT / f"sunday_{date_token}_intake.yaml"
+    base_path = SUNDAY_ROOT / f"sunday-{date_token}-base.yaml"
+    if not intake_path.is_file() or not base_path.is_file():
+        raise SystemExit(
+            "ERROR: 같은 주 주일 안내의 원본 데이터가 없어 교차검수할 수 없습니다.\n"
+            f"NEXT: python sunday.py resume {date_value}"
+        )
+
+    base = SundayData.model_validate(load_yaml(base_path))
+    actual = SundayData.model_validate(actual_raw)
+    parsed_transfer = parse_bulletin_transfer_text(
+        read_transfer(transfer), year=base.date.year
+    )
+    expected = merge_for_sunday(base, parsed_transfer, load_yaml(intake_path))
+    differences = alignment_differences(expected, actual)
+    differences.extend(sermon_crosscheck(actual, parsed_transfer))
+    if differences:
+        preview = ", ".join(differences[:8])
+        raise SystemExit(
+            "ERROR: 주일 PPT 데이터와 등록된 전달 주보의 공통 값이 다릅니다: "
+            f"{preview}\nNEXT: python sunday.py resume {date_value}"
+        )
 
 
 def set_number(args) -> None:
@@ -299,10 +215,7 @@ def set_number(args) -> None:
     number = normalize_number(args.number)
     state["bulletin_number"] = number
     save_state(args.date, state)
-    save_anchor(args.date, number)
-
     print(f"주보 호수 설정: No. {number}")
-    print(f"자동 계산 기준점 갱신: {args.date} = {number}")
 
 
 def status(args) -> None:
@@ -324,17 +237,12 @@ def status(args) -> None:
         + ("READY" if sunday.exists() else "NOT READY")
     )
 
-    number, number_source, anchor = resolve_number(
-        args.date,
-        state,
-    )
+    number, number_source = resolve_number(state)
 
     if number:
         print(
             f"number   : READY (No. {number}, {number_source})"
         )
-        if number_source == "AUTO" and anchor:
-            print(f"anchor   : {anchor}")
     else:
         print("number   : 확인 필요")
         print(
@@ -352,11 +260,21 @@ def status(args) -> None:
         except SystemExit as exc:
             print(f"date     : ERROR ({exc})")
 
+    alignment_matches = False
+    if date_matches and sunday.exists() and transfer is not None:
+        try:
+            verify_shared_weekly(args.date, load_yaml(sunday), transfer)
+            alignment_matches = True
+            print("shared   : MATCH")
+        except (SystemExit, ValueError) as exc:
+            print(f"shared   : ERROR ({exc})")
+
     ready = (
         transfer is not None
         and sunday.exists()
         and bool(number)
         and date_matches
+        and alignment_matches
     )
 
     print()
@@ -386,14 +304,11 @@ def complete(args) -> None:
         )
 
     state = load_yaml(state_path(args.date))
-    number, number_source, anchor = resolve_number(
-        args.date,
-        state,
-    )
+    number, _ = resolve_number(state)
 
     if not number:
         raise SystemExit(
-            "ERROR: 주보 호수를 계산할 기준점이 없습니다.\n"
+            "ERROR: 해당 주에 확인된 주보 호수가 없습니다.\n"
             f"NEXT: python bulletin.py number {args.date} <호수>"
         )
 
@@ -410,6 +325,8 @@ def complete(args) -> None:
             "ERROR: Sunday YAML 날짜가 다릅니다: "
             f"{raw_date} != {args.date}"
         )
+
+    verify_shared_weekly(args.date, raw, transfer)
 
     bulletin = raw.setdefault("bulletin", {})
     bulletin["number"] = {
@@ -444,6 +361,7 @@ def complete(args) -> None:
         sunday_yaml=derived_sunday,
         transfer_source=transfer,
         output_pdf=output,
+        already_merged=True,
     )
 
     print("\n=== BULLETIN COMPLETE ===")
@@ -478,6 +396,7 @@ def main() -> None:
     )
     p.add_argument("date")
     p.add_argument("transfer")
+    p.add_argument("--replace", action="store_true", help="등록된 전달 주보 수정본으로 교체")
     p.set_defaults(func=start)
 
     p = sub.add_parser(

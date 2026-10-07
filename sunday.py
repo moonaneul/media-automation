@@ -2,19 +2,20 @@ from __future__ import annotations
 
 import argparse
 import platform
-import shutil
 import subprocess
 import sys
 from datetime import datetime
 from pathlib import Path
 
 import yaml
+from media_automation.bulletin.source import find_transfer
 
 
 ROOT = Path(__file__).resolve().parent
 SCRIPTS = ROOT / "scripts"
 INTAKE_DIR = ROOT / "output" / "sunday_intake"
 INPUT_ROOT = ROOT / "input" / "sunday"
+BULLETIN_ROOT = ROOT / "input" / "bulletin"
 
 
 def run_script(name, *args, allow=(0,)):
@@ -52,6 +53,13 @@ def songs_path(date_value: str) -> Path:
 
 def transfer_text_path(date_value: str) -> Path:
     return INPUT_ROOT / token(date_value) / "transfer.txt"
+
+
+def registered_transfer(date_value: str) -> Path | None:
+    return (
+        find_transfer(BULLETIN_ROOT / token(date_value))
+        or (transfer_text_path(date_value) if transfer_text_path(date_value).is_file() else None)
+    )
 
 
 def load_yaml(path: Path):
@@ -176,23 +184,12 @@ def bulletin(args):
     source = Path(args.file).expanduser()
     if not source.is_absolute():
         source = (Path.cwd() / source).resolve()
-
-    if not source.exists():
-        raise SystemExit(f"ERROR: 전달 주보 파일을 찾을 수 없습니다: {source}")
-
-    output = transfer_text_path(args.date)
-    output.parent.mkdir(parents=True, exist_ok=True)
-
-    if source.suffix.lower() == ".txt":
-        shutil.copyfile(source, output)
-        print(f"전달 주보 텍스트 등록: {output}")
-    else:
-        run_script(
-            "extract_hwp_text.py",
-            str(source),
-            "--output",
-            str(output),
-        )
+    command = [sys.executable, str(ROOT / "bulletin.py"), "start", args.date, str(source)]
+    if args.replace:
+        command.append("--replace")
+    result = subprocess.run(command, cwd=ROOT, check=False)
+    if result.returncode:
+        raise SystemExit(result.returncode)
 
     result = run_script(
         "resume_sunday_week.py",
@@ -320,7 +317,7 @@ def status(args):
     print("review   : COMPLETE")
     print(
         f"bulletin : "
-        f"{'READY' if transfer_text_path(date_value).exists() else 'NOT PROVIDED'}"
+        f"{'READY' if registered_transfer(date_value) else 'NOT PROVIDED'}"
     )
     print(f"weekly   : {'READY' if weekly_path(date_value).exists() else 'NOT READY'}")
     print(f"bible    : {'READY' if bible_path(date_value).exists() else 'NOT READY'}")
@@ -393,8 +390,9 @@ def status(args):
                 f"{date_value} <슬롯> <악보.ppt|pptx>"
             )
 
-    if transfer_text_path(date_value).exists():
-        print(f"transfer : {transfer_text_path(date_value)}")
+    transfer = registered_transfer(date_value)
+    if transfer is not None:
+        print(f"transfer : {transfer}")
 
     if (
         weekly_path(date_value).exists()
@@ -429,6 +427,7 @@ def main():
     p = sub.add_parser("bulletin", help="같은 주 전달 주보 HWP/TXT 등록")
     p.add_argument("date")
     p.add_argument("file")
+    p.add_argument("--replace", action="store_true", help="등록된 전달 주보 수정본으로 교체")
     p.set_defaults(func=bulletin)
 
     p = sub.add_parser("resume", help="입력 보완 후 주일 파이프라인 재개")

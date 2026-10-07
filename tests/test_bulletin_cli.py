@@ -37,11 +37,6 @@ def configure_roots(monkeypatch, tmp_path: Path) -> None:
         "OUTPUT_ROOT",
         tmp_path / "output" / "bulletin",
     )
-    monkeypatch.setattr(
-        bulletin,
-        "ANCHOR_PATH",
-        tmp_path / "data" / "bulletin_number_anchor.yaml",
-    )
 
 
 def write_transfer(
@@ -120,28 +115,21 @@ def test_complete_blocks_when_sunday_yaml_is_missing(
         bulletin.complete(args)
 
 
-def test_number_is_calculated_from_anchor(
+def test_number_requires_explicit_input(
     tmp_path,
     monkeypatch,
 ):
     configure_roots(monkeypatch, tmp_path)
 
-    bulletin.save_anchor(
-        "2026-10-04",
-        "13-40",
-    )
-
-    number, source, anchor = bulletin.resolve_number(
-        "2026-10-11",
+    number, source = bulletin.resolve_number(
         {
             "date": "2026-10-11",
             "bulletin_number": None,
         },
     )
 
-    assert number == "13-41"
-    assert source == "AUTO"
-    assert anchor == "2026-10-04 = 13-40"
+    assert number is None
+    assert source == "MISSING"
 
 
 def test_status_never_ready_when_transfer_date_is_wrong(
@@ -250,10 +238,12 @@ def test_complete_keeps_original_sunday_and_writes_number_only_to_derived(
         sunday_yaml,
         transfer_source,
         output_pdf,
+        already_merged,
     ):
         captured["sunday_yaml"] = sunday_yaml
         captured["transfer_source"] = transfer_source
         captured["output_pdf"] = output_pdf
+        captured["already_merged"] = already_merged
 
         return SimpleNamespace(
             pdf=SimpleNamespace(
@@ -271,6 +261,7 @@ def test_complete_keeps_original_sunday_and_writes_number_only_to_derived(
         "build_bulletin_from_files",
         fake_build_bulletin_from_files,
     )
+    monkeypatch.setattr(bulletin, "verify_shared_weekly", lambda *args: None)
 
     args = SimpleNamespace(
         date="2026-10-04",
@@ -316,3 +307,4 @@ def test_complete_keeps_original_sunday_and_writes_number_only_to_derived(
         == bulletin.OUTPUT_ROOT
         / "20261004_주보.pdf"
     )
+    assert captured["already_merged"] is True
