@@ -217,6 +217,13 @@ def resume(args):
         print(f"\nNEXT: python sunday.py status {args.date}")
 
 
+def song_register(args):
+    command_args = [args.date, args.slot, args.file]
+    if args.replace:
+        command_args.append("--replace")
+    run_script("register_sunday_song.py", *command_args)
+
+
 def review(args):
     run_script(
         "resolve_sunday_review.py",
@@ -317,7 +324,18 @@ def status(args):
     )
     print(f"weekly   : {'READY' if weekly_path(date_value).exists() else 'NOT READY'}")
     print(f"bible    : {'READY' if bible_path(date_value).exists() else 'NOT READY'}")
-    print(f"songs    : {'READY' if songs_path(date_value).exists() else 'NOT READY'}")
+    checklist = load_yaml(checklist_path(date_value))
+    items = checklist.get("items", [])
+    song_dir = INPUT_ROOT / date_token
+    scores_ready = checklist_path(date_value).is_file() and all(
+        item.get("expected_filename")
+        and (song_dir / item["expected_filename"]).is_file()
+        for item in items
+    )
+    print(
+        f"songs    : "
+        f"{'READY' if songs_path(date_value).exists() and scores_ready else 'NOT READY'}"
+    )
 
     weekly = load_yaml(weekly_path(date_value))
     if weekly:
@@ -354,10 +372,7 @@ def status(args):
             for field in unset:
                 print(f"  UNSET: {field}")
 
-    checklist = load_yaml(checklist_path(date_value))
-    items = checklist.get("items", [])
     if items:
-        song_dir = INPUT_ROOT / date_token
         ready_count = 0
         for item in items:
             expected = item.get("expected_filename")
@@ -372,6 +387,11 @@ def status(args):
                 )
         print(f"score    : {ready_count}/{len(items)} READY")
         print(f"folder   : {song_dir}")
+        if ready_count < len(items):
+            print(
+                "NEXT: python sunday.py song-register "
+                f"{date_value} <슬롯> <악보.ppt|pptx>"
+            )
 
     if transfer_text_path(date_value).exists():
         print(f"transfer : {transfer_text_path(date_value)}")
@@ -380,6 +400,7 @@ def status(args):
         weekly_path(date_value).exists()
         and bible_path(date_value).exists()
         and songs_path(date_value).exists()
+        and scores_ready
     ):
         print("\nSUNDAY INPUTS READY")
         print(
@@ -413,6 +434,13 @@ def main():
     p = sub.add_parser("resume", help="입력 보완 후 주일 파이프라인 재개")
     p.add_argument("date")
     p.set_defaults(func=resume)
+
+    p = sub.add_parser("song-register", help="악보 PPT를 이번 주 찬양 슬롯에 등록")
+    p.add_argument("date")
+    p.add_argument("slot", help="1, 2, 3, separate, offering, special, decision")
+    p.add_argument("file")
+    p.add_argument("--replace", action="store_true", help="기존 슬롯 파일 교체")
+    p.set_defaults(func=song_register)
 
     p = sub.add_parser("status", help="주일예배 준비 상태 확인")
     p.add_argument("date")
