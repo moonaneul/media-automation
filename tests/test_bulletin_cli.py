@@ -37,6 +37,11 @@ def configure_roots(monkeypatch, tmp_path: Path) -> None:
         "OUTPUT_ROOT",
         tmp_path / "output" / "bulletin",
     )
+    monkeypatch.setattr(
+        bulletin,
+        "ANCHOR_PATH",
+        tmp_path / "data" / "bulletin_number_anchor.yaml",
+    )
 
 
 def write_transfer(
@@ -115,36 +120,28 @@ def test_complete_blocks_when_sunday_yaml_is_missing(
         bulletin.complete(args)
 
 
-def test_complete_blocks_when_number_is_missing(
+def test_number_is_calculated_from_anchor(
     tmp_path,
     monkeypatch,
 ):
     configure_roots(monkeypatch, tmp_path)
 
-    write_transfer(
+    bulletin.save_anchor(
         "2026-10-04",
-        "10/4\n",
+        "13-40",
     )
-    write_sunday("2026-10-04")
 
-    bulletin.save_state(
-        "2026-10-04",
+    number, source, anchor = bulletin.resolve_number(
+        "2026-10-11",
         {
-            "date": "2026-10-04",
+            "date": "2026-10-11",
             "bulletin_number": None,
         },
     )
 
-    args = SimpleNamespace(
-        date="2026-10-04",
-        output=None,
-    )
-
-    with pytest.raises(
-        SystemExit,
-        match="주보 호수가 확인되지 않았습니다",
-    ):
-        bulletin.complete(args)
+    assert number == "13-41"
+    assert source == "AUTO"
+    assert anchor == "2026-10-04 = 13-40"
 
 
 def test_status_never_ready_when_transfer_date_is_wrong(
