@@ -124,8 +124,9 @@ def parse_notice(notice: Path):
         print_bible_next(date_value)
         return
 
-    print(f"\nNEXT: add score PPT files under {SONG_ROOT / token(date_value)}")
-    print(f"      then python wednesday.py complete {date_value}")
+    print("\nNEXT: register each score PPT file")
+    print(f"  python wednesday.py song-register {date_value} 1 <파일.ppt|pptx>")
+    print(f"  then python wednesday.py complete {date_value}")
 
 
 def start(args):
@@ -230,6 +231,13 @@ def bible_register(args):
 
     print("\n비상 보완 본문이 로컬 라이브러리에 등록되었습니다.")
     print(f"NEXT: python wednesday.py resume {args.date}")
+
+
+def song_register(args):
+    command_args = [args.date, args.slot, args.file]
+    if args.replace:
+        command_args.append("--replace")
+    run_script("register_wednesday_song.py", *command_args)
 
 
 def bible_master_import(args):
@@ -402,6 +410,13 @@ def main():
     p = sub.add_parser("bible-register", help="비상용: 확인한 이번 주 본문을 검증/등록")
     p.add_argument("date")
     p.set_defaults(func=bible_register)
+
+    p = sub.add_parser("song-register", help="악보 PPT를 이번 주 찬양 슬롯에 등록")
+    p.add_argument("date")
+    p.add_argument("slot", help="1, 2, 3, additional, decision")
+    p.add_argument("file")
+    p.add_argument("--replace", action="store_true", help="기존 슬롯 파일 교체")
+    p.set_defaults(func=song_register)
 
     p = sub.add_parser("complete", help="최종 수요예배 PPT 제작")
     p.add_argument("date")
