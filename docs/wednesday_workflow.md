@@ -30,7 +30,29 @@ python wednesday.py resume YYYY-MM-DD
 
 ## 악보 준비
 
-이번 주 악보는 다음 폴더에 둡니다.
+사용자가 제공한 악보 PPT는 슬롯에 등록합니다.
+
+```bash
+python wednesday.py song-register YYYY-MM-DD 1 "받은파일.pptx"
+python wednesday.py song-register YYYY-MM-DD additional "받은파일.ppt"
+```
+
+슬롯 이름:
+
+```text
+1 / 2 / 3     = 시작 찬양 1~3
+additional    = 추가 찬양
+decision      = 결단 찬송
+```
+
+- `.pptx`는 원본을 주간 작업 폴더에 복사합니다.
+- `.ppt`는 원본을 수정하지 않고 Microsoft PowerPoint로 `.pptx` 복사본을 만든 뒤 등록합니다.
+- 기존 슬롯 파일은 자동으로 덮어쓰지 않습니다. 교체가 맞을 때만 `--replace`를 추가합니다.
+- 등록 직후 체크리스트와 찬양 manifest가 갱신됩니다.
+- 이번 주 체크리스트에 없는 슬롯은 등록하지 않습니다.
+- 과거 주차 파일이나 비슷한 제목의 파일을 자동 선택하지 않습니다.
+
+등록 결과는 다음 폴더에 저장됩니다.
 
 ```text
 input/wednesday/YYYYMMDD/
@@ -46,7 +68,7 @@ additional_song.pptx
 decision_hymn.pptx
 ```
 
-파일명은 **정확히 일치할 때만** 사용합니다.
+내부 체크리스트와 빌드에서는 파일명이 **정확히 일치할 때만** 사용됩니다.
 
 - 비슷한 파일명을 자동 추정하지 않습니다.
 - 지난주 악보를 자동 대체하지 않습니다.

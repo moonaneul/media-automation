@@ -74,6 +74,8 @@
 - 주요 순서 사이 빈 화면
 - 한 절당 한 화면의 성경 본문
 - 기존 찬양 악보 슬라이드 재사용 방식
+- `wednesday.py song-register`로 사용자 제공 `.ppt`/`.pptx`를 주간 슬롯에 등록하고 체크리스트·manifest를 갱신하는 흐름
+- Microsoft PowerPoint를 이용한 `.ppt` 원본의 별도 `.pptx` 변환
 - 불필요한 링크 및 잔존 객체 검수 필요성
 
 ---
