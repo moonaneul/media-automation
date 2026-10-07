@@ -24,6 +24,7 @@ INPUT_ROOT = ROOT / "input" / "bulletin"
 SUNDAY_ROOT = ROOT / "output" / "sunday_intake"
 WORK_ROOT = ROOT / "output" / "bulletin_intake"
 OUTPUT_ROOT = ROOT / "output" / "bulletin"
+ANCHOR_PATH = ROOT / "data" / "bulletin_number_anchor.yaml"
 
 
 def token(value: str) -> str:
@@ -178,7 +179,20 @@ def start(args) -> None:
         f"sunday   : "
         f"{'READY' if sunday_path(args.date).exists() else 'NOT READY'}"
     )
-    print("number   : 확인 필요")
+    number, number_source, anchor = resolve_number(
+        args.date,
+        state,
+    )
+
+    if number:
+        print(
+            f"number   : READY (No. {number}, {number_source})"
+        )
+        if number_source == "AUTO" and anchor:
+            print(f"anchor   : {anchor}")
+    else:
+        print("number   : 확인 필요")
+
     print(
         f"\nNEXT: python bulletin.py status {args.date}"
     )
@@ -199,6 +213,78 @@ def normalize_number(value: str) -> str:
     return result
 
 
+def save_anchor(date_value: str, number: str) -> None:
+    ANCHOR_PATH.parent.mkdir(parents=True, exist_ok=True)
+    ANCHOR_PATH.write_text(
+        yaml.safe_dump(
+            {
+                "date": date_value,
+                "number": number,
+            },
+            allow_unicode=True,
+            sort_keys=False,
+        ),
+        encoding="utf-8",
+    )
+
+
+def automatic_number(
+    date_value: str,
+) -> tuple[str | None, str | None]:
+    if not ANCHOR_PATH.exists():
+        return None, None
+
+    anchor = load_yaml(ANCHOR_PATH)
+
+    anchor_date_raw = str(anchor.get("date", "")).strip()
+    anchor_number_raw = str(anchor.get("number", "")).strip()
+
+    if not anchor_date_raw or not anchor_number_raw:
+        return None, None
+
+    anchor_date = parse_date(anchor_date_raw)
+    target_date = parse_date(date_value)
+
+    match = re.fullmatch(
+        r"(\d+)-(\d+)",
+        normalize_number(anchor_number_raw),
+    )
+    if match is None:
+        return None, None
+
+    delta_days = (target_date - anchor_date).days
+
+    # 주보는 일주일에 한 번 발행하므로 정확히 7일 단위일 때만 계산한다.
+    if delta_days % 7 != 0:
+        return None, None
+
+    volume, issue_raw = match.groups()
+    issue = int(issue_raw) + (delta_days // 7)
+
+    if issue < 0:
+        return None, None
+
+    width = len(issue_raw)
+    number = f"{volume}-{issue:0{width}d}"
+
+    return number, f"{anchor_date_raw} = {anchor_number_raw}"
+
+
+def resolve_number(
+    date_value: str,
+    state: dict,
+) -> tuple[str | None, str, str | None]:
+    explicit = state.get("bulletin_number")
+    if explicit:
+        return str(explicit), "EXPLICIT", None
+
+    automatic, anchor = automatic_number(date_value)
+    if automatic:
+        return automatic, "AUTO", anchor
+
+    return None, "MISSING", anchor
+
+
 def set_number(args) -> None:
     parse_date(args.date)
 
@@ -213,8 +299,10 @@ def set_number(args) -> None:
     number = normalize_number(args.number)
     state["bulletin_number"] = number
     save_state(args.date, state)
+    save_anchor(args.date, number)
 
     print(f"주보 호수 설정: No. {number}")
+    print(f"자동 계산 기준점 갱신: {args.date} = {number}")
 
 
 def status(args) -> None:
@@ -236,9 +324,17 @@ def status(args) -> None:
         + ("READY" if sunday.exists() else "NOT READY")
     )
 
-    number = state.get("bulletin_number")
+    number, number_source, anchor = resolve_number(
+        args.date,
+        state,
+    )
+
     if number:
-        print(f"number   : READY (No. {number})")
+        print(
+            f"number   : READY (No. {number}, {number_source})"
+        )
+        if number_source == "AUTO" and anchor:
+            print(f"anchor   : {anchor}")
     else:
         print("number   : 확인 필요")
         print(
@@ -290,12 +386,14 @@ def complete(args) -> None:
         )
 
     state = load_yaml(state_path(args.date))
-    number = state.get("bulletin_number")
+    number, number_source, anchor = resolve_number(
+        args.date,
+        state,
+    )
 
     if not number:
         raise SystemExit(
-            "ERROR: 주보 호수가 확인되지 않았습니다.\n"
-            "이전 주 호수에서 자동 계산하지 않습니다.\n"
+            "ERROR: 주보 호수를 계산할 기준점이 없습니다.\n"
             f"NEXT: python bulletin.py number {args.date} <호수>"
         )
 
