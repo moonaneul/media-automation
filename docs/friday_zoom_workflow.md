@@ -66,6 +66,16 @@ input/friday_zoom/YYYYMMDD/
 
 - pre_service_audio.mp3
 
+### 공통 기도 음원
+
+공통 음원 폴더: assets/private/friday_zoom/
+
+- first_prayer.mp3
+- word_prayer.mp3
+- community_personal_prayer.mp3 (community_prayer / personal_prayer 공용)
+
+우선순위는 이번 주 파일 > 공통 기도 음원이다. 해당 주에 별도 기도 음원이 있으면 주간 파일을 사용한다. 찬양 영상에는 공통 fallback을 적용하지 않는다.
+
 비슷한 파일명이나 과거 주차 미디어를 자동 대체하지 않는다.
 
 ## 5. 최종 PPT 제작

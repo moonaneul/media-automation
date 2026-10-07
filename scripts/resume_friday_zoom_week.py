@@ -417,6 +417,8 @@ def main():
             str(checklist_path),
             "--media-dir",
             str(media_dir),
+            "--common-media-dir",
+            "assets/private/friday_zoom",
         ],
         check=False,
     )
