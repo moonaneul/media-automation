@@ -539,7 +539,7 @@ def add_zoom_scripture_passage_slides(
             first_paragraph = False
 
             number_paragraph.text = (
-                str(verse.number)
+                verse.display_number
             )
 
             number_paragraph.alignment = (
@@ -700,29 +700,14 @@ def render_friday_zoom_block(
                 "필요합니다."
             )
 
-        passage = (
-            bible_provider.get_passage(
-                block.value.reference
-            )
-        )
+        from media_automation.bible.json_source import split_references
 
         slides = []
-
-        if include_scripture_reference_slide:
-            slides.append(
-                add_zoom_scripture_reference_slide(
-                    prs,
-                    passage.reference,
-                )
-            )
-
-        slides.extend(
-            add_zoom_scripture_passage_slides(
-                prs,
-                passage,
-            )
-        )
-
+        for reference in split_references(block.value.reference):
+            passage = bible_provider.get_passage(reference)
+            if include_scripture_reference_slide:
+                slides.append(add_zoom_scripture_reference_slide(prs, passage.reference))
+            slides.extend(add_zoom_scripture_passage_slides(prs, passage))
         return slides
 
     raise ValueError(

@@ -82,6 +82,8 @@ def load_bible(
             BibleVerse(
                 number=int(number),
                 text=text,
+                end_number=(data.get("verse_ends", {}).get(number)
+                            or data.get("verse_ends", {}).get(str(number))),
             )
             for number, text
             in data["verses"].items()
