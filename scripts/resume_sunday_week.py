@@ -9,6 +9,7 @@ from pathlib import Path
 import yaml
 
 from media_automation.planning import build_sunday_plan
+from media_automation.bulletin.source import find_transfer
 from media_automation.weekly_data.models import SundayData, WeeklyStatus, parse_weekly_data
 
 
@@ -16,6 +17,7 @@ ROOT = Path(__file__).resolve().parents[1]
 SCRIPTS = ROOT / "scripts"
 INTAKE_DIR = ROOT / "output" / "sunday_intake"
 SONG_ROOT = ROOT / "input" / "sunday"
+BULLETIN_ROOT = ROOT / "input" / "bulletin"
 
 
 def run_script(name: str, *args: str, allow=(0,)) -> int:
@@ -87,7 +89,12 @@ def main():
     bible = INTAKE_DIR / f"sunday-{date_token}-bible.yaml"
     songs = INTAKE_DIR / f"sunday-{date_token}-songs.yaml"
     song_dir = SONG_ROOT / date_token
-    transfer_text = song_dir / "transfer.txt"
+    # A single registered original is shared by Sunday PPT and bulletin PDF.
+    # Retain the old Sunday-local TXT only for existing weeks.
+    transfer_text = (
+        find_transfer(BULLETIN_ROOT / date_token)
+        or song_dir / "transfer.txt"
+    )
 
     if not intake.exists():
         print(f"STOP: intake가 없습니다: {intake}")
@@ -124,7 +131,7 @@ def main():
     else:
         shutil.copyfile(base_weekly, weekly)
         print("\n전달 주보가 아직 없어 주일 안내 데이터만 사용합니다.")
-        print(f"expected: {transfer_text}")
+        print(f"expected: {BULLETIN_ROOT / date_token / 'transfer.hwp'}")
 
     weekly_raw = load(weekly)
     parsed = parse_weekly_data(weekly_raw)

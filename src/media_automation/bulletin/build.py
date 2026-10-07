@@ -64,6 +64,7 @@ def build_bulletin_from_files(
     output_pdf: str | Path,
     transfer_source: str | Path | None = None,
     transfer_text: str | Path | None = None,
+    already_merged: bool = False,
 ) -> BulletinBuildResult:
     sunday_path = Path(sunday_yaml)
 
@@ -117,12 +118,14 @@ def build_bulletin_from_files(
     )
 
     # 날짜 불일치 등은 여기서 즉시 실패
-    merge_result = (
-        merge_bulletin_transfer(
-            sunday,
-            transfer,
-        )
-    )
+    if already_merged:
+        if sunday.date != transfer.date:
+            raise ValueError(
+                f"주일 데이터와 전달 주보 날짜가 다릅니다: {sunday.date} != {transfer.date}"
+            )
+        merge_result = BulletinMergeResult(sunday=sunday, praise_raw=transfer.praise_raw)
+    else:
+        merge_result = merge_bulletin_transfer(sunday, transfer)
 
     document = build_bulletin_document(
         merge_result.sunday
