@@ -80,14 +80,14 @@ def draw_cover_page(
     if static is None:
         static = BulletinCoverStatic()
 
-    margin = 12 * mm
+    margin = 10 * mm
     top = y + height - margin
 
     # 호수
     if cover.bulletin_number:
         canvas.setFont(
             FONT_REGULAR,
-            8.5,
+            9.5,
         )
         canvas.drawString(
             x + margin,
@@ -98,7 +98,7 @@ def draw_cover_page(
     # 날짜
     canvas.setFont(
         FONT_REGULAR,
-        8.5,
+        9.5,
     )
     canvas.drawRightString(
         x + width - margin,
@@ -109,39 +109,39 @@ def draw_cover_page(
     # 교회명
     canvas.setFont(
         FONT_BOLD,
-        18,
+        26,
     )
     canvas.drawCentredString(
         x + width / 2,
-        y + height * 0.66,
+        y + height * 0.70,
         static.church_name,
     )
 
     # 표어
     canvas.setFont(
         FONT_BOLD,
-        14,
+        17,
     )
     canvas.drawCentredString(
         x + width / 2,
-        y + height * 0.54,
+        y + height * 0.57,
         static.slogan,
     )
 
     # 마 28:19
     canvas.setFont(
         FONT_REGULAR,
-        9,
+        10.5,
     )
 
-    verse_y = y + height * 0.46
+    verse_y = y + height * 0.48
 
     for index, line in enumerate(
         static.verse_lines
     ):
         canvas.drawCentredString(
             x + width / 2,
-            verse_y - index * 5 * mm,
+            verse_y - index * 6 * mm,
             line,
         )
 
@@ -155,14 +155,14 @@ def draw_cover_page(
 
     canvas.setFont(
         FONT_REGULAR,
-        7.2,
+        8.4,
     )
 
-    contact_y = y + 31 * mm
+    contact_y = y + 35 * mm
 
     for index, line in enumerate(contact_lines):
         canvas.drawCentredString(
             x + width / 2,
-            contact_y - index * 4.5 * mm,
+            contact_y - index * 5 * mm,
             line,
         )
