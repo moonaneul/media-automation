@@ -3,7 +3,7 @@
 ## 한 번만 설치
 
 전달받은 수정 성경 압축파일의 `bible_fixed.json`을 저장소의
-`data/private/bible_fixed.json`에 둔다. 이 경로는 git에서 제외되어 있다.
+`data/private/bible_fixed.json`에 둔다. 이 경로도 git으로 동기화하므로 새 컴퓨터에서 다시 복사할 필요가 없다.
 원본과 수정 기록은 전달받은 압축파일에 보존되어 있다.
 
 이 JSON은 사용자 제공 자료이며 전체 원문 대조 검수 완료를 의미하지 않는다.
