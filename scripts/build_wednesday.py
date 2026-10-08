@@ -146,6 +146,8 @@ def load_bible_provider(
                 BibleVerse(
                     number=number,
                     text=text,
+                    end_number=(data.get("verse_ends", {}).get(number)
+                                or data.get("verse_ends", {}).get(str(number))),
                 )
             )
 

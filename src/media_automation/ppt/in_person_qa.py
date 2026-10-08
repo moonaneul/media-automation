@@ -301,7 +301,7 @@ def validate_in_person_structure(
                     shape
                     for shape in text_shapes
                     if (
-                        f"{verse.number}."
+                        f"{verse.display_number}."
                         in shape.text
                     )
                 ]
@@ -452,7 +452,7 @@ def validate_in_person_structure(
                     )
 
                 expected_number = (
-                    f"{verse.number}."
+                    f"{verse.display_number}."
                 )
 
                 if expected_number not in text:

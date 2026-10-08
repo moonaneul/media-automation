@@ -49,7 +49,11 @@ def load_bible_provider(path: Path) -> InMemoryBibleProvider:
     for lookup_reference, data in passages_raw.items():
         verses_raw = data.get("verses", {})
         verses = [
-            BibleVerse(number=int(number), text=text)
+            BibleVerse(
+                number=int(number), text=text,
+                end_number=(data.get("verse_ends", {}).get(int(number))
+                            or data.get("verse_ends", {}).get(str(number))),
+            )
             for number, text in verses_raw.items()
         ]
         verses.sort(key=lambda verse: verse.number)

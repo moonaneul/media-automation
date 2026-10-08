@@ -2,9 +2,12 @@ from __future__ import annotations
 
 import argparse
 import copy
+import json
 from pathlib import Path
 
 import yaml
+
+from media_automation.bible.json_source import build_index, passage_from_json
 
 from media_automation.bible.master import (
     extract_same_chapter_passage,
@@ -51,7 +54,7 @@ def resolve_from_master(master: dict, reference: str):
     return extract_same_chapter_passage(master, reference)
 
 
-def resolve_requests(requests: dict, library: dict, master: dict) -> tuple[dict, list[tuple[str, str]]]:
+def resolve_requests(requests: dict, library: dict, master: dict, json_index: dict | None = None) -> tuple[dict, list[tuple[str, str]]]:
     resolved = {}
     missing = []
 
@@ -67,7 +70,11 @@ def resolve_requests(requests: dict, library: dict, master: dict) -> tuple[dict,
             continue
 
         try:
-            passage = resolve_from_master(master, reference)
+            passage = (
+                passage_from_json(json_index, reference)
+                if json_index is not None
+                else resolve_from_master(master, reference)
+            )
         except (ValueError, KeyError) as error:
             missing.append((reference, str(error)))
             continue
@@ -86,6 +93,7 @@ def main():
     parser.add_argument("--requests", required=True)
     parser.add_argument("--library", default="data/bible_library.yaml")
     parser.add_argument("--master", default="data/private/bible_master.yaml")
+    parser.add_argument("--json-bible", default="data/private/bible_fixed.json")
     parser.add_argument("--output", required=True)
     args = parser.parse_args()
 
@@ -94,11 +102,17 @@ def main():
     master_path = Path(args.master)
     output_path = Path(args.output)
 
+    if not request_path.exists():
+        raise SystemExit(f"ERROR: requests file missing: {request_path}")
     requests = load_yaml(request_path)
     library = load_yaml(library_path)
     master = load_yaml(master_path)
 
-    resolved, missing = resolve_requests(requests, library, master)
+    json_path = Path(args.json_bible)
+    json_index = None
+    if json_path.exists():
+        json_index = build_index(json.loads(json_path.read_text(encoding="utf-8-sig")))
+    resolved, missing = resolve_requests(requests, library, master, json_index)
 
     if missing:
         print("\nBIBLE RESOLVE: NOT READY")
@@ -107,7 +121,7 @@ def main():
             print(f"MISSING: {reference}")
             print(f"  reason: {reason}")
         print()
-        if not master:
+        if not master and json_index is None:
             print("검증된 개역개정 전체 Bible master가 아직 등록되지 않았습니다.")
             print("교회가 보유한 검증본 YAML/JSON을 한 번 등록하면 이후 같은 원문을 공용으로 사용합니다.")
         print("본문을 임의 생성하거나 다른 번역본으로 대체하지 않습니다.")
@@ -127,6 +141,8 @@ def main():
     print("=" * 60)
     for reference in resolved:
         print(f"OK: {reference}")
+    if json_index is not None:
+        print(f"JSON source: {json_path} (전체 본문 대조 검수와는 별도)")
     print(f"output: {output_path}")
 
 
