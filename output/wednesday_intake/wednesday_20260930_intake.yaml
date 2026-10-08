@@ -29,8 +29,8 @@ fields:
     value: 한송희
     review_required: false
   additional_song:
-    status: blank
-    value: null
+    status: provided
+    value: 나 주의 믿음 갖고
     review_required: false
   scripture:
     status: provided
