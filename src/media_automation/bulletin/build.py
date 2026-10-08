@@ -25,6 +25,7 @@ from media_automation.weekly_data.loader import (
 )
 from media_automation.weekly_data.models import (
     SundayData,
+    WeeklyStatus,
 )
 
 
@@ -102,6 +103,13 @@ def build_bulletin_from_files(
     sunday = SundayData.model_validate(
         raw_sunday
     )
+
+    number = sunday.bulletin.number
+    if number.status != WeeklyStatus.VALUE or not (number.value or "").strip():
+        raise ValueError(
+            "주보 호수가 없습니다. 해당 주에 확인된 호수를 등록한 "
+            "주보용 데이터를 사용해주세요."
+        )
 
     # 전달 HWP에서 추출한 텍스트
     transfer_raw = (

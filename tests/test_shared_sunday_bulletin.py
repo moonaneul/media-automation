@@ -9,6 +9,7 @@ from media_automation.bulletin.transfer import parse_bulletin_transfer_text
 from media_automation.bulletin.weekly import (
     alignment_differences, merge_for_sunday, sermon_crosscheck,
 )
+from media_automation.weekly_data.models import SundayData
 from test_bulletin_merge import make_sunday
 from test_bulletin_cli import bulletin, configure_roots
 
@@ -100,6 +101,11 @@ def test_pdf_builder_does_not_remerge_verified_weekly(tmp_path, monkeypatch):
     import media_automation.bulletin.build as build
 
     sunday = make_sunday()
+    sunday = SundayData.model_validate({
+        **sunday.model_dump(mode="json"),
+        "bulletin": {**sunday.bulletin.model_dump(mode="json"),
+                     "number": {"status": "VALUE", "value": "13-39"}},
+    })
     sunday_file = tmp_path / "sunday.yaml"
     sunday_file.write_text(
         yaml.safe_dump(sunday.model_dump(mode="json"), allow_unicode=True),
