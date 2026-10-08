@@ -18,6 +18,7 @@ from .assets import (
     PreServiceSlideProvider,
 )
 from .slide_merge import (
+    OpenXmlSlideMerger,
     MacPowerPointAppleScriptSlideMerger,
     PowerPointComSlideMerger,
     SlideMerger,
@@ -116,6 +117,7 @@ __all__ = [
     "SongAssetProvider",
     "load_song_asset_provider",
     "PowerPointComSlideMerger",
+    "OpenXmlSlideMerger",
     "SlideMerger",
     "UnsupportedPlanBlock",
     "UnsupportedPlanError",

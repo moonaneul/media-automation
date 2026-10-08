@@ -21,19 +21,19 @@
 | decision_hymn.pptx | 나는 믿네 (제공한 원본의 변환본으로 사용자 등록 완료) | 7 |
 
 결단 찬송의 잘못된 파일은 사용자가 교체하고 GitHub 동기화까지 완료했다.
-추가 찬양의 실제 악보 PPT는 별도로 확인·등록해야 한다.
+추가 찬양 나 주의 믿음 갖고의 8장 PPTX도 사용자가 등록하고 GitHub 동기화를 완료했다.
 
 ## 검증 범위
 
 본문 9개 절과 구조 QA가 통과했다. 기도·본문·설교 제목 화면을
 LibreOffice로 렌더링하여 확인했으며 실제 PowerPoint 화면 검수와는 구분한다.
-최종 악보 병합과 예배용 완성본 재제작은 아직 수행하지 않았다.
+PowerPoint에 의존하지 않는 Open XML 병합기로 최신 등록 자료를 조립하여 72장 최종 PPT와 최종 구조 QA를 검증했다. 전체 테스트는 240 passed, 2 skipped였다. 이 실행은 Linux 환경이며 실제 macOS 실행 및 PowerPoint 화면 재생은 별도 확인한다.
 
-맥에서는 다음으로 입력·구조를 검증한다.
+맥에서도 다음으로 최종 PPT를 제작한다.
 
 ```bash
-python wednesday.py complete 2026-09-30 --validate-only
+python wednesday.py complete 2026-09-30
 ```
 
 구조 프리뷰의 악보 자리는 원본 장수만 반영한 빈 화면이다.
-최종 병합은 현재 Windows PowerPoint 환경에서 지원한다.
+macOS/Linux는 원본 슬라이드 XML 및 연결 부품을 복사하며 Windows는 기존 PowerPoint COM 병합을 사용한다. --validate-only를 붙이면 최종본을 만들지 않는 구조 검증으로 실행한다.

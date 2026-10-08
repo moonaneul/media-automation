@@ -78,7 +78,20 @@ decision_hymn.pptx
 
 ## 최종 생성
 
-맥에서 입력·성경·악보 파일·구조를 검증할 때:
+맥에서도 최종 PPT를 제작할 수 있다. 편집 가능한 PowerPoint나 LibreOffice 설치는 필요하지 않다.
+
+```bash
+python wednesday.py complete YYYY-MM-DD
+```
+
+macOS/Linux에서는 PPTX의 원본 슬라이드 XML과 이미지, 레이아웃, 마스터,
+테마 등 연결된 부품을 직접 복사한다. 악보 화면을 다시 그리거나 평면화하지 않는다.
+Windows에서는 기존 PowerPoint COM 병합을 유지한다.
+원본 보존을 위해 대상과 악보의 슬라이드 크기가 크게 다르면 병합을 중단한다.
+구형 4:3 자료의 1pt 이내 반올림 차이는 화면 여백만 넓혀 수용하며 원본 도형은 확대하거나 자르지 않는다.
+이 기능은 이미 등록된 `.pptx`의 병합이며 구형 `.ppt` 변환은 별도다.
+
+입력·성경·악보 파일·구조만 검증할 때:
 
 ```bash
 python wednesday.py complete YYYY-MM-DD --validate-only
@@ -86,7 +99,7 @@ python wednesday.py complete YYYY-MM-DD --validate-only
 
 이 명령은 `*_structure_check.pptx` 프리뷰를 만들며 최종 PPT를 새로 만들거나
 기존 완성본을 덮어쓰지 않는다. 프리뷰의 악보 자리는 원본 장수만 반영한 빈 화면이다.
-실제 악보 병합은 현재 Windows PowerPoint 환경에서 수행한다.
+최종 생성 후에는 읽기 전용 PowerPoint에서도 화면과 순서를 확인할 수 있다.
 구조 QA 통과는 악보 곡명이 안내와 일치한다는 보증이 아니며 이미지 악보도 직접 확인해야 한다.
 
 기본 수요 원본 참고 PPT는 다음 위치를 사용합니다.
