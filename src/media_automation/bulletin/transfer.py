@@ -542,12 +542,17 @@ def parse_bulletin_transfer_text(
     year: int,
 ) -> BulletinTransferData:
     lines = _clean_lines(text)
+    transfer_date = _parse_date(lines, year=year)
+    for line in lines:
+        schedule_heading = re.fullmatch(r"<(\d+)월 사역 일정>", line)
+        if schedule_heading and int(schedule_heading.group(1)) != transfer_date.month:
+            raise ValueError(
+                "전달 주보 날짜와 월간 일정 제목의 월이 다릅니다: "
+                f"{transfer_date} / {line}. 최신 전달 주보를 확인해주세요."
+            )
 
     return BulletinTransferData(
-        date=_parse_date(
-            lines,
-            year=year,
-        ),
+        date=transfer_date,
         afternoon_service=(
             _parse_colon_field(
                 lines,
