@@ -118,3 +118,16 @@ def test_render_bulletin_pdf_with_cover(
         result.sheets[0].right_page
         == 1
     )
+
+
+def test_bulletin_pdf_embeds_korean_font(tmp_path):
+    from reportlab.pdfgen.canvas import Canvas
+    from media_automation.bulletin.cover import FONT_REGULAR, register_korean_fonts
+
+    register_korean_fonts()
+    output = tmp_path / "embedded-korean.pdf"
+    canvas = Canvas(str(output))
+    canvas.setFont(FONT_REGULAR, 12)
+    canvas.drawString(30, 30, "하늘빛기쁨교회 침례")
+    canvas.save()
+    assert b"/FontFile2" in output.read_bytes()

@@ -1,12 +1,12 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+import os
+from pathlib import Path
 
 from reportlab.lib.units import mm
 from reportlab.pdfbase import pdfmetrics
-from reportlab.pdfbase.cidfonts import (
-    UnicodeCIDFont,
-)
+from reportlab.pdfbase.ttfonts import TTFont
 from reportlab.pdfgen.canvas import Canvas
 
 from media_automation.bulletin.document import (
@@ -14,8 +14,8 @@ from media_automation.bulletin.document import (
 )
 
 
-FONT_REGULAR = "HYSMyeongJo-Medium"
-FONT_BOLD = "HYSMyeongJo-Medium"
+FONT_REGULAR = "BulletinKorean"
+FONT_BOLD = "BulletinKorean"
 
 
 @dataclass(frozen=True, slots=True)
@@ -46,23 +46,28 @@ class BulletinCoverStatic:
 
 
 def register_korean_fonts() -> None:
-    registered = set(
-        pdfmetrics.getRegisteredFontNames()
+    if FONT_REGULAR in pdfmetrics.getRegisteredFontNames():
+        return
+
+    configured = os.environ.get("MEDIA_BULLETIN_FONT")
+    if configured:
+        candidates = [Path(configured).expanduser()]
+    else:
+        candidates = [
+            Path("/System/Library/Fonts/Supplemental/AppleMyungjo.ttf"),
+            Path(os.environ.get("WINDIR", "C:/Windows")) / "Fonts/malgun.ttf",
+            Path("/usr/share/fonts/truetype/nanum/NanumMyeongjo.ttf"),
+        ]
+    for candidate in candidates:
+        if candidate.is_file():
+            # Embed the font so PDF viewers do not require Adobe Korea maps
+            # or locally installed substitute fonts.
+            pdfmetrics.registerFont(TTFont(FONT_REGULAR, str(candidate)))
+            return
+    raise RuntimeError(
+        "주보 PDF에 포함할 한글 TTF 글꼴이 없습니다. "
+        "MEDIA_BULLETIN_FONT에 사용할 한글 글꼴 파일 경로를 지정해주세요."
     )
-
-    if FONT_REGULAR not in registered:
-        pdfmetrics.registerFont(
-            UnicodeCIDFont(
-                FONT_REGULAR
-            )
-        )
-
-    if FONT_BOLD not in registered:
-        pdfmetrics.registerFont(
-            UnicodeCIDFont(
-                FONT_BOLD
-            )
-        )
 
 
 def draw_cover_page(
