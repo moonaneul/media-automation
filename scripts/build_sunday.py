@@ -6,6 +6,8 @@ from pathlib import Path
 import yaml
 from pptx import Presentation
 
+from media_automation.ppt.hyperlinks import remove_presentation_hyperlinks
+
 from media_automation.bible import (
     BiblePassage,
     BiblePassageNotFoundError,
@@ -450,7 +452,7 @@ def main() -> None:
         )
 
         return
-    # 현재 production 병합은 Windows + PowerPoint
+    # Windows는 PowerPoint COM, macOS/Linux는 Open XML 원본 병합
     merger = create_platform_slide_merger()
 
     try:
@@ -477,6 +479,37 @@ def main() -> None:
             "PowerPoint에서 결과 파일이 열려 있다면 "
             "닫은 뒤 다시 실행해주세요."
         ) from error
+
+    removed_links = remove_presentation_hyperlinks(result)
+    structure = build_in_person_structure(
+        plan, args.output.with_name(args.output.stem + "_structure_check.pptx"),
+        bible_provider=bible_provider, pre_service_provider=pre_service_provider,
+        song_asset_provider=song_provider, skip_missing_songs=True,
+        preserve_blank_after_pre_service=True, preserve_trailing_blank=True,
+    )
+    scripture_passages = {
+        block.key: bible_provider.get_passage(block.value.reference)
+        for block in plan if block.kind == BlockKind.SCRIPTURE
+    }
+    final_qa = validate_in_person_structure(
+        result, slide_ranges=structure.slide_ranges,
+        scripture_passages=scripture_passages,
+        standalone_keys=(
+            "serving.this_week.second_service.prayer",
+            "serving.this_week.second_service.offering_prayer",
+            "worship.sermon_title",
+        ),
+        generated_keys=(
+            "serving.this_week.second_service.prayer",
+            "serving.this_week.second_service.offering_prayer",
+            "worship.sermon_title", "worship.scripture", "worship.additional_scripture",
+        ),
+    )
+    if not final_qa.ok:
+        for issue in final_qa.issues:
+            print(f"FINAL QA: [{issue.code}] {issue.message}")
+        raise RuntimeError("주일 최종 PPT QA 실패")
+    print(f"Sunday Final QA: PASS (links removed: {removed_links})")
 
     reopened = Presentation(result)
 
