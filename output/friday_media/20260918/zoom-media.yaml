@@ -1,0 +1,44 @@
+media:
+  opening_songs[0]:
+    type: video
+    title: 나의 맘 받으소서
+    path: media2.mp4
+
+  opening_songs[1]:
+    type: video
+    title: 아무도 예배하지 않는
+    path: media3.mp4
+
+  first_prayer_audio:
+    type: audio
+    path: media4.mp3
+
+  song_after_prayer:
+    type: video
+    title: 하나님의 은혜
+    path: media5.mp4
+
+  response_song:
+    type: video
+    title: 나는 믿네
+    path: media6.mp4
+
+  word_prayer_audio:
+    type: audio
+    path: media7.mp3
+
+  intercession_song:
+    type: video
+    title: 오직 주의 사랑에 매여
+    path: media8.mp4
+
+  community_prayer_audio:
+    type: audio
+    path: media9.mp3
+
+  personal_prayer_audio:
+    type: audio
+    path: media9.mp3
+
+# pre_service_audio는 원본 PPT의 media1.mp3이지만
+# CRC 오류로 정상 추출되지 않았으므로 등록하지 않음.

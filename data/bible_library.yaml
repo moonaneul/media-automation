@@ -20,7 +20,7 @@ passages:
       28: 야곱이 그대로 하여 그 칠 일을 채우매 라반이 딸 라헬도 그에게 아내로 주고
       29: 라반이 또 그의 여종 빌하를 그의 딸 라헬에게 주어 시녀가 되게 하매
       30: 야곱이 또한 라헬에게로 들어갔고 그가 레아보다 라헬을 더 사랑하여 다시 칠 년 동안 라반을 섬겼더라
-    _source: samples\weekly\friday-zoom-20260904-bible.yaml
+    _source: samples/weekly/friday-zoom-20260904-bible.yaml
   민 21:1-9:
     reference: 민 21:1~9
     verses:
@@ -36,13 +36,13 @@ passages:
         하소서 모세가 백성을 위하여 기도하매
       8: 여호와께서 모세에게 이르시되 불뱀을 만들어 장대 위에 매달아라 물린 자마다 그것을 보면 살리라
       9: 모세가 놋뱀을 만들어 장대 위에 다니 뱀에게 물린 자가 놋뱀을 쳐다본즉 모두 살더라
-    _source: samples\weekly\friday-zoom-20260911-bible.yaml
+    _source: samples/weekly/friday-zoom-20260911-bible.yaml
   요 3:14-15:
     reference: 요 3:14~15
     verses:
       14: 모세가 광야에서 뱀을 든 것 같이 인자도 들려야 하리니
       15: 이는 그를 믿는 자마다 영생을 얻게 하려 하심이니라
-    _source: samples\weekly\friday-zoom-20260911-bible.yaml
+    _source: samples/weekly/friday-zoom-20260911-bible.yaml
   왕상 9:1-10:
     reference: 왕상 9:1~10
     verses:
@@ -62,14 +62,14 @@ passages:
       9: 대답하기를 그들이 그들의 조상들을 애굽 땅에서 인도하여 내신 그들의 하나님 여호와를 버리고 다른 신을 따라가서 그를 경배하여 섬기므로
         여호와께서 이 모든 재앙을 그들에게 내리심이라 하리라 하셨더라
       10: 솔로몬이 두 집 곧 여호와의 성전과 왕궁을 이십 년 만에 건축하기를 마치고
-    _source: samples\weekly\friday-zoom-20260918-bible.yaml
+    _source: samples/weekly/friday-zoom-20260918-bible.yaml
   히 11:1~3:
     reference: 히 11:1~3
     verses:
       1: 믿음은 바라는 것들의 실상이요 보이지 않는 것들의 증거니
       2: 선진들이 이로써 증거를 얻었느니라
       3: 믿음으로 모든 세계가 하나님의 말씀으로 지어진 줄을 우리가 아나니 보이는 것은 나타난 것으로 말미암아 된 것이 아니니라
-    _source: data\private\bible_sources\sunday-20260927.yaml
+    _source: data/private/bible_sources/sunday-20260927.yaml
   삼상 17:41~49:
     reference: 삼상 17:41~49
     verses:
@@ -84,7 +84,7 @@ passages:
       47: 또 여호와의 구원하심이 칼과 창에 있지 아니함을 이 무리에게 알게 하리라 전쟁은 여호와께 속한 것인즉 그가 너희를 우리 손에 넘기시리라
       48: 블레셋 사람이 일어나 다윗에게로 마주 가까이 올 때에 다윗이 블레셋 사람을 향하여 빨리 달리며
       49: 손을 주머니에 넣어 돌을 가지고 물매로 던져 블레셋 사람의 이마를 치매 돌이 그의 이마에 박히니 땅에 엎드러지니라
-    _source: data\private\bible_sources\wednesday-20260930.yaml
+    _source: data/private/bible_sources/wednesday-20260930.yaml
   삼상 18:6~11:
     reference: 삼상 18:6~11
     verses:
@@ -97,4 +97,4 @@ passages:
       10: 그 이튿날 하나님께서 부리시는 악령이 사울에게 힘 있게 내리매 그가 집 안에서 정신 없이 떠들어대므로 다윗이 평일과 같이 손으로
         수금을 타는데 그 때에 사울의 손에 창이 있는지라
       11: 그가 스스로 이르기를 내가 다윗을 벽에 박으리라 하고 사울이 그 창을 던졌으나 다윗이 그의 앞에서 두 번 피하였더라
-    _source: data\private\bible_sources\wednesday-20261007.yaml
+    _source: data/private/bible_sources/wednesday-20261007.yaml
