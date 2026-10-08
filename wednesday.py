@@ -347,14 +347,25 @@ def complete(args):
     songs = INTAKE_DIR / f"wednesday-{date_token}-songs.yaml"
     output = ROOT / "output" / "wednesday" / f"{date_token}_수요예배.pptx"
 
-    run_script(
-        "build_wednesday_operational.py",
+    build_args = [
         "--weekly", str(weekly),
         "--songs", str(songs),
         "--bible", str(bible_path),
         "--source", str(source),
         "--output", str(output),
+    ]
+    if args.validate_only:
+        build_args.append("--validate-only")
+
+    run_script(
+        "build_wednesday_operational.py",
+        *build_args,
     )
+
+    if args.validate_only:
+        print("\nWEDNESDAY VALIDATION: PASS")
+        print("최종 PPT는 새로 제작하지 않았습니다.")
+        return
 
     print("\nWEDNESDAY COMPLETE")
     print(f"output: {output}")
@@ -421,6 +432,8 @@ def main():
     p = sub.add_parser("complete", help="최종 수요예배 PPT 제작")
     p.add_argument("date")
     p.add_argument("--source")
+    p.add_argument("--validate-only", action="store_true",
+                   help="맥 등에서 입력·구조만 검증하고 최종 병합을 건너뜁니다.")
     p.set_defaults(func=complete)
 
     args = parser.parse_args()

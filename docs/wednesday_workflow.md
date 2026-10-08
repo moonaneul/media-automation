@@ -78,6 +78,17 @@ decision_hymn.pptx
 
 ## 최종 생성
 
+맥에서 입력·성경·악보 파일·구조를 검증할 때:
+
+```bash
+python wednesday.py complete YYYY-MM-DD --validate-only
+```
+
+이 명령은 `*_structure_check.pptx` 프리뷰를 만들며 최종 PPT를 새로 만들거나
+기존 완성본을 덮어쓰지 않는다. 프리뷰의 악보 자리는 원본 장수만 반영한 빈 화면이다.
+실제 악보 병합은 현재 Windows PowerPoint 환경에서 수행한다.
+구조 QA 통과는 악보 곡명이 안내와 일치한다는 보증이 아니며 이미지 악보도 직접 확인해야 한다.
+
 기본 수요 원본 참고 PPT는 다음 위치를 사용합니다.
 
 ```text
