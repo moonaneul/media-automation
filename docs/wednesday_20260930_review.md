@@ -18,6 +18,7 @@
 | opening_song_1.pptx | 아 하나님의 은혜로 (310장) | 12 |
 | opening_song_2.pptx | 내가 매일 기쁘게 (191장) | 16 |
 | opening_song_3.pptx | 오 하나님 우리의 창조주시니 (68장) | 6 |
+| additional_song.pptx | 나 주의 믿음 갖고 | 8 |
 | decision_hymn.pptx | 나는 믿네 (제공한 원본의 변환본으로 사용자 등록 완료) | 7 |
 
 결단 찬송의 잘못된 파일은 사용자가 교체하고 GitHub 동기화까지 완료했다.
@@ -27,7 +28,7 @@
 
 본문 9개 절과 구조 QA가 통과했다. 기도·본문·설교 제목 화면을
 LibreOffice로 렌더링하여 확인했으며 실제 PowerPoint 화면 검수와는 구분한다.
-PowerPoint에 의존하지 않는 Open XML 병합기로 최신 등록 자료를 조립하여 72장 최종 PPT와 최종 구조 QA를 검증했다. 전체 테스트는 240 passed, 2 skipped였다. 이 실행은 Linux 환경이며 실제 macOS 실행 및 PowerPoint 화면 재생은 별도 확인한다.
+PowerPoint에 의존하지 않는 Open XML 병합기로 최신 등록 자료를 조립하여 72장 최종 PPT와 최종 구조 QA를 검증했다. 전체 테스트는 240 passed, 2 skipped였다. 이후 사용자 macOS에서도 최종 72장 제작과 최종 QA가 통과했다. 사용자가 최종 PPT 화면을 확인하고 ‘정상’으로 보고했다. 최종 파일은 e74ea0b 커밋으로 GitHub/LFS 동기화까지 완료했다. 사용자 화면 확인과 자동 QA를 구분하여 기록한다.
 
 맥에서도 다음으로 최종 PPT를 제작한다.
 
