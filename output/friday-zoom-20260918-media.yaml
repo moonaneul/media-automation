@@ -1,0 +1,33 @@
+media:
+  opening_songs[0]:
+    type: video
+    title: 나의 맘 받으소서
+    path: C:\Users\SSAFY\Documents\media-automation\input\friday_zoom\20260918\opening_song_1.mp4
+  opening_songs[1]:
+    type: video
+    title: 아무도 예배하지 않는
+    path: C:\Users\SSAFY\Documents\media-automation\input\friday_zoom\20260918\opening_song_2.mp4
+  song_after_prayer:
+    type: video
+    title: 하나님의 은혜
+    path: C:\Users\SSAFY\Documents\media-automation\input\friday_zoom\20260918\song_after_prayer.mp4
+  response_song:
+    type: video
+    title: 나는 믿네
+    path: C:\Users\SSAFY\Documents\media-automation\input\friday_zoom\20260918\response_song.mp4
+  intercession_song:
+    type: video
+    title: 오직 주의 사랑에 매여
+    path: C:\Users\SSAFY\Documents\media-automation\input\friday_zoom\20260918\intercession_song.mp4
+  first_prayer_audio:
+    type: audio
+    path: C:\Users\SSAFY\Documents\media-automation\assets\private\friday_zoom\first_prayer.mp3
+  word_prayer_audio:
+    type: audio
+    path: C:\Users\SSAFY\Documents\media-automation\assets\private\friday_zoom\word_prayer.mp3
+  community_prayer_audio:
+    type: audio
+    path: C:\Users\SSAFY\Documents\media-automation\assets\private\friday_zoom\community_personal_prayer.mp3
+  personal_prayer_audio:
+    type: audio
+    path: C:\Users\SSAFY\Documents\media-automation\assets\private\friday_zoom\community_personal_prayer.mp3

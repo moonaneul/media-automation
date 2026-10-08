@@ -1,0 +1,44 @@
+service: wednesday
+review_required: false
+review_items: []
+date:
+  status: provided
+  value: '2026-10-07'
+  review_required: false
+fields:
+  opening_song_1:
+    status: provided
+    value: 515장 눈을 들어 하늘 보라
+    review_required: false
+  opening_song_2:
+    status: provided
+    value: 193장 성령의 봄바람 불어오니
+    review_required: false
+  opening_song_3:
+    status: provided
+    value: 300장 내 맘이 낙심되며
+    review_required: false
+  prayer:
+    status: provided
+    value: 한미선 자매
+    review_required: false
+  additional_song:
+    status: provided
+    value: 나의 백성이 다 겸비하여
+    review_required: false
+  scripture:
+    status: provided
+    value: 삼상 18:6~11
+    review_required: false
+  sermon_title:
+    status: provided
+    value: 질투에 사로잡히면
+    review_required: false
+  additional_scripture:
+    status: blank
+    value: null
+    review_required: false
+  decision_hymn:
+    status: provided
+    value: 384장 나의 갈 길 다 가도록
+    review_required: false

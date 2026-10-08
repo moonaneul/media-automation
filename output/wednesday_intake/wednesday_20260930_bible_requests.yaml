@@ -1,0 +1,5 @@
+requests:
+- source: scripture
+  reference: 삼상 17:41~49
+  translation: 개역개정
+  display_rule: 세례→침례

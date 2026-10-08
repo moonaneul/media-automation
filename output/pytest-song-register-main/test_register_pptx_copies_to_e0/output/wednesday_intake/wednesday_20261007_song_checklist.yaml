@@ -1,0 +1,5 @@
+items:
+- field: opening_song_1
+  title: 새 찬양
+  expected_filename: opening_song_1.pptx
+  file: C:\Users\SSAFY\Documents\media-automation\output\pytest-song-register-main\test_register_pptx_copies_to_e0\input\wednesday\20261007\opening_song_1.pptx

@@ -1,0 +1,26 @@
+passages:
+  고전 3:16:
+    reference: 고전 3:16
+    verses:
+      16: 너희는 너희가 하나님의 성전인 것과 하나님의 성령이 너희 안에 계시는 것을 알지 못하느냐
+    verse_ends: {}
+    source_note: user-provided JSON; full text comparison not completed
+  사 43:21:
+    reference: 사 43:21
+    verses:
+      21: 이 백성은 내가 나를 위하여 지었나니 나를 찬송하게 하려 함이니라
+    verse_ends: {}
+    source_note: user-provided JSON; full text comparison not completed
+  왕상 8:27:
+    reference: 왕상 8:27
+    verses:
+      27: 하나님이 참으로 땅에 거하시리이까 하늘과 하늘들의 하늘이라도 주를 용납하지 못하겠거든 하물며 내가 건축한 이 성전이오리이까
+    verse_ends: {}
+    source_note: user-provided JSON; full text comparison not completed
+  히 10:19~20:
+    reference: 히 10:19~20
+    verses:
+      19: 그러므로 형제들아 우리가 예수의 피를 힘입어 성소에 들어갈 담력을 얻었나니
+      20: 그 길은 우리를 위하여 휘장 가운데로 열어 놓으신 새로운 살 길이요 휘장은 곧 그의 육체니라
+    verse_ends: {}
+    source_note: user-provided JSON; full text comparison not completed

@@ -1,0 +1,5 @@
+service: sunday
+worship:
+  opening_songs:
+  - status: VALUE
+    title: 이번 주 찬양

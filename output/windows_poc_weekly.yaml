@@ -1,0 +1,39 @@
+﻿service: wednesday
+date: 2026-10-07
+
+opening_songs:
+  - status: VALUE
+    title: 내가 매일 기쁘게
+    hymn_number: 191
+
+  - status: VALUE
+    title: 나는 주님께 속한 자
+
+  - status: VALUE
+    title: 주가 보이신 생명의 길
+
+prayer:
+  status: VALUE
+  person: 홍길동
+
+additional_song:
+  status: VALUE
+  title: 예수 나를 위하여
+  hymn_number: 144
+
+scripture:
+  status: VALUE
+  reference: "삼상 16:6-7"
+
+sermon_title:
+  status: VALUE
+  text: 외모와 중심
+
+additional_scripture:
+  status: VALUE
+  reference: "시 24:3-5"
+
+decision_hymn:
+  status: VALUE
+  title: 내 주 되신 주를 참 사랑하고
+  hymn_number: 315

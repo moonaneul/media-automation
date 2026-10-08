@@ -1,0 +1,12 @@
+date:
+  status: provided
+  value: '2026-09-27'
+fields:
+  decision_hymn:
+    status: blank
+    value: null
+  opening_song_1:
+    status: provided
+    value: 이번 주 찬양
+review_required: false
+service: sunday

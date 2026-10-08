@@ -1,0 +1,5 @@
+requests:
+- source: scripture
+  reference: 왕상 9:1-10
+  translation: 개역개정
+  display_rule: 세례→침례

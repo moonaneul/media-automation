@@ -1,0 +1,25 @@
+service: wednesday
+date: '2026-09-30'
+opening_songs:
+- status: VALUE
+  title: __opening_song_1__
+- status: VALUE
+  title: __opening_song_2__
+- status: VALUE
+  title: __opening_song_3__
+prayer:
+  status: VALUE
+  person: 한송희
+additional_song:
+  status: NONE
+scripture:
+  status: VALUE
+  reference: 삼상 17:41~49
+sermon_title:
+  status: VALUE
+  text: 골리앗 앞에 서는 믿음
+additional_scripture:
+  status: NONE
+decision_hymn:
+  status: VALUE
+  title: 나는 믿네

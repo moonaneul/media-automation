@@ -1,0 +1,24 @@
+FRIDAY ZOOM V17 FINAL QA
+======================================================================
+
+PASS: 14
+  [PASS] slide count = 17
+  [PASS] aspect ratio = 1.7778 (16:9)
+  [PASS] page numbers 1-17 present and correct
+  [PASS] all scripture verses are present
+  [PASS] no scripture verse duplication
+  [PASS] no unconverted '??' remains
+  [PASS] sermon title present on slide 12
+  [PASS] sermon scripture reference normalized
+  [PASS] personal prayer text complete
+  [PASS] slide 4 prayer animation effects = 3
+  [PASS] slide 14 prayer animation effects = 3
+  [PASS] slide 16 prayer animation effects = 5
+  [PASS] all 10 expected media placements present
+  [PASS] no visible URL text remains
+
+WARN: 0
+
+FAIL: 2
+  [FAIL] slide 1 missing: ?????, ??? ??? ??? ???? ?????
+  [FAIL] header missing on slides: 4, 7, 8, 9, 10, 11, 14, 16

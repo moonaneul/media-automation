@@ -1,0 +1,61 @@
+service: sunday
+target: second_service
+review_required: false
+review_items: []
+date:
+  status: provided
+  value: '2026-09-27'
+  review_required: false
+fields:
+  opening_song_1:
+    status: provided
+    value: 주 날개 및 내가 편안히 쉬네
+    review_required: false
+  opening_song_2:
+    status: provided
+    value: 언제나 주께 감사해
+    review_required: false
+  opening_song_3:
+    status: provided
+    value: 337장 내 모든 시험 무거운 짐을
+    review_required: false
+  separate_hymn:
+    status: blank
+    value: null
+    review_required: false
+  second_service_prayer:
+    status: provided
+    value: 위윤기
+    review_required: false
+  church_news:
+    status: provided
+    value: 있음
+    review_required: false
+  offering_hymn:
+    status: provided
+    value: 430장 주와 같이 길 가는 것
+    review_required: false
+  second_service_offering_prayer:
+    status: provided
+    value: 문호성
+    review_required: false
+  special_song:
+    status: blank
+    value: null
+    review_required: false
+  sermon_title:
+    status: provided
+    value: 살아 있는 믿음
+    review_required: false
+  scripture:
+    status: provided
+    value: 히 11:1~3
+    review_required: false
+  additional_scripture:
+    status: blank
+    value: null
+    review_required: false
+  decision_hymn:
+    status: provided
+    value: 주님 말씀하시면
+    review_required: false

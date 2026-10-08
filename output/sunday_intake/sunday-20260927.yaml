@@ -1,0 +1,86 @@
+service: sunday
+date: '2026-09-27'
+worship:
+  leader:
+    status: UNSET
+  praise_first:
+    status: UNSET
+  praise_second:
+    status: UNSET
+  preacher:
+    status: UNSET
+  closing_prayer:
+    status: UNSET
+  opening_songs:
+  - status: VALUE
+    title: 주 날개 및 내가 편안히 쉬네
+  - status: VALUE
+    title: 언제나 주께 감사해
+  - status: VALUE
+    title: 내 모든 시험 무거운 짐을
+    hymn_number: 337
+  separate_hymn:
+    status: NONE
+  offering_hymn:
+    status: VALUE
+    title: 주와 같이 길 가는 것
+    hymn_number: 430
+  special_song:
+    status: NONE
+  sermon_title:
+    status: VALUE
+    text: 살아 있는 믿음
+  scripture:
+    status: VALUE
+    reference: 히 11:1~3
+  additional_scripture:
+    status: NONE
+  decision_hymn:
+    status: VALUE
+    title: 주님 말씀하시면
+serving:
+  this_week:
+    first_service:
+      prayer:
+        status: UNSET
+      offering_prayer:
+        status: UNSET
+    second_service:
+      prayer:
+        status: VALUE
+        person: 위윤기
+      offering_prayer:
+        status: VALUE
+        person: 문호성
+    dishwashing:
+      status: UNSET
+    wednesday_prayer:
+      status: UNSET
+  next_week:
+    first_service:
+      prayer:
+        status: UNSET
+      offering_prayer:
+        status: UNSET
+    second_service:
+      prayer:
+        status: UNSET
+      offering_prayer:
+        status: UNSET
+    dishwashing:
+      status: UNSET
+    wednesday_prayer:
+      status: UNSET
+bulletin:
+  number:
+    status: UNSET
+  church_news:
+    status: VALUE
+    items:
+    - text: 있음
+  afternoon_service:
+    status: UNSET
+  monthly_schedule:
+    status: UNSET
+  cell_group:
+    status: UNSET

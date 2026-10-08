@@ -1,0 +1,21 @@
+items:
+- field: opening_song_1
+  title: 주 날개 및 내가 편안히 쉬네
+  expected_filename: opening_song_1.pptx
+  file: C:\Users\SSAFY\Documents\media-automation\input\sunday\20260927\opening_song_1.pptx
+- field: opening_song_2
+  title: 언제나 주께 감사해
+  expected_filename: opening_song_2.pptx
+  file: C:\Users\SSAFY\Documents\media-automation\input\sunday\20260927\opening_song_2.pptx
+- field: opening_song_3
+  title: 337장 내 모든 시험 무거운 짐을
+  expected_filename: opening_song_3.pptx
+  file: C:\Users\SSAFY\Documents\media-automation\input\sunday\20260927\opening_song_3.pptx
+- field: offering_hymn
+  title: 430장 주와 같이 길 가는 것
+  expected_filename: offering_hymn.pptx
+  file: C:\Users\SSAFY\Documents\media-automation\input\sunday\20260927\offering_hymn.pptx
+- field: decision_hymn
+  title: 주님 말씀하시면
+  expected_filename: decision_hymn.pptx
+  file: C:\Users\SSAFY\Documents\media-automation\input\sunday\20260927\decision_hymn.pptx

@@ -1,0 +1,5 @@
+items:
+- field: opening_song_1
+  title: 수정 전 찬양
+  expected_filename: opening_song_1.pptx
+  file: null

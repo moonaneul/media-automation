@@ -1,0 +1,81 @@
+service: friday_zoom
+review_required: true
+review_items:
+- '[금요 기도회 순서] 10/9'
+- <두 곡 찬양 후 기도 제목>
+- 1) 주께서 높은 보좌에
+- 2) 성도의 노래
+- 1. 염려가 나를 찾아올 때마다 말씀과 기도로 승리할 수 있도록
+- '- [6] 아무것도 염려하지 말고 다만 모든 일에 기도와 간구로, 너희 구할 것을 감사함으로 하나님께 아뢰라 [7] 그리하면 모든 지각에 뛰어난
+  하나님의 평강이 그리스도 예수 안에서 너희 마음과 생각을 지키시리라 (빌 4:6~7)'
+- 2. 말씀을 알아갈수록 주님을 더욱 사랑하는 그리스도인으로 살 수 있도록
+- '- 내 구주 예수를 더욱 사랑 ~'
+- 3) 오직 믿음으로
+- <메시지 후 기도 제목>
+- 고전 3:16 / 하나님 앞에 서는 삶
+- 4) 예수를 나의 구주 삼고(새찬송가 430장)
+- 1. 거룩한 성전으로 살아가도록
+- '- 우리의 마음과 몸을 깨끗하게 지켜 성령께서 기뻐하시는 삶을 살게 하소서.'
+- 2. 성령의 능력으로 변화되는 삶을 살도록
+- '- 우리 안에 거하시는 성령의 도우심으로 거룩하게 살아갈 힘을 주소서.'
+- <마지막 찬양 후 기도제목>
+- 5) 주 예수 나의 산 소망
+- 1. 10월에도 주님과 동행하며 승리하는 삶을 살 수 있도록
+- '- 에벤에셀의 하나님을 찬양하며 최선의 길로 인도하실 주님을 바라보게 하소서.'
+- 2. 국가와 민족을 위하여
+- '- 정치, 사회, 경제, 북한의 위협'
+- 3. 하늘빛기쁨교회가 신약교회, 사도행전적 교회의 본질을 회복하도록
+- '- 하늘빛기쁨교회가 빛과 소금의 역할을 감당하게 하소서'
+date:
+  status: missing
+  value: null
+  review_required: false
+fields:
+  opening_song_1:
+    status: missing
+    value: null
+    review_required: false
+  opening_song_2:
+    status: missing
+    value: null
+    review_required: false
+  first_prayer:
+    status: missing
+    value: null
+    review_required: false
+  song_after_prayer:
+    status: missing
+    value: null
+    review_required: false
+  scripture:
+    status: missing
+    value: null
+    review_required: false
+  sermon_title:
+    status: missing
+    value: null
+    review_required: false
+  additional_scripture:
+    status: provided
+    value: – 사 43:21, 왕상 8:27, 히 10:19~20
+    review_required: false
+  response_song:
+    status: missing
+    value: null
+    review_required: false
+  word_prayer:
+    status: missing
+    value: null
+    review_required: false
+  intercession_song:
+    status: missing
+    value: null
+    review_required: false
+  community_prayer:
+    status: missing
+    value: null
+    review_required: false
+  personal_prayer:
+    status: missing
+    value: null
+    review_required: false
