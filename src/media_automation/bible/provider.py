@@ -8,6 +8,13 @@ from typing import Protocol
 class BibleVerse:
     number: int
     text: str
+    end_number: int | None = None
+
+    @property
+    def display_number(self) -> str:
+        if self.end_number is not None and self.end_number != self.number:
+            return f"{self.number}~{self.end_number}"
+        return str(self.number)
 
 
 @dataclass(frozen=True, slots=True)

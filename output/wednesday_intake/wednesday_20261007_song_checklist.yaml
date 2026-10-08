@@ -1,0 +1,21 @@
+items:
+- field: opening_song_1
+  title: 515장 눈을 들어 하늘 보라
+  expected_filename: opening_song_1.pptx
+  file: /Users/moonaneul/Documents/media-automation/input/wednesday/20261007/opening_song_1.pptx
+- field: opening_song_2
+  title: 193장 성령의 봄바람 불어오니
+  expected_filename: opening_song_2.pptx
+  file: /Users/moonaneul/Documents/media-automation/input/wednesday/20261007/opening_song_2.pptx
+- field: opening_song_3
+  title: 300장 내 맘이 낙심되며
+  expected_filename: opening_song_3.pptx
+  file: /Users/moonaneul/Documents/media-automation/input/wednesday/20261007/opening_song_3.pptx
+- field: additional_song
+  title: 나의 백성이 다 겸비하여
+  expected_filename: additional_song.pptx
+  file: /Users/moonaneul/Documents/media-automation/input/wednesday/20261007/additional_song.pptx
+- field: decision_hymn
+  title: 384장 나의 갈 길 다 가도록
+  expected_filename: decision_hymn.pptx
+  file: /Users/moonaneul/Documents/media-automation/input/wednesday/20261007/decision_hymn.pptx

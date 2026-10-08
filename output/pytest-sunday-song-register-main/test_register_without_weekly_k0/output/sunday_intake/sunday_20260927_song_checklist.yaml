@@ -1,0 +1,5 @@
+items:
+- expected_filename: opening_song_1.pptx
+  field: opening_song_1
+  file: C:\Users\SSAFY\Documents\media-automation\output\pytest-sunday-song-register-main\test_register_without_weekly_k0\input\sunday\20260927\opening_song_1.pptx
+  title: 이번 주 찬양

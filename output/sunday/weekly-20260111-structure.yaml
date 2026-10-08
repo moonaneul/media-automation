@@ -1,0 +1,90 @@
+service: sunday
+date: '2026-01-11'
+worship:
+  opening_songs:
+  - status: VALUE
+    title: __20260111_opening_1
+  - status: VALUE
+    title: __20260111_opening_2
+  - status: VALUE
+    title: __20260111_opening_3
+  separate_hymn:
+    status: VALUE
+    title: __20260111_separate_hymn
+  offering_hymn:
+    status: VALUE
+    title: __20260111_offering_hymn
+  special_song:
+    status: NONE
+  sermon_title:
+    status: VALUE
+    text: 공의와 사랑이 만난 자리, 십자가
+  scripture:
+    status: VALUE
+    reference: 롬 5:6-11
+  additional_scripture:
+    status: VALUE
+    reference: 히 9:22
+  decision_hymn:
+    status: VALUE
+    title: __20260111_decision_hymn
+serving:
+  this_week:
+    first_service:
+      prayer:
+        status: VALUE
+        person: 홍길동
+    second_service:
+      prayer:
+        status: VALUE
+        person: 문희재
+      offering_prayer:
+        status: VALUE
+        person: 문호성
+    dishwashing:
+      status: VALUE
+      person: 박민수
+  next_week:
+    first_service:
+      prayer:
+        status: VALUE
+        person: 최지혜
+    second_service:
+      prayer:
+        status: VALUE
+        person: 정하늘
+      offering_prayer:
+        status: VALUE
+        person: 박지민
+    dishwashing:
+      status: VALUE
+      person: 김하늘
+bulletin:
+  number:
+    status: VALUE
+    value: 13-XX
+  church_news:
+    status: VALUE
+    items:
+    - text: 예시 교회 소식 1
+    - text: 예시 교회 소식 2
+  afternoon_service:
+    status: VALUE
+    title: 예시 오후예배
+    description: 예시 오후예배 안내
+  monthly_schedule:
+    status: VALUE
+    items:
+    - date: 2026-10-11
+      content: 예시 일정 1
+    - date: 2026-10-18
+      content: 예시 일정 2
+  cell_group:
+    status: VALUE
+    scripture: 요 3:16-18
+    title: 예시 목장 말씀 제목
+    questions:
+    - 예시 질문 1
+    - 예시 질문 2
+    - 예시 질문 3
+    - 예시 질문 4

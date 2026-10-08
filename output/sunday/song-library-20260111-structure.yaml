@@ -1,0 +1,24 @@
+songs:
+  __20260111_opening_1:
+    path: "/Users/moonaneul/Downloads/미디어팀 자료/주일예배/20260111 주일 오전 2부.pptx"
+    slides: [6, 17]
+
+  __20260111_opening_2:
+    path: "/Users/moonaneul/Downloads/미디어팀 자료/주일예배/20260111 주일 오전 2부.pptx"
+    slides: [19, 36]
+
+  __20260111_opening_3:
+    path: "/Users/moonaneul/Downloads/미디어팀 자료/주일예배/20260111 주일 오전 2부.pptx"
+    slides: [38, 41]
+
+  __20260111_separate_hymn:
+    path: "/Users/moonaneul/Downloads/미디어팀 자료/주일예배/20260111 주일 오전 2부.pptx"
+    slides: [43, 54]
+
+  __20260111_offering_hymn:
+    path: "/Users/moonaneul/Downloads/미디어팀 자료/주일예배/20260111 주일 오전 2부.pptx"
+    slides: [60, 71]
+
+  __20260111_decision_hymn:
+    path: "/Users/moonaneul/Downloads/미디어팀 자료/주일예배/20260111 주일 오전 2부.pptx"
+    slides: [85, 93]

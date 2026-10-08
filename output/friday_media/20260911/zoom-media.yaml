@@ -1,0 +1,45 @@
+media:
+  opening_songs[0]:
+    type: video
+    title: 주님의 임재 앞에서
+    path: media2.mp4
+
+  opening_songs[1]:
+    type: video
+    title: 나는 믿네
+    path: media3.mp4
+
+  first_prayer_audio:
+    type: audio
+    path: media4.mp3
+
+  song_after_prayer:
+    type: video
+    title: 예수 십자가에 흘린 피로써(새 찬송가 259장)
+    path: media5.mp4
+
+  response_song:
+    type: video
+    title: 오직 예수
+    path: media6.mp4
+
+  word_prayer_audio:
+    type: audio
+    path: media7.mp3
+
+  intercession_song:
+    type: video
+    title: 선한 능력으로
+    path: media8.mp4
+
+  community_prayer_audio:
+    type: audio
+    path: media9.mp3
+
+  personal_prayer_audio:
+    type: audio
+    path: media9.mp3
+
+# pre_service_audio:
+# 원본의 media1.mp3이지만 CRC 오류이므로
+# 정상 미디어 manifest에는 등록하지 않음.

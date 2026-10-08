@@ -1,0 +1,12 @@
+songs:
+  예수님은 누구신가: "C:/Users/SSAFY/Documents/media-automation/output/wednesday_poc_song_assets/song_01.pptx"
+
+  나는 주님께 속한 자: "C:/Users/SSAFY/Documents/media-automation/output/wednesday_poc_song_assets/song_02.pptx"
+
+  주가 보이신 생명의 길:
+    path: "C:/Users/SSAFY/Downloads/수요예배.pptx"
+    slides: [22, 26]
+
+  예수 나를 위하여: "C:/Users/SSAFY/Documents/media-automation/output/wednesday_poc_song_assets/song_04.pptx"
+
+  내 주 되신 주를 참 사랑하고: "C:/Users/SSAFY/Documents/media-automation/output/wednesday_poc_song_assets/song_05.pptx"

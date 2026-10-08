@@ -1,0 +1,109 @@
+OK: opening_song_1 -> C:\Users\SSAFY\Documents\media-automation\input\friday_zoom\20260918\opening_song_1.mp4
+OK: opening_song_2 -> C:\Users\SSAFY\Documents\media-automation\input\friday_zoom\20260918\opening_song_2.mp4
+OK: first_prayer -> C:\Users\SSAFY\Documents\media-automation\input\friday_zoom\20260918\first_prayer.mp3
+OK: song_after_prayer -> C:\Users\SSAFY\Documents\media-automation\input\friday_zoom\20260918\song_after_prayer.mp4
+OK: response_song -> C:\Users\SSAFY\Documents\media-automation\input\friday_zoom\20260918\response_song.mp4
+OK: word_prayer -> C:\Users\SSAFY\Documents\media-automation\input\friday_zoom\20260918\word_prayer.mp3
+OK: intercession_song -> C:\Users\SSAFY\Documents\media-automation\input\friday_zoom\20260918\intercession_song.mp4
+OK: community_prayer -> C:\Users\SSAFY\Documents\media-automation\input\friday_zoom\20260918\community_personal_prayer.mp3
+OK: personal_prayer -> C:\Users\SSAFY\Documents\media-automation\input\friday_zoom\20260918\community_personal_prayer.mp3
+
+UPDATED: output\friday_zoom_intake\friday_zoom_20260918_media_checklist.yaml
+
+=== AUTO MEDIA LINK ===
+FOUND : opening_song_1           opening_song_1.mp4
+FOUND : opening_song_2           opening_song_2.mp4
+FOUND : first_prayer             first_prayer.mp3
+FOUND : song_after_prayer        song_after_prayer.mp4
+FOUND : response_song            response_song.mp4
+FOUND : word_prayer              word_prayer.mp3
+FOUND : intercession_song        intercession_song.mp4
+FOUND : community_prayer         community_personal_prayer.mp3
+FOUND : personal_prayer          community_personal_prayer.mp3
+
+====================================================================
+MEDIA FOLDER: READY
+folder: input\friday_zoom\20260918
+
+FRIDAY ZOOM FINALIZE: PASS
+============================================================
+weekly : output\friday-zoom-20260918-final.yaml
+media  : output\friday-zoom-20260918-media.yaml
+
+=== Friday Zoom Build ===
+output : output\friday_zoom_20260918_final.pptx
+media placements : 9
+
+=== Media Placements ===
+slide  2 | video | opening_songs[0]       | opening_song_1.mp4
+slide  3 | video | opening_songs[1]       | opening_song_2.mp4
+slide  4 | audio | first_prayer           | first_prayer.mp3
+slide  5 | video | song_after_prayer      | song_after_prayer.mp4
+slide 13 | video | response_song          | response_song.mp4
+slide 14 | audio | word_prayer            | word_prayer.mp3
+slide 15 | video | intercession_song      | intercession_song.mp4
+slide 16 | audio | community_prayer       | community_personal_prayer.mp3
+slide 17 | audio | personal_prayer        | community_personal_prayer.mp3
+prayer animations : 3
+
+�ݿ� Zoom PPT ���� �� �̵�� ���� �Ϸ�.
+����: ���� PowerPoint ��� �˼��� ������ �����ؾ� �մϴ�.
+PASS : aspect ratio 16:9 (1.7778)
+INFO : slide count = 17
+PASS : weekly date = 2026.09.18
+PASS : split headers found on 8 slides
+PASS : header text is regular weight
+PASS : all Bible verses present
+PASS : no duplicated Bible verse bodies
+PASS : baptism wording conversion check
+PASS : sermon title present
+PASS : sermon/scripture ref �ջ� 9:1~10
+PASS : slide 4 prayer animation 3/3
+PASS : slide 14 prayer animation 3/3
+PASS : slide 16 prayer animation 5/5
+INFO : animated prayer slides = 3
+INFO : embedded media relationships = 39
+PASS : media manifest entries = 9
+PASS : no visible URL text
+
+====================================================================
+FINAL: PASS
+........................................................................ [ 38%]
+...............................................................s..s..... [ 77%]
+..........................................                               [100%]
+184 passed, 2 skipped in 1.58s
+
+>>> C:\Users\SSAFY\Documents\media-automation\.venv\Scripts\python.exe scripts/finalize_friday_zoom_inputs.py --weekly output\friday_zoom_intake\friday-zoom-20260918.yaml --checklist output\friday_zoom_intake\friday_zoom_20260918_media_checklist.yaml
+
+>>> C:\Users\SSAFY\Documents\media-automation\.venv\Scripts\python.exe scripts/build_friday_zoom.py --weekly output\friday-zoom-20260918-final.yaml --bible output\friday_zoom_intake\friday-zoom-20260918-bible.yaml --media output\friday-zoom-20260918-media.yaml --output output\friday_zoom_20260918_final.pptx
+
+>>> C:\Users\SSAFY\Documents\media-automation\.venv\Scripts\python.exe scripts/qa_friday_zoom.py --pptx output\friday_zoom_20260918_final.pptx --weekly output\friday-zoom-20260918-final.yaml --bible output\friday_zoom_intake\friday-zoom-20260918-bible.yaml --media output\friday-zoom-20260918-media.yaml
+
+>>> C:\Users\SSAFY\Documents\media-automation\.venv\Scripts\python.exe -m pytest -q
+
+====================================================================
+FRIDAY ZOOM BUILD PIPELINE: PASS
+====================================================================
+date   : 2026-09-18
+weekly : output\friday-zoom-20260918-final.yaml
+bible  : output\friday_zoom_intake\friday-zoom-20260918-bible.yaml
+media  : output\friday-zoom-20260918-media.yaml
+pptx   : output\friday_zoom_20260918_final.pptx
+
+NEXT: actual PowerPoint playback check
+
+>>> C:\Users\SSAFY\Documents\media-automation\.venv\Scripts\python.exe scripts/link_friday_zoom_media_folder.py --checklist output\friday_zoom_intake\friday_zoom_20260918_media_checklist.yaml --media-dir input\friday_zoom\20260918
+
+>>> C:\Users\SSAFY\Documents\media-automation\.venv\Scripts\python.exe scripts/finish_friday_zoom.py --weekly output\friday_zoom_intake\friday-zoom-20260918.yaml --bible output\friday_zoom_intake\friday-zoom-20260918-bible.yaml --checklist output\friday_zoom_intake\friday_zoom_20260918_media_checklist.yaml
+
+====================================================================
+FRIDAY ZOOM WEEK COMPLETE
+====================================================================
+pptx : output\friday_zoom_20260918_final.pptx
+
+Remaining manual QA:
+  - video playback
+  - audio autoplay
+  - prayer click animations
+
+>>> C:\Users\SSAFY\Documents\media-automation\.venv\Scripts\python.exe C:\Users\SSAFY\Documents\media-automation\scripts\complete_friday_zoom_week.py --date 2026-09-18

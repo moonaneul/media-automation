@@ -1,0 +1,50 @@
+service: wednesday
+review_required: false
+review_items: []
+date:
+  status: provided
+  value: '2026-09-30'
+  review_required: false
+fields:
+  opening_song_1:
+    status: provided
+    value: 아 하나님의 은혜로
+    review_required: false
+    source: 찬양3(이하은)
+    leader: 이하은
+  opening_song_2:
+    status: provided
+    value: 내가 매일 기쁘게
+    review_required: false
+    source: 찬양3(이하은)
+    leader: 이하은
+  opening_song_3:
+    status: provided
+    value: 오 하나님 우리의 창조주시니
+    review_required: false
+    source: 찬양3(이하은)
+    leader: 이하은
+  prayer:
+    status: provided
+    value: 한송희
+    review_required: false
+  additional_song:
+    status: provided
+    value: 나 주의 믿음 갖고
+    review_required: false
+  scripture:
+    status: provided
+    value: 삼상 17:41~49
+    review_required: false
+  sermon_title:
+    status: provided
+    value: 골리앗 앞에 서는 믿음
+    review_required: false
+  additional_scripture:
+    status: blank
+    value: null
+    review_required: false
+  decision_hymn:
+    status: provided
+    value: 나는 믿네
+    review_required: false

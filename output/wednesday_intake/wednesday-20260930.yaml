@@ -1,0 +1,26 @@
+service: wednesday
+date: '2026-09-30'
+opening_songs:
+- status: VALUE
+  title: 아 하나님의 은혜로
+- status: VALUE
+  title: 내가 매일 기쁘게
+- status: VALUE
+  title: 오 하나님 우리의 창조주시니
+prayer:
+  status: VALUE
+  person: 한송희
+additional_song:
+  status: VALUE
+  title: 나 주의 믿음 갖고
+scripture:
+  status: VALUE
+  reference: 삼상 17:41~49
+sermon_title:
+  status: VALUE
+  text: 골리앗 앞에 서는 믿음
+additional_scripture:
+  status: NONE
+decision_hymn:
+  status: VALUE
+  title: 나는 믿네

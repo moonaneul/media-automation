@@ -1,0 +1,67 @@
+service: sunday
+date: 2026-09-27
+worship:
+  opening_songs:
+  - status: UNSET
+  - status: UNSET
+  - status: UNSET
+  separate_hymn:
+    status: UNSET
+  offering_hymn:
+    status: UNSET
+  special_song:
+    status: UNSET
+  sermon_title:
+    status: VALUE
+    text: 살아 있는 믿음
+  scripture:
+    status: VALUE
+    reference: 히 11:1~3
+  additional_scripture:
+    status: UNSET
+  decision_hymn:
+    status: UNSET
+serving:
+  this_week:
+    first_service:
+      prayer:
+        status: UNSET
+      offering_prayer:
+        status: UNSET
+    second_service:
+      prayer:
+        status: VALUE
+        person: 위윤기
+      offering_prayer:
+        status: VALUE
+        person: 문호성
+    dishwashing:
+      status: UNSET
+    wednesday_prayer:
+      status: UNSET
+  next_week:
+    first_service:
+      prayer:
+        status: UNSET
+      offering_prayer:
+        status: UNSET
+    second_service:
+      prayer:
+        status: UNSET
+      offering_prayer:
+        status: UNSET
+    dishwashing:
+      status: UNSET
+    wednesday_prayer:
+      status: UNSET
+bulletin:
+  number:
+    status: UNSET
+  church_news:
+    status: UNSET
+  afternoon_service:
+    status: UNSET
+  monthly_schedule:
+    status: UNSET
+  cell_group:
+    status: UNSET

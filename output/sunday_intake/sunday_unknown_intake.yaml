@@ -1,0 +1,62 @@
+service: sunday
+target: second_service
+review_required: true
+review_items:
+- python sunday.py paste
+date:
+  status: missing
+  value: null
+  review_required: false
+fields:
+  opening_song_1:
+    status: missing
+    value: null
+    review_required: false
+  opening_song_2:
+    status: missing
+    value: null
+    review_required: false
+  opening_song_3:
+    status: missing
+    value: null
+    review_required: false
+  separate_hymn:
+    status: missing
+    value: null
+    review_required: false
+  second_service_prayer:
+    status: missing
+    value: null
+    review_required: false
+  church_news:
+    status: missing
+    value: null
+    review_required: false
+  offering_hymn:
+    status: missing
+    value: null
+    review_required: false
+  second_service_offering_prayer:
+    status: missing
+    value: null
+    review_required: false
+  special_song:
+    status: missing
+    value: null
+    review_required: false
+  sermon_title:
+    status: missing
+    value: null
+    review_required: false
+  scripture:
+    status: missing
+    value: null
+    review_required: false
+  additional_scripture:
+    status: missing
+    value: null
+    review_required: false
+  decision_hymn:
+    status: missing
+    value: null
+    review_required: false

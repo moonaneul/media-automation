@@ -1,0 +1,33 @@
+media:
+  opening_songs[0]:
+    type: video
+    title: 주께서 높은 보좌에
+    path: ../input/friday_zoom/20261009/opening_song_1.mp4
+  opening_songs[1]:
+    type: video
+    title: 성도의 노래
+    path: ../input/friday_zoom/20261009/opening_song_2.mp4
+  song_after_prayer:
+    type: video
+    title: 오직 믿음으로
+    path: ../input/friday_zoom/20261009/song_after_prayer.mp4
+  response_song:
+    type: video
+    title: 예수를 나의 구주 삼고(새찬송가 430장)
+    path: ../input/friday_zoom/20261009/response_song.mp4
+  intercession_song:
+    type: video
+    title: 주 예수 나의 산 소망
+    path: ../input/friday_zoom/20261009/intercession_song.mp4
+  first_prayer_audio:
+    type: audio
+    path: ../assets/private/friday_zoom/first_prayer.mp3
+  word_prayer_audio:
+    type: audio
+    path: ../assets/private/friday_zoom/word_prayer.mp3
+  community_prayer_audio:
+    type: audio
+    path: ../assets/private/friday_zoom/community_personal_prayer.mp3
+  personal_prayer_audio:
+    type: audio
+    path: ../assets/private/friday_zoom/community_personal_prayer.mp3

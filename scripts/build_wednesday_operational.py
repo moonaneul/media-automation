@@ -49,7 +49,11 @@ def load_bible_provider(path: Path) -> InMemoryBibleProvider:
     for lookup_reference, data in passages_raw.items():
         verses_raw = data.get("verses", {})
         verses = [
-            BibleVerse(number=int(number), text=text)
+            BibleVerse(
+                number=int(number), text=text,
+                end_number=(data.get("verse_ends", {}).get(int(number))
+                            or data.get("verse_ends", {}).get(str(number))),
+            )
             for number, text in verses_raw.items()
         ]
         verses.sort(key=lambda verse: verse.number)
@@ -68,6 +72,8 @@ def main():
     parser.add_argument("--bible", type=Path, required=True)
     parser.add_argument("--source", type=Path, required=True)
     parser.add_argument("--output", type=Path, required=True)
+    parser.add_argument("--validate-only", action="store_true",
+                        help="입력과 구조만 검증하고 최종 악보 병합은 실행하지 않습니다.")
     args = parser.parse_args()
 
     for name, path in {
@@ -129,6 +135,13 @@ def main():
         for issue in structure_qa.issues:
             print(f"STRUCTURE QA: [{issue.code}] {issue.message}")
         raise RuntimeError("수요예배 구조 QA 실패")
+
+    if args.validate_only:
+        print("\n=== Wednesday Input / Structure QA: PASS ===")
+        print(f"structure preview: {structure_path}")
+        print("구조 프리뷰의 악보 자리는 원본 장수를 반영한 빈 화면입니다.")
+        print("최종 악보 병합 및 실제 PowerPoint 화면 검수는 수행하지 않았습니다.")
+        return
 
     merger = create_platform_slide_merger()
     result = build_presentation_file_from_plan(
