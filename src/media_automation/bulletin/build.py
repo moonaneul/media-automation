@@ -66,6 +66,7 @@ def build_bulletin_from_files(
     transfer_source: str | Path | None = None,
     transfer_text: str | Path | None = None,
     already_merged: bool = False,
+    design: str = "classic",
 ) -> BulletinBuildResult:
     sunday_path = Path(sunday_yaml)
 
@@ -139,10 +140,21 @@ def build_bulletin_from_files(
         merge_result.sunday
     )
 
-    pdf_result = render_bulletin_pdf(
-        document,
-        output_pdf,
-    )
+    if design == "modern":
+        from reportlab.lib.pagesizes import A4, landscape
+        from media_automation.bulletin.modern import render_modern_bulletin
+        from media_automation.bulletin.pdf import build_imposition_plan
+        photo = Path(__file__).resolve().parents[3] / "assets/bulletin/autumn_soft_v2.png"
+        if not photo.is_file():
+            raise FileNotFoundError(f"확정된 주보 표지 사진이 없습니다: {photo}")
+        path = render_modern_bulletin(document, output_pdf, photo)
+        width, height = landscape(A4)
+        pdf_result = BulletinPdfResult(path=path, sheets=build_imposition_plan(),
+                                      width=width, height=height)
+    elif design == "classic":
+        pdf_result = render_bulletin_pdf(document, output_pdf)
+    else:
+        raise ValueError(f"지원하지 않는 주보 디자인입니다: {design}")
 
     return BulletinBuildResult(
         merge=merge_result,

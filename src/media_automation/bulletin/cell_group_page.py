@@ -96,7 +96,7 @@ def draw_cell_group_page(
                      height - 14 * mm, 7 * mm)
     left = x + 10 * mm
     right = x + width - 10 * mm
-    canvas.setFillColorRGB(0, 0, 1)
+    canvas.setFillColorRGB(0, 0, 0)
     canvas.setFont(FONT_BOLD, 10.5)
     canvas.drawString(left, y + height - 19 * mm, "* 목장 말씀 나누기")
     canvas.setFillColorRGB(0, 0, 0)

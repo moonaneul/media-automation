@@ -138,7 +138,7 @@ def _draw_wrapped(
         font_size,
     )
 
-    canvas.setFillColorRGB(0, 0, 0.4)
+    canvas.setFillColorRGB(0, 0, 0)
     cursor = y
 
     for line in lines:

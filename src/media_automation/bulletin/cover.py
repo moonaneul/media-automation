@@ -70,6 +70,24 @@ def register_korean_fonts() -> None:
     )
 
 
+
+def draw_bold_slogan(canvas: Canvas, text: str, center_x: float,
+                     baseline: float, font_size: float) -> None:
+    # AppleGothic has no separate bold face. Fill and stroke the embedded
+    # glyphs to give this heading consistent weight in all PDF viewers.
+    canvas.saveState()
+    canvas.setFillColorRGB(0, 0, 0)
+    canvas.setStrokeColorRGB(0, 0, 0)
+    canvas.setLineWidth(font_size * 0.025)
+    text_width = pdfmetrics.stringWidth(text, FONT_REGULAR, font_size)
+    heading = canvas.beginText(center_x - text_width / 2, baseline)
+    heading.setFont(FONT_REGULAR, font_size)
+    heading.setTextRenderMode(2)
+    heading.textOut(text)
+    canvas.drawText(heading)
+    canvas.restoreState()
+
+
 def draw_cover_page(
     canvas: Canvas,
     *,
@@ -96,8 +114,8 @@ def draw_cover_page(
                                   f"No. {cover.bulletin_number}")
             canvas.drawRightString(x + width - 10 * mm, y + height - 11 * mm,
                                   cover.date_text)
-            canvas.setFont(FONT_BOLD, 20)
-            canvas.drawCentredString(x + width / 2, y + height * 0.805, static.slogan)
+            draw_bold_slogan(canvas, static.slogan, x + width / 2,
+                             y + height * 0.805, 20)
             canvas.setFont(FONT_REGULAR, 9)
             for index, line in enumerate(static.verse_lines):
                 canvas.drawCentredString(x + width / 2,
@@ -148,11 +166,8 @@ def draw_cover_page(
         FONT_BOLD,
         17,
     )
-    canvas.drawCentredString(
-        x + width / 2,
-        y + height * 0.57,
-        static.slogan,
-    )
+    draw_bold_slogan(canvas, static.slogan, x + width / 2,
+                     y + height * 0.57, 17)
 
     # 마 28:19
     canvas.setFont(

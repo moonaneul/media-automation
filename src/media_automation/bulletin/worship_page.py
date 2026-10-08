@@ -180,7 +180,7 @@ def _draw_section_title(
         12.5,
     )
 
-    canvas.setFillColorRGB(0, 0, 1)
+    canvas.setFillColorRGB(0, 0, 0)
     if text == "오전 예배 순서":
         canvas.drawCentredString(x + width / 2, y, text)
     else:
