@@ -14,7 +14,7 @@ items:
 - field: additional_song
   title: 나 주의 믿음 갖고
   expected_filename: additional_song.pptx
-  file: null
+  file: /Users/moonaneul/Documents/media-automation/input/wednesday/20260930/additional_song.pptx
 - field: decision_hymn
   title: 나는 믿네
   expected_filename: decision_hymn.pptx

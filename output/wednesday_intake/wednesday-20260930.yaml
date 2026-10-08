@@ -2,16 +2,17 @@ service: wednesday
 date: '2026-09-30'
 opening_songs:
 - status: VALUE
-  title: __opening_song_1__
+  title: 아 하나님의 은혜로
 - status: VALUE
-  title: __opening_song_2__
+  title: 내가 매일 기쁘게
 - status: VALUE
-  title: __opening_song_3__
+  title: 오 하나님 우리의 창조주시니
 prayer:
   status: VALUE
   person: 한송희
 additional_song:
-  status: NONE
+  status: VALUE
+  title: 나 주의 믿음 갖고
 scripture:
   status: VALUE
   reference: 삼상 17:41~49
