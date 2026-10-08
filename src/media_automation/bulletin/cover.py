@@ -54,9 +54,9 @@ def register_korean_fonts() -> None:
         candidates = [Path(configured).expanduser()]
     else:
         candidates = [
-            Path("/System/Library/Fonts/Supplemental/AppleMyungjo.ttf"),
+            Path("/System/Library/Fonts/Supplemental/AppleGothic.ttf"),
             Path(os.environ.get("WINDIR", "C:/Windows")) / "Fonts/malgun.ttf",
-            Path("/usr/share/fonts/truetype/nanum/NanumMyeongjo.ttf"),
+            Path("/usr/share/fonts/truetype/nanum/NanumGothic.ttf"),
         ]
     for candidate in candidates:
         if candidate.is_file():
@@ -84,6 +84,27 @@ def draw_cover_page(
 
     if static is None:
         static = BulletinCoverStatic()
+        background = Path(__file__).resolve().parents[3] / "assets/bulletin/cover_autumn.jpg"
+        if background.is_file():
+            canvas.saveState()
+            canvas.drawImage(str(background), x, y, width=width, height=height,
+                             preserveAspectRatio=True, anchor="c")
+            canvas.setFillColorRGB(0, 0, 0)
+            canvas.setFont(FONT_REGULAR, 9.5)
+            if cover.bulletin_number:
+                canvas.drawString(x + 10 * mm, y + height - 11 * mm,
+                                  f"No. {cover.bulletin_number}")
+            canvas.drawRightString(x + width - 10 * mm, y + height - 11 * mm,
+                                  cover.date_text)
+            canvas.setFont(FONT_BOLD, 20)
+            canvas.drawCentredString(x + width / 2, y + height * 0.805, static.slogan)
+            canvas.setFont(FONT_REGULAR, 9)
+            for index, line in enumerate(static.verse_lines):
+                canvas.drawCentredString(x + width / 2,
+                                        y + height * 0.745 - index * 4.5 * mm, line)
+            canvas.restoreState()
+            return
+        raise FileNotFoundError(f"주보 표지 원본 이미지가 없습니다: {background}")
 
     margin = 10 * mm
     top = y + height - margin

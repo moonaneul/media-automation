@@ -87,166 +87,42 @@ def draw_cell_group_page(
 ) -> None:
     register_korean_fonts()
 
-    margin_x = 9 * mm
-    margin_top = 10 * mm
-    margin_bottom = 9 * mm
+    if page.questions and len(page.questions) != 4:
+        raise ValueError("목장 말씀 나누기 질문은 4개여야 합니다.")
 
-    left = x + margin_x
-    right = x + width - margin_x
+    canvas.saveState()
+    canvas.setLineWidth(0.9)
+    canvas.roundRect(x + 6 * mm, y + 7 * mm, width - 12 * mm,
+                     height - 14 * mm, 7 * mm)
+    left = x + 10 * mm
+    right = x + width - 10 * mm
+    canvas.setFillColorRGB(0, 0, 1)
+    canvas.setFont(FONT_BOLD, 10.5)
+    canvas.drawString(left, y + height - 19 * mm, "* 목장 말씀 나누기")
+    canvas.setFillColorRGB(0, 0, 0)
+    heading = " / ".join(value for value in (page.scripture, page.title) if value)
+    heading_lines = wrap_text(f"<{heading}>" if heading else "",
+                              font_name=FONT_REGULAR, font_size=9,
+                              max_width=right - left)
+    heading_cursor = y + height - 29 * mm
+    canvas.setFont(FONT_REGULAR, 9)
+    for line in heading_lines:
+        canvas.drawRightString(right, heading_cursor, line)
+        heading_cursor -= 4.5 * mm
 
-    cursor = (
-        y + height - margin_top
-    )
-
-    # -------------------------
-    # 페이지 제목
-    # -------------------------
-
-    canvas.setFont(
-        FONT_BOLD,
-        16.5,
-    )
-
-    canvas.drawCentredString(
-        x + width / 2,
-        cursor,
-        "목장 말씀 나누기",
-    )
-
-    cursor -= 9 * mm
-
-    # -------------------------
-    # 본문 / 제목
-    # -------------------------
-
-    if page.scripture:
-        canvas.setFont(
-            FONT_REGULAR,
-            10.5,
-        )
-        canvas.drawCentredString(
-            x + width / 2,
-            cursor,
-            page.scripture,
-        )
-
-        cursor -= 9 * mm
-
-    if page.title:
-        canvas.setFont(
-            FONT_BOLD,
-            15,
-        )
-        canvas.drawCentredString(
-            x + width / 2,
-            cursor,
-            page.title,
-        )
-
-        cursor -= 10 * mm
-
-    canvas.line(
-        left,
-        cursor + 3 * mm,
-        right,
-        cursor + 3 * mm,
-    )
-
-    # Keep the first question safely below the separator.
-    cursor -= 5 * mm
-
-    # -------------------------
-    # 질문
-    # -------------------------
-
-    if (
-        page.questions
-        and len(page.questions) != 4
-    ):
-        raise ValueError(
-            "목장 말씀 나누기 질문은 "
-            "4개여야 합니다."
-        )
-
-    question_font_size = 10.5
-    line_height = 6.0 * mm
-
-    # 각 문항 아래에 실제 주보에서 메모할 수 있는 빈 공간을 둔다.
-    # 줄은 그리지 않고, 필기할 수 있는 여백만 확보한다.
-    answer_top_gap = 3 * mm
-    answer_space_height = 16 * mm
-    question_gap = 5 * mm
-
-    number_width = 8 * mm
-
-    text_width = (
-        right
-        - left
-        - number_width
-        - 4 * mm
-    )
-
-    question_char_space = 0
-
-    for index, question in enumerate(
-        page.questions,
-        start=1,
-    ):
-        lines = wrap_text(
-            question,
-            font_name=FONT_REGULAR,
-            font_size=question_font_size,
-            max_width=text_width,
-            char_space=question_char_space,
-        )
-
-        canvas.setFont(
-            FONT_BOLD,
-            question_font_size,
-        )
-
-        canvas.drawString(
-            left,
-            cursor,
-            f"{index}.",
-        )
-
-        canvas.setFont(
-            FONT_REGULAR,
-            question_font_size,
-        )
-
-        line_cursor = cursor
-
+    question_top = heading_cursor - 7 * mm
+    bottom = y + 15 * mm
+    slot_height = (question_top - bottom) / 4
+    for index, question in enumerate(page.questions):
+        cursor = question_top - index * slot_height
+        lines = wrap_text(question, font_name=FONT_REGULAR, font_size=9.2,
+                          max_width=right - left - 6 * mm)
+        # Keep at least 12 mm for handwritten notes after each question.
+        if len(lines) * 5 * mm + 12 * mm > slot_height:
+            raise ValueError("목장 말씀 나누기 질문이 페이지 영역을 넘습니다.")
+        canvas.setFont(FONT_REGULAR, 9.2)
+        canvas.drawString(left, cursor, f"{index + 1}.")
         for line in lines:
-            if (
-                line_cursor
-                < y + margin_bottom
-            ):
-                raise ValueError(
-                    "목장 말씀 나누기 질문이 "
-                    "페이지 영역을 넘습니다."
-                )
-
-            canvas.drawString(
-                left + number_width,
-                line_cursor,
-                line,
-            )
-
-            line_cursor -= line_height
-
-        # 문항별 필기 공간(라인 없이 빈 공간만 확보)
-        answer_bottom = (
-            line_cursor
-            - answer_top_gap
-            - answer_space_height
-        )
-
-        if answer_bottom < y + margin_bottom:
-            raise ValueError(
-                "목장 말씀 나누기 필기 공간이 "
-                "페이지 영역을 넘습니다."
-            )
-
-        cursor = answer_bottom - question_gap
+            canvas.drawString(left + 6 * mm, cursor, line)
+            cursor -= 5 * mm
+    canvas.restoreState()
