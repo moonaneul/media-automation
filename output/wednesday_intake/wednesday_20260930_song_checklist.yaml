@@ -1,16 +1,20 @@
 items:
 - field: opening_song_1
-  title: null
+  title: 아 하나님의 은혜로
   expected_filename: opening_song_1.pptx
   file: /Users/moonaneul/Documents/media-automation/input/wednesday/20260930/opening_song_1.pptx
 - field: opening_song_2
-  title: null
+  title: 내가 매일 기쁘게
   expected_filename: opening_song_2.pptx
   file: /Users/moonaneul/Documents/media-automation/input/wednesday/20260930/opening_song_2.pptx
 - field: opening_song_3
-  title: null
+  title: 오 하나님 우리의 창조주시니
   expected_filename: opening_song_3.pptx
   file: /Users/moonaneul/Documents/media-automation/input/wednesday/20260930/opening_song_3.pptx
+- field: additional_song
+  title: 나 주의 믿음 갖고
+  expected_filename: additional_song.pptx
+  file: null
 - field: decision_hymn
   title: 나는 믿네
   expected_filename: decision_hymn.pptx

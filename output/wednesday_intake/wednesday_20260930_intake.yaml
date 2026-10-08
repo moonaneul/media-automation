@@ -7,20 +7,20 @@ date:
   review_required: false
 fields:
   opening_song_1:
-    status: asset_required
-    value: null
+    status: provided
+    value: 아 하나님의 은혜로
     review_required: false
     source: 찬양3(이하은)
     leader: 이하은
   opening_song_2:
-    status: asset_required
-    value: null
+    status: provided
+    value: 내가 매일 기쁘게
     review_required: false
     source: 찬양3(이하은)
     leader: 이하은
   opening_song_3:
-    status: asset_required
-    value: null
+    status: provided
+    value: 오 하나님 우리의 창조주시니
     review_required: false
     source: 찬양3(이하은)
     leader: 이하은
