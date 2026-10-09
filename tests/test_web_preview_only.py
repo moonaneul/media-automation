@@ -74,5 +74,8 @@ def test_manual_review_fields_removed_from_web_markup():
     assert 'id="qa-human"' not in html
     assert 'id="existing-human"' not in html
     assert "preview-artifact" in html
-    assert "existing-preview-build" in html
+    assert 'id="existing-file"' in html
+    assert 'id="previous-jobs"' in html
+    assert 'id="existing-list"' not in html
+    assert 'id="existing-date"' not in html
     assert "qaCurrent" not in js
