@@ -23,6 +23,8 @@ class Application:
         self.lock = threading.RLock()
         self.active: str | None = None
         self.existing = ExistingInspections(storage / '_existing_inspections')
+        # Only expire previously registered disposable preview copies; keep legacy records.
+        self.existing._cleanup_preview_sessions()
 
     def get(self, job_id: str) -> dict:
         with self.lock:
