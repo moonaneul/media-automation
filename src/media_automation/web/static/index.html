@@ -6,12 +6,12 @@
 <main>
 <section><h2>새 제작</h2><form id="create"><label>종류<select id="service"><option value="bulletin">주일 주보</option><option value="sunday">주일예배</option><option value="wednesday">수요예배</option><option value="friday">금요기도회 (Zoom)</option></select></label><label>날짜<input id="date" type="date" required></label><button>작업 만들기</button></form><p class="hint">새 작업은 항상 빈 상태로 시작합니다. 지난주 정보는 자동으로 가져오지 않습니다.</p></section>
 <section id="existing-section">
-<h2>기존 제작물 검수</h2>
-<p class="hint">이미 제작된 PPTX·PDF를 검수용으로 복사하여 검사합니다. 이번 주 제작 입력이나 산출물로 등록되지 않습니다.</p>
+<h2>기존 제작물 검수 (선택 기능)</h2>
+<p class="hint">이미 만들어 놓은 PPTX·PDF를 검사할 때만 사용하세요. 이번 주 새 PPT·주보를 제작할 때는 파일을 올릴 필요가 없습니다.</p>
 <form id="existing-upload">
 <label>예배 종류<select id="existing-service"><option value="sunday">주일예배</option><option value="wednesday">수요예배</option><option value="friday_zoom">금요 Zoom</option><option value="friday_in_person">금요 대면</option><option value="bulletin">주일 주보</option></select></label>
 <label>원본 날짜<input type="date" id="existing-date" required></label>
-<label>기존 제작 파일<input type="file" id="existing-file" accept=".pptx,.pdf" required></label>
+<label>기존 완성본(PPTX·PDF)<input type="file" id="existing-file" accept=".pptx,.pdf" required></label>
 <button type="submit">검수용 복사본 등록</button>
 </form>
 <div id="existing-list"></div>
