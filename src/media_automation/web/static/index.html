@@ -31,6 +31,21 @@
 <p class="hint">안내 원문만 올리면 입력 정리가 끝난 것이 아닙니다. 해석·수정 지시 확인 후 생성된 이번 주 자료가 있어야 합니다. UNSET은 미제공, NONE은 이번 주 없음, VALUE는 이번 주 값 제공입니다.</p>
 <h3>5. 제작 및 결과</h3><p id="run-help" class="hint"></p><button id="run" type="button" disabled>제작 실행</button>
 <div id="artifacts"></div><p class="hint">생성 완료는 화면 검수, 실제 인쇄·접지, 동영상·음원 재생 또는 자료 사용 허락을 의미하지 않습니다.</p>
+<h3>6. 자동 검수 및 최종 확인</h3>
+<p class="hint">생성된 해당 작업의 PPT·PDF만 검사합니다. 자동 검수와 사람이 확인한 기록은 분리되며, 산출물이 달라지면 이전 검수는 무효입니다.</p>
+<div id="qa-pane"><p id="qa-empty">생성된 산출물을 선택하면 검수할 수 있습니다.</p>
+<label>검수할 산출물<select id="qa-artifact"></select></label>
+<label>성경 본문 범위(선택 사항, 직접 확인한 범위만 입력)<input id="qa-reference" placeholder="예: 삼상 17:41~49"></label>
+<button id="qa-run" type="button">자동 검사 실행</button>
+<div id="qa-results" role="status"></div>
+<form id="qa-human" hidden>
+<label>검수자<input id="qa-reviewer" maxlength="80" required></label>
+<div id="qa-checks"></div>
+<label>검수 메모<textarea id="qa-note" maxlength="2000" rows="3"></textarea></label>
+<button type="submit">사람 검수 기록 저장</button>
+</form>
+<button id="qa-report" type="button" hidden>검수 보고서 JSON 받기</button>
+</div>
 </section><p id="message" role="status" aria-live="polite"></p>
 </main>
 </body>
