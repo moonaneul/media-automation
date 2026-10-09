@@ -96,6 +96,9 @@ function renderSlot(container,slot,opened){
  const actions=item(unit,'div','');actions.className='weekly-actions';
  if(slot.latest){
   makeWeeklyButton(actions,'작업 열기',()=>openWeekJob(slot.latest.job_id),'weekly-open');
+  if(slot.latest_generated && slot.latest_generated.job_id!==slot.latest.job_id){
+   makeWeeklyButton(actions,'생성된 파일 열기',()=>openWeekJob(slot.latest_generated.job_id),'subtle-button');
+  }
   if(slot.has_multiple){
    const details=item(unit,'details','');details.className='weekly-versions';
    details.dataset.key=slot.service+'|'+slot.date;
