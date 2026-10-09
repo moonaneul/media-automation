@@ -42,9 +42,11 @@ function renderReadiness(r){
  for(const name of missing)statusRow(list,name,'missing','○ 미제공');
  for(const message of checks)statusRow(list,message,'review','! 확인 필요');
  if(!total&&!checks.length)item(box,'p',r.note||'');
- const fieldsArea=$('field-states');fieldsArea.replaceChildren();
+ const fieldsArea=$('field-states');
+ const wasOpen=fieldsArea.querySelector('details')?.open||false;
+ fieldsArea.replaceChildren();
  if(fields.length){
-  const details=item(fieldsArea,'details','');
+  const details=item(fieldsArea,'details','');details.open=wasOpen;
   const caption=item(details,'summary','이번 주 안내 항목 상태 보기');caption.className='status-details-toggle';
   const entries=item(details,'ul','');entries.className='input-status-list';
   for(const field of fields){
@@ -55,7 +57,7 @@ function renderReadiness(r){
 }
 function updateType(){const kind=types.find(x=>x.kind===$('input-kind').value);$('slot-wrap').hidden=!(kind&&kind.slots.length);$('input-slot').replaceChildren();if(kind){for(const slot of kind.slots){const opt=document.createElement('option');opt.value=slot;opt.textContent=slot;$('input-slot').append(opt);}$('file').accept=kind.extensions.join(',');$('file').value='';}}
 $('input-kind').onchange=updateType;
-async function refresh(){try{const rows=await json('/api/jobs');jobsCache=rows;$('jobs').replaceChildren();for(const job of rows){const b=item($('jobs'),'button',`${job.date} · ${names[job.service]} · ${labels[job.state]||job.state}`);b.onclick=()=>show(job.job_id);}if(current)await show(current);}catch(e){error(e);}}
+async function refresh(){try{const rows=await json('/api/jobs');jobsCache=rows;$('jobs').replaceChildren();for(const job of rows){const b=item($('jobs'),'button',`${job.date} · ${names[job.service]} · ${labels[job.state]||job.state}`);b.onclick=async()=>{await show(job.job_id);$('detail').scrollIntoView({behavior:'smooth',block:'start'});};}if(current)await show(current);}catch(e){error(e);}}
 async function show(id){
  const changed=current!==id;current=id;const job=await json('/api/jobs/'+id);
  $('detail').hidden=false;$('title').textContent=job.date+' '+names[job.service];$('state').textContent=(labels[job.state]||job.state)+(job.message?' — '+job.message:'');
