@@ -4,3 +4,14 @@
 #notice-pane{border:1px solid #e1e5df;border-radius:12px;padding:14px 18px;margin:12px 0 28px}#notice-pane[hidden]{display:none}#notice-fields li{margin:5px 0;line-height:1.5}#notice-review p{margin:6px 0;color:#69422f;overflow-wrap:anywhere}#confirm-notice{margin-top:12px}
 
 #common-pane{border-top:1px solid #e1e5df;padding:12px 0 18px;margin:14px 0}#common-pane[hidden],#import-sunday[hidden]{display:none}#common-summary p{margin:7px 0}#common-summary li{overflow-wrap:anywhere}
+
+#qa-pane{border-top:1px solid #e1e5df;padding-top:16px;margin-top:12px}
+#qa-pane>label{margin:12px 0}
+#qa-pane button{margin:8px 10px 8px 0}
+#qa-pane textarea{font:inherit;border:1px solid #bac5bc;border-radius:8px;padding:10px 14px;width:100%;min-height:80px}
+#qa-results li{margin:6px 0;overflow-wrap:anywhere}
+#qa-human{display:block;border-top:1px solid #e1e5df;margin-top:16px;padding-top:12px}
+#qa-human[hidden],#qa-report[hidden],#qa-empty[hidden]{display:none}
+#qa-checks{display:grid;gap:12px;margin:12px 0}
+#qa-checks label{display:flex;flex-direction:row;align-items:center;gap:12px;justify-content:space-between}
+#qa-checks select{flex:0 0 150px}
