@@ -1,13 +1,15 @@
 """Separate cached PDF previews for successfully generated job artifacts."""
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 import hashlib
 import json
 import os
 from pathlib import Path
 
 from .pptx_preview import availability, convert_pptx
+
+PREVIEW_TTL = timedelta(hours=24)
 
 
 def _sha256(path: Path) -> str:
@@ -22,6 +24,23 @@ def _directory(job_dir: Path, relative: str) -> Path:
     return job_dir / "previews" / hashlib.sha256(relative.encode("utf-8")).hexdigest()
 
 
+def _expire_preview(target: Path) -> None:
+    """Only derived PDF cache files are removable, never production outputs."""
+    file = target / "slides.pdf"
+    info = target / "metadata.json"
+    if not file.exists() or not info.is_file() or (target / ".rendering.lock").exists():
+        return
+    try:
+        meta = json.loads(info.read_text(encoding="utf-8"))
+        stamp = datetime.fromisoformat(meta["created_at"])
+        if stamp.tzinfo is None or datetime.now(timezone.utc) - stamp <= PREVIEW_TTL:
+            return
+    except (ValueError, KeyError, OSError, json.JSONDecodeError):
+        return
+    file.unlink(missing_ok=True)
+    info.unlink(missing_ok=True)
+
+
 def status(job_dir: Path, relative: str, artifact: Path) -> dict:
     suffix = artifact.suffix.lower()
     if suffix == ".pdf":
@@ -30,6 +49,7 @@ def status(job_dir: Path, relative: str, artifact: Path) -> dict:
     if suffix != ".pptx":
         raise ValueError("PDF와 PPTX만 미리볼 수 있습니다.")
     target = _directory(job_dir, relative)
+    _expire_preview(target)
     output = target / "slides.pdf"
     metadata = target / "metadata.json"
     digest = _sha256(artifact)
@@ -58,10 +78,9 @@ def build(job_dir: Path, relative: str, artifact: Path) -> dict:
         if status(job_dir, relative, artifact)["available"]:
             return status(job_dir, relative, artifact)
         output = target / "slides.pdf"
-        # Invalid or obsolete caches must not be mistaken for a new render.
-        # Keep a stale cache as backup, but do not silently overwrite it.
+        # Remove only derived stale previews; never overwrite the PPTX/PDF output.
         if output.exists():
-            output.rename(target / ("stale-" + _sha256(output)[:12] + ".pdf"))
+            output.unlink()
         method = convert_pptx(artifact, output)
         metadata = {
             "sha256": _sha256(artifact), "method": method,
