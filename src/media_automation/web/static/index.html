@@ -5,6 +5,35 @@
 <header><span>하늘빛기쁨성서침례교회</span><h1>미디어 제작실</h1><p>이번 주 입력을 모아 제작 가능 여부부터 확인합니다.</p></header>
 <main>
 <section><h2>새 제작</h2><form id="create"><label>종류<select id="service"><option value="bulletin">주일 주보</option><option value="sunday">주일예배</option><option value="wednesday">수요예배</option><option value="friday">금요기도회 (Zoom)</option></select></label><label>날짜<input id="date" type="date" required></label><button>작업 만들기</button></form><p class="hint">새 작업은 항상 빈 상태로 시작합니다. 지난주 정보는 자동으로 가져오지 않습니다.</p></section>
+<section id="existing-section">
+<h2>기존 제작물 검수</h2>
+<p class="hint">이미 제작된 PPTX·PDF를 검수용으로 복사하여 검사합니다. 이번 주 제작 입력이나 산출물로 등록되지 않습니다.</p>
+<form id="existing-upload">
+<label>예배 종류<select id="existing-service"><option value="sunday">주일예배</option><option value="wednesday">수요예배</option><option value="friday_zoom">금요 Zoom</option><option value="friday_in_person">금요 대면</option><option value="bulletin">주일 주보</option></select></label>
+<label>원본 날짜<input type="date" id="existing-date" required></label>
+<label>기존 제작 파일<input type="file" id="existing-file" accept=".pptx,.pdf" required></label>
+<button type="submit">검수용 복사본 등록</button>
+</form>
+<div id="existing-list"></div>
+<div id="existing-detail" hidden>
+<h3 id="existing-title"></h3>
+<label>성경 본문 범위(선택)<input id="existing-reference" placeholder="예: 삼상 17:41~49"></label>
+<button id="existing-run" type="button">자동 검사 실행</button>
+<div id="existing-results" role="status"></div>
+<form id="existing-human" hidden>
+<label>검수자<input id="existing-reviewer" maxlength="80" required></label>
+<div id="existing-checks"></div>
+<label>검수 메모<textarea id="existing-note" rows="3" maxlength="2000"></textarea></label>
+<button type="submit">검수 기록 저장</button>
+</form>
+<button id="existing-report" type="button" hidden>검수 기록 JSON 받기</button>
+<h3>화면 미리보기</h3>
+<p id="existing-preview-help" class="hint"></p>
+<button id="existing-preview-build" type="button">미리보기 준비</button>
+<div id="existing-preview"></div>
+<p class="hint">PDF 미리보기는 브라우저 표시입니다. PPTX는 별도 변환 결과이며 실제 PowerPoint 화면·재생 및 인쇄 확인을 대체하지 않습니다.</p>
+</div>
+</section>
 <section><h2>제작 목록</h2><div id="jobs"></div></section>
 <section id="detail" hidden>
 <h2 id="title"></h2><p id="state"></p>
