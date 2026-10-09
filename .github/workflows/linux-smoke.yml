@@ -1,0 +1,39 @@
+name: Linux PPT and preview smoke check
+
+on:
+  push:
+    branches: [diagnostic/linux-preview-check]
+
+permissions: {}
+
+jobs:
+  preview:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - name: Install conversion tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends libreoffice-impress poppler-utils fonts-nanum
+      - name: Create synthetic presentation
+        run: |
+          mkdir -p /tmp/media-check/input /tmp/media-check/ppt /tmp/media-check/pdf
+          cat > /tmp/media-check/input/check.fodp <<'EOF'
+          <?xml version="1.0" encoding="UTF-8"?>
+          <office:document xmlns:office="urn:oasis:names:tc:opendocument:xmlns:office:1.0" xmlns:draw="urn:oasis:names:tc:opendocument:xmlns:drawing:1.0" xmlns:text="urn:oasis:names:tc:opendocument:xmlns:text:1.0" xmlns:svg="urn:oasis:names:tc:opendocument:xmlns:svg-compatible:1.0" office:version="1.2" office:mimetype="application/vnd.oasis.opendocument.presentation">
+          <office:body><office:presentation><draw:page draw:name="Linux check"><draw:frame svg:x="2cm" svg:y="2cm" svg:width="20cm" svg:height="5cm"><draw:text-box><text:p>Linux preview check 12345</text:p></draw:text-box></draw:frame></draw:page></office:presentation></office:body>
+          </office:document>
+          EOF
+      - name: Convert to PPTX and then PDF
+        run: |
+          set -euo pipefail
+          libreoffice -env:UserInstallation=file:///tmp/lo-create --headless --convert-to pptx --outdir /tmp/media-check/ppt /tmp/media-check/input/check.fodp
+          test -s /tmp/media-check/ppt/check.pptx
+          libreoffice -env:UserInstallation=file:///tmp/lo-preview --headless --convert-to pdf --outdir /tmp/media-check/pdf /tmp/media-check/ppt/check.pptx
+          test -s /tmp/media-check/pdf/check.pdf
+          pdftotext /tmp/media-check/pdf/check.pdf /tmp/media-check/check.txt
+          grep -F 'Linux preview check 12345' /tmp/media-check/check.txt
+          pdfinfo /tmp/media-check/pdf/check.pdf
+          pdftoppm -f 1 -singlefile -scale-to 1000 -png /tmp/media-check/pdf/check.pdf /tmp/media-check/preview
+          test -s /tmp/media-check/preview.png
+          echo 'PASS: synthetic PPTX -> PDF -> PNG with expected text'
