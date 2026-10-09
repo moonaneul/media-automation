@@ -57,6 +57,9 @@ def make_server(application: Application, port: int = 8765):
                 if self.command == 'POST' and path == '/api/preview-once':
                     result = preview_once(query['filename'][0], self.body(MAX_UPLOAD))
                     self.reply(200, result, 'application/pdf')
+                elif self.command == 'GET' and path == '/api/weekly-board':
+                    from datetime import date
+                    self.reply(200, application.weekly_dashboard(query.get('date', [date.today().isoformat()])[0]))
                 elif self.command == 'GET' and path == '/api/jobs':
                     self.reply(200, application.list())
                 elif self.command == 'POST' and path == '/api/jobs':
