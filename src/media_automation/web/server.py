@@ -83,6 +83,16 @@ def make_server(application: Application, port: int = 8765):
                         self.reply(201, application.upload(job, query['path'][0], self.body(MAX_UPLOAD)))
                     elif self.command == 'POST' and parts[3:] == ['run']:
                         self.reply(202, application.start(job, self.body_json().get('source')))
+                    elif self.command == 'GET' and parts[3:] == ['qa']:
+                        self.reply(200, application.qa_status(job, query['path'][0]))
+                    elif self.command == 'POST' and parts[3:] == ['qa', 'inspect']:
+                        data = self.body_json()
+                        self.reply(200, application.qa_inspect(job, data['path'], data.get('reference')))
+                    elif self.command == 'POST' and parts[3:] == ['qa', 'confirm']:
+                        data = self.body_json()
+                        self.reply(200, application.qa_confirm(job, data['path'], data))
+                    elif self.command == 'GET' and parts[3:] == ['qa', 'report']:
+                        self.reply(200, application.qa_report(job, query['path'][0]), 'application/json; charset=utf-8')
                     elif self.command == 'GET' and parts[3:] == ['artifact']:
                         target = application.artifact(job, query['path'][0])
                         self.reply(200, target.read_bytes(), mimetypes.guess_type(target.name)[0] or 'application/octet-stream')
