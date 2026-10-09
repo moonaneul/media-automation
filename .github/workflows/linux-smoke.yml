@@ -14,7 +14,7 @@ jobs:
       - name: Install diagnostic tools
         run: |
           sudo apt-get update
-          sudo apt-get install -y --no-install-recommends libreoffice-impress poppler-utils fonts-nanum ffmpeg imagemagick python3-lxml python3-pil
+          sudo apt-get install -y --no-install-recommends libreoffice-impress poppler-utils fonts-nanum ffmpeg python3-lxml python3-pil
       - name: Check synthetic Korean image and embedded media
         run: |
           python3 - <<'PYTHON'
@@ -38,7 +38,14 @@ jobs:
           svg += ''.join(f'<ellipse cx="{x}" cy="{y}" rx="13" ry="9"/><path d="M{x+12} {y}v-55" stroke="black" stroke-width="3"/>' for x,y in ((160,110),(330,90),(500,70)))
           svg += '</svg>'
           (ROOT/'input/score.svg').write_text(svg)
-          run('convert', str(ROOT/'input/score.svg'), str(ROOT/'input/score.png'))
+          from PIL import Image, ImageDraw
+          score=Image.new('RGB',(800,200),'white')
+          draw=ImageDraw.Draw(score)
+          for y in (50,70,90,110,130): draw.line((30,y,770,y),fill='black',width=3)
+          for x,y in ((160,110),(330,90),(500,70)):
+              draw.ellipse((x-13,y-9,x+13,y+9),fill='black')
+              draw.line((x+12,y,x+12,y-55),fill='black',width=3)
+          score.save(ROOT/'input/score.png')
           image = base64.b64encode((ROOT/'input/score.png').read_bytes()).decode()
           fodp = f'''<?xml version="1.0" encoding="UTF-8"?>
           <office:document xmlns:office="urn:oasis:names:tc:opendocument:xmlns:office:1.0" xmlns:draw="urn:oasis:names:tc:opendocument:xmlns:drawing:1.0" xmlns:text="urn:oasis:names:tc:opendocument:xmlns:text:1.0" xmlns:svg="urn:oasis:names:tc:opendocument:xmlns:svg-compatible:1.0" xmlns:style="urn:oasis:names:tc:opendocument:xmlns:style:1.0" xmlns:fo="urn:oasis:names:tc:opendocument:xmlns:xsl-fo-compatible:1.0" office:version="1.2" office:mimetype="application/vnd.oasis.opendocument.presentation">
