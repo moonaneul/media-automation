@@ -124,3 +124,69 @@ $('qa-report').onclick=async()=>{try{
  const path=$('qa-artifact').value,r=await api('/api/jobs/'+current+'/qa/report?path='+encodeURIComponent(path));
  const blob=await r.blob(),url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download='qa-report.json';a.click();setTimeout(()=>URL.revokeObjectURL(url),60000);
 }catch(e){error(e);}};
+
+
+let existingId=null,existingData=null,existingPreviewURL=null;
+async function existingRefresh(){
+ const rows=await json('/api/existing-inspections');
+ const list=$('existing-list');list.replaceChildren();
+ for(const row of rows){const b=item(list,'button',row.date+' · '+row.filename+' · 기존 파일 검수');b.onclick=()=>existingShow(row.inspection_id);}
+}
+async function existingShow(id){
+ existingId=id;
+ const data=await json('/api/existing-inspections/'+id+'/detail');existingData=data;
+ $('existing-detail').hidden=false;
+ $('existing-title').textContent=data.date+' · '+data.filename;
+ $('existing-preview-help').textContent=data.preview.message||'';
+ const box=$('existing-results');box.replaceChildren();
+ $('existing-human').hidden=!data.qa.available;
+ $('existing-report').hidden=!data.qa.available;
+ if(data.qa.available){
+  const qa=data.qa;
+  item(box,'p',`자동검사: 오류 ${qa.automatic.summary.error}건, 확인 필요 ${qa.automatic.summary.review}건 · 최종 검수 기록 ${qa.review_record_complete?'완료':'미완료'}`);
+  const ul=item(box,'ul','');for(const problem of qa.automatic.issues)item(ul,'li',problem.message+(problem.slide?' (슬라이드 '+problem.slide+')':''));
+  $('existing-reviewer').value=qa.human.reviewer||'';
+  $('existing-note').value=qa.human.note||'';
+  const checks=$('existing-checks');checks.replaceChildren();
+  for(const [key,label] of Object.entries(qa.check_labels)){
+   const field=item(checks,'label',label),sel=document.createElement('select');sel.dataset.existingCheck=key;
+   for(const [value,name] of [['pending','미확인'],['checked','확인 완료'],['issue','문제 발견']]){
+    const opt=document.createElement('option');opt.value=value;opt.textContent=name;sel.append(opt);
+   }
+   sel.value=qa.human.checks[key]||'pending';field.append(sel);
+  }
+ }else{item(box,'p',data.qa.message||'아직 검사하지 않았습니다.');}
+ $('existing-preview-build').disabled=!!data.preview.available;
+ if(existingPreviewURL){URL.revokeObjectURL(existingPreviewURL);existingPreviewURL=null;}
+ $('existing-preview').replaceChildren();
+ if(data.preview.available){
+  const response=await api('/api/existing-inspections/'+id+'/preview');
+  existingPreviewURL=URL.createObjectURL(await response.blob());
+  const frame=document.createElement('iframe');frame.title='기존 파일 PDF 미리보기';frame.src=existingPreviewURL;frame.style.width='100%';frame.style.height='620px';$('existing-preview').append(frame);
+ }
+}
+$('existing-service').onchange=()=>{$('existing-file').accept=$('existing-service').value==='bulletin'?'.pdf':'.pptx';};
+$('existing-upload').onsubmit=async e=>{e.preventDefault();try{
+ const file=$('existing-file').files[0];if(!file)return;
+ const q=new URLSearchParams({service:$('existing-service').value,date:$('existing-date').value,filename:file.name});
+ const response=await api('/api/existing-inspections?'+q,{method:'POST',body:file});
+ const created=await response.json();await existingRefresh();await existingShow(created.inspection_id);
+ $('message').textContent='기존 파일을 검수용으로 복사했습니다. 원본과 제작 작업은 변경하지 않았습니다.';
+}catch(e){error(e);}};
+$('existing-run').onclick=async()=>{try{
+ await json('/api/existing-inspections/'+existingId+'/inspect',{reference:$('existing-reference').value});
+ await existingShow(existingId);$('message').textContent='기존 파일 자동 검수를 실행했습니다.';
+}catch(e){error(e);}};
+$('existing-human').onsubmit=async e=>{e.preventDefault();try{
+ const checks={};for(const sel of document.querySelectorAll('[data-existing-check]'))checks[sel.dataset.existingCheck]=sel.value;
+ await json('/api/existing-inspections/'+existingId+'/confirm',{sha256:existingData.qa.sha256,reviewer:$('existing-reviewer').value,note:$('existing-note').value,checks});
+ await existingShow(existingId);$('message').textContent='사람 검수 기록을 저장했습니다.';
+}catch(e){error(e);}};
+$('existing-report').onclick=async()=>{try{
+ const response=await api('/api/existing-inspections/'+existingId+'/report');
+ const url=URL.createObjectURL(await response.blob());const a=document.createElement('a');a.href=url;a.download='existing-qa-'+existingId+'.json';a.click();setTimeout(()=>URL.revokeObjectURL(url),60000);
+}catch(e){error(e);}};
+$('existing-preview-build').onclick=async()=>{try{
+ await json('/api/existing-inspections/'+existingId+'/preview',{});await existingShow(existingId);
+}catch(e){error(e);}};
+existingRefresh().catch(error);
