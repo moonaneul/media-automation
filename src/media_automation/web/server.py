@@ -8,6 +8,7 @@ from pathlib import Path
 import secrets
 from urllib.parse import parse_qs, urlsplit
 from .application import Application
+from .preview_once import preview_once
 
 MAX_UPLOAD = 128 * 1024 * 1024
 STATIC = Path(__file__).parent / 'static'
@@ -53,29 +54,9 @@ def make_server(application: Application, port: int = 8765):
             try:
                 query = parse_qs(parsed.query)
                 parts = path.strip('/').split('/')
-                if self.command == 'GET' and path == '/api/existing-inspections':
-                    self.reply(200, application.existing.list())
-                elif self.command == 'POST' and path == '/api/existing-inspections':
-                    self.reply(201, application.existing.create(
-                        query['service'][0], query['date'][0], query['filename'][0],
-                        self.body(MAX_UPLOAD)))
-                elif len(parts) == 4 and parts[:2] == ['api', 'existing-inspections']:
-                    inspection_id = parts[2]
-                    action = parts[3]
-                    if self.command == 'GET' and action == 'detail':
-                        self.reply(200, application.existing.get(inspection_id))
-                    elif self.command == 'POST' and action == 'inspect':
-                        self.reply(200, application.existing.inspect(inspection_id, self.body_json().get('reference')))
-                    elif self.command == 'POST' and action == 'confirm':
-                        self.reply(200, application.existing.confirm(inspection_id, self.body_json()))
-                    elif self.command == 'GET' and action == 'report':
-                        self.reply(200, application.existing.report(inspection_id), 'application/json; charset=utf-8')
-                    elif self.command == 'POST' and action == 'preview':
-                        self.reply(200, application.existing.build_preview(inspection_id))
-                    elif self.command == 'GET' and action == 'preview':
-                        self.reply(200, application.existing.preview_bytes(inspection_id), 'application/pdf')
-                    else:
-                        self.reply(404, {'error': '없는 경로입니다.'})
+                if self.command == 'POST' and path == '/api/preview-once':
+                    result = preview_once(query['filename'][0], self.body(MAX_UPLOAD))
+                    self.reply(200, result, 'application/pdf')
                 elif self.command == 'GET' and path == '/api/jobs':
                     self.reply(200, application.list())
                 elif self.command == 'POST' and path == '/api/jobs':
