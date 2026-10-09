@@ -164,8 +164,16 @@ $('existing-upload').onsubmit=async e=>{
   const params=new URLSearchParams({service:$('existing-service').value,date:$('existing-date').value,filename:file.name});
   const response=await api('/api/existing-inspections?'+params,{method:'POST',body:file});
   const result=await response.json();
-  await existingRefresh();await existingShow(result.inspection_id);
-  $('message').textContent='검수용 복사본을 등록했습니다. 원본은 변경하지 않으며 24시간 뒤 임시 보관을 정리합니다.';
+  $('message').textContent='파일을 등록했습니다. 미리보기를 준비하고 있습니다.';
+  await existingRefresh();
+  if(!result.preview.available){
+   try{await json('/api/existing-inspections/'+result.inspection_id+'/preview',{});}
+   catch(conversionError){$('message').textContent='미리보기 변환을 완료하지 못했습니다: '+conversionError.message;}
+  }
+  await existingShow(result.inspection_id);
+  if($('existing-preview').children.length){
+   $('message').textContent='미리보기를 열었습니다. 원본은 변경하지 않으며 임시 사본은 24시간 뒤 정리 대상입니다.';
+  }
  }catch(err){error(err);}
 };
 $('existing-preview-build').onclick=async()=>{
