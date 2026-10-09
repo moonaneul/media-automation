@@ -5,28 +5,6 @@
 
 #common-pane{border-top:1px solid #e1e5df;padding:12px 0 18px;margin:14px 0}#common-pane[hidden],#import-sunday[hidden]{display:none}#common-summary p{margin:7px 0}#common-summary li{overflow-wrap:anywhere}
 
-#qa-pane{border-top:1px solid #e1e5df;padding-top:16px;margin-top:12px}
-#qa-pane>label{margin:12px 0}
-#qa-pane button{margin:8px 10px 8px 0}
-#qa-pane textarea{font:inherit;border:1px solid #bac5bc;border-radius:8px;padding:10px 14px;width:100%;min-height:80px}
-#qa-results li{margin:6px 0;overflow-wrap:anywhere}
-#qa-human{display:block;border-top:1px solid #e1e5df;margin-top:16px;padding-top:12px}
-#qa-human[hidden],#qa-report[hidden],#qa-empty[hidden]{display:none}
-#qa-checks{display:grid;gap:12px;margin:12px 0}
-#qa-checks label{display:flex;flex-direction:row;align-items:center;gap:12px;justify-content:space-between}
-#qa-checks select{flex:0 0 150px}
-
-#existing-section #existing-list{display:flex;gap:8px;flex-wrap:wrap;margin:16px 0}
-#existing-section #existing-list button{text-align:left;background:#eff4f0;color:#254d39}
-#existing-detail{border-top:1px solid #e1e5df;padding-top:16px;margin-top:16px}
-#existing-detail[hidden],#existing-human[hidden],#existing-report[hidden]{display:none}
-#existing-detail>label{display:flex;flex-direction:column;margin:12px 0}
-#existing-detail button{margin:8px 10px 8px 0}
-#existing-checks{display:grid;gap:10px}
-#existing-checks label{display:flex;align-items:center;justify-content:space-between;gap:14px}
-#existing-human textarea{font:inherit;width:100%;min-height:84px;border:1px solid #bac5bc;border-radius:8px;padding:10px 14px}
-#existing-preview iframe{border:1px solid #e1e5df;border-radius:8px}
-
 /* Preview-only UI: no manual QA checklist */
 #preview-pane,#existing-detail{border-top:1px solid #e1e5df;margin-top:14px;padding-top:14px}
 #preview-pane>label,#existing-detail>label{display:flex;flex-direction:column;gap:6px;margin:10px 0}
@@ -35,3 +13,38 @@
 .preview-frame iframe{display:block;width:100%;height:600px;border:1px solid #e1e5df;border-radius:8px}
 #preview-build[hidden],#existing-preview-build[hidden]{display:none}
 @media(max-width:600px){.preview-frame iframe{height:420px}}
+
+/* Compact preview-first layout */
+.compact-work-list{padding:16px 24px}
+#previous-jobs summary{cursor:pointer;font-weight:650}
+#previous-jobs summary .hint{font-weight:400;margin-left:10px}
+#previous-jobs[open] summary{margin-bottom:12px}
+#existing-upload{align-items:flex-end}
+#existing-upload label{flex:1 1 360px}
+#existing-preview-help{margin:12px 0}
+#detail{scroll-margin-top:20px}
+
+/* Status list: muted colors + visible words, never color alone */
+.readiness-summary{font-weight:650;margin:8px 0}
+.readiness-summary[data-status="provided"]{color:#315747}
+.readiness-summary[data-status="missing"]{color:#835a20}
+.input-status-list{list-style:none;padding:0;margin:12px 0;display:grid;gap:8px}
+.input-status-row{
+ display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:start;gap:12px;
+ border:1px solid #e1e5df;border-left:3px solid #bcc6bf;background:#fafbf9;
+ border-radius:7px;padding:8px 12px;line-height:1.5
+}
+.input-status-name{overflow-wrap:anywhere}
+.input-status-text{white-space:nowrap;font-weight:600}
+.input-status-row[data-status="provided"]{border-left-color:#5a8872}
+.input-status-row[data-status="provided"] .input-status-text{color:#315747}
+.input-status-row[data-status="missing"]{border-left-color:#ba8c3e;background:#fffdf8}
+.input-status-row[data-status="missing"] .input-status-text{color:#835a20}
+.input-status-row[data-status="review"]{border-left-color:#b86f45;background:#fffaf7}
+.input-status-row[data-status="review"] .input-status-text{color:#924c2e}
+.input-status-row[data-status="none"]{border-left-color:#a5aca7}
+.input-status-row[data-status="none"] .input-status-text{color:#64736a}
+#field-states details{margin:12px 0}
+#field-states summary{cursor:pointer;font-weight:600;padding:6px 0}
+#field-states ul{columns:auto}
+@media(max-width:600px){.input-status-row{grid-template-columns:1fr;gap:2px}#previous-jobs summary .hint{display:block;margin-left:0}}
