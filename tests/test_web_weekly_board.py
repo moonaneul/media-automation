@@ -49,6 +49,7 @@ def test_same_week_revisions_remain_distinct_and_not_auto_approved():
     assert data["status"] == "자료 준비 중"
     assert not data["latest"]["has_artifact"]
     assert data["jobs"][1]["has_artifact"] is True
+    assert data["latest_generated"]["job_id"] == "old"
 
 
 def test_empty_week_has_no_invented_work_and_year_boundary():
