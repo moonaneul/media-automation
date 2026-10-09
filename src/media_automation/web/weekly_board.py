@@ -47,6 +47,7 @@ def build_dashboard(jobs: list[dict], day: str) -> dict:
         slots.append({
             "service": service, "label": label, "date": dates[service],
             "latest": ordered[0] if ordered else None,
+            "latest_generated": next((row for row in ordered if row["has_artifact"]), None),
             "jobs": ordered,
             "status": ordered[0]["status"] if ordered else "아직 작업 없음",
             "has_multiple": len(ordered) > 1,
