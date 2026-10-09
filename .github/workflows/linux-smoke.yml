@@ -23,6 +23,7 @@ jobs:
           import base64
           import subprocess
           import zipfile
+          import time
           from lxml import etree as E
           
           ROOT = Path('/tmp/media-check')
@@ -97,8 +98,27 @@ jobs:
           for path in ('test.mp4','test.mp3'):
               run('ffprobe','-v','error','-show_entries','format=duration','-of','default=nw=1',str(ROOT/'input'/path))
           print('PASS: score image, internal MP4/MP3 links, exact embedded bytes and media decoding metadata')
-          run('libreoffice','-env:UserInstallation=file:///tmp/lo-preview','--headless','--convert-to','pdf','--outdir',str(ROOT/'pdf'),str(media))
-          pdf=ROOT/'pdf/media-check.pdf'
+          # Preview-only copy: retain image/text; the downloadable PPT keeps both media files.
+          for pic in list(tree.findall(f'{{{P}}}pic')):
+              if pic.find(f'.//{{{A}}}videoFile') is not None or pic.find(f'.//{{{A}}}audioFile') is not None:
+                  tree.remove(pic)
+          for rel in list(rels):
+              if rel.get('Id','').startswith('rIdDiagnostic'): rels.remove(rel)
+          parts['ppt/slides/slide1.xml']=E.tostring(slide,xml_declaration=True,encoding='UTF-8')
+          parts['ppt/slides/_rels/slide1.xml.rels']=E.tostring(rels,xml_declaration=True,encoding='UTF-8')
+          preview=ROOT/'ppt/preview-copy.pptx'
+          with zipfile.ZipFile(preview,'w',zipfile.ZIP_DEFLATED) as z:
+              for name,data in parts.items():
+                  if name not in ('ppt/media/test.mp4','ppt/media/test.mp3'): z.writestr(name,data)
+          with zipfile.ZipFile(media) as z:
+              assert all(z.read(f'ppt/media/test.{ext}') for ext in ('mp4','mp3'))
+          with zipfile.ZipFile(preview) as z:
+              assert z.testzip() is None
+              assert not any(n.endswith(('.mp4','.mp3')) for n in z.namelist())
+          start=time.monotonic()
+          run('libreoffice','-env:UserInstallation=file:///tmp/lo-preview','--headless','--convert-to','pdf','--outdir',str(ROOT/'pdf'),str(preview))
+          print(f'PREVIEW_SECONDS={time.monotonic()-start:.3f}')
+          pdf=ROOT/'pdf/preview-copy.pdf'
           assert pdf.is_file() and pdf.stat().st_size
           run('pdftotext',str(pdf),str(ROOT/'text.txt'))
           assert '한글미리보기확인223장' in ''.join((ROOT/'text.txt').read_text().split())
