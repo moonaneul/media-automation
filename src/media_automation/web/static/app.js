@@ -87,7 +87,7 @@ function makeWeeklyButton(parent,label,run,extraClass=''){
  const b=item(parent,'button',label);b.type='button';b.className=extraClass;
  b.onclick=run;return b;
 }
-function renderSlot(container,slot){
+function renderSlot(container,slot,opened){
  const unit=item(container,'div','');unit.className='weekly-unit';
  item(unit,'h4',slot.label);
  const state=slot.latest?.state||'none';
@@ -98,6 +98,8 @@ function renderSlot(container,slot){
   makeWeeklyButton(actions,'작업 열기',()=>openWeekJob(slot.latest.job_id),'weekly-open');
   if(slot.has_multiple){
    const details=item(unit,'details','');details.className='weekly-versions';
+   details.dataset.key=slot.service+'|'+slot.date;
+   details.open=opened.has(details.dataset.key);
    item(details,'summary',`같은 날짜 작업 ${slot.jobs.length}개 보기`);
    const list=item(details,'div','');list.className='weekly-version-list';
    for(const [index,job] of slot.jobs.entries()){
@@ -112,7 +114,9 @@ function renderSlot(container,slot){
 async function renderWeekly(){
  const data=await json('/api/weekly-board?date='+encodeURIComponent(boardMonday));
  $('weekly-dates').textContent=`${data.week_start} ~ ${data.week_end}`;
- const box=$('weekly-cards');box.replaceChildren();
+ const box=$('weekly-cards');
+ const opened=new Set([...box.querySelectorAll('.weekly-versions[open]')].map(x=>x.dataset.key));
+ box.replaceChildren();
  const slots=Object.fromEntries(data.slots.map(slot=>[slot.service,slot]));
  for(const [title,group] of [
   ['수요일',[slots.wednesday]],
@@ -122,7 +126,7 @@ async function renderWeekly(){
   const card=item(box,'article','');card.className='weekly-card';
   item(card,'h3',title);
   item(card,'p',group[0].date).className='weekly-card-date';
-  for(const slot of group)renderSlot(card,slot);
+  for(const slot of group)renderSlot(card,slot,opened);
  }
 }
 $('week-previous').onclick=()=>moveWeek(-1);
