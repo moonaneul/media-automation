@@ -30,12 +30,15 @@ def build_dashboard(jobs: list[dict], day: str) -> dict:
         service = job.get("service")
         if service not in buckets or job.get("date") != dates[service]:
             continue
+        has_artifact = job["state"] == "generated" and bool(job.get("artifacts"))
+        status = ("결과 파일 확인 필요" if job["state"] == "generated" and not has_artifact
+                  else _STATES.get(job["state"], "상태 확인 필요"))
         buckets[service].append({
             "job_id": job["job_id"],
             "state": job["state"],
-            "status": _STATES.get(job["state"], "상태 확인 필요"),
+            "status": status,
             "created_at": job["created_at"],
-            "has_artifact": job["state"] == "generated" and bool(job.get("artifacts")),
+            "has_artifact": has_artifact,
         })
     slots = []
     for service, _, label in SLOTS:
