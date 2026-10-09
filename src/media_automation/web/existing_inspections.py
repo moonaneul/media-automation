@@ -11,11 +11,10 @@ import os
 from pathlib import Path
 import re
 import shutil
-import subprocess
-import tempfile
 from uuid import uuid4
 
 from . import qa_review
+from .pptx_preview import availability, convert_pptx
 
 MAX_FILE = 128 * 1024 * 1024
 SERVICES = {"wednesday", "sunday", "friday_zoom", "friday_in_person", "bulletin"}
@@ -142,53 +141,48 @@ class ExistingInspections:
         if _digest(source) != meta["sha256"]:
             return {"available": False, "message": "원본 사본이 변경되어 미리보기를 표시할 수 없습니다."}
         if meta["suffix"] == ".pdf":
-            return {"available": True, "kind": "pdf", "message": "원본 PDF를 브라우저에서 표시합니다."}
+            return {"available": True, "kind": "pdf", "method": "original",
+                    "message": "검수용 PDF 사본을 브라우저에서 표시합니다."}
         preview = folder / "preview" / "slides.pdf"
         details = folder / "preview" / "metadata.json"
         if preview.is_file() and details.is_file():
             data = json.loads(details.read_text(encoding="utf-8"))
             if data.get("sha256") == meta["sha256"]:
+                method = data.get("method", "unknown")
+                message = (
+                    "Microsoft PowerPoint로 변환한 PDF 미리보기입니다."
+                    if method == "powerpoint" else
+                    "LibreOffice로 변환한 PDF 미리보기입니다. PowerPoint 화면과 다를 수 있습니다."
+                )
                 return {"available": True, "kind": "converted_pdf",
-                        "message": "PPTX를 변환한 PDF입니다. PowerPoint 실제 화면과 대조가 필요합니다."}
-        return {"available": False, "kind": "pptx",
-                "message": "PPTX 미리보기는 로컬 LibreOffice가 있을 때만 PDF 변환할 수 있습니다. PowerPoint 재생 검수는 별도입니다."}
+                        "method": method, "message": message + " 영상·음원 재생은 별도 확인하세요."}
+        method, message = availability()
+        return {"available": False, "kind": "pptx", "method": method,
+                "message": message}
 
     def build_preview(self, inspection_id: str) -> dict:
         folder, meta, source = self._ready(inspection_id)
-        if meta["suffix"] == ".pdf":
+        if meta["suffix"] == ".pdf" or self.preview_status(inspection_id)["available"]:
             return self.preview_status(inspection_id)
-        if self.preview_status(inspection_id)["available"]:
-            return self.preview_status(inspection_id)
-        converter = shutil.which("soffice") or shutil.which("libreoffice")
-        if converter is None:
-            raise ValueError("PPTX 미리보기를 위해 LibreOffice의 soffice 실행 파일이 필요합니다. 현재는 PDF만 바로 미리볼 수 있습니다.")
-        # Conversion operates on a separate scratch copy, never on the imported source.
-        with tempfile.TemporaryDirectory(prefix="media-preview-") as temporary:
-            scratch = Path(temporary)
-            copy = scratch / "presentation.pptx"
-            shutil.copy2(source, copy)
-            output = scratch / "render"
-            output.mkdir()
-            profile = (scratch / "office-profile").as_uri()
-            try:
-                subprocess.run(
-                    [converter, f"-env:UserInstallation={profile}", "--headless",
-                     "--convert-to", "pdf", "--outdir", str(output), str(copy)],
-                    cwd=scratch, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
-                    timeout=90, check=True,
-                )
-            except (OSError, subprocess.CalledProcessError, subprocess.TimeoutExpired) as exc:
-                raise ValueError("PPTX 변환에 실패했습니다. 원본 파일은 변경되지 않았습니다.") from exc
-            candidate = output / "presentation.pdf"
-            if not candidate.is_file() or candidate.stat().st_size == 0:
-                raise ValueError("PPTX 미리보기 PDF가 생성되지 않았습니다.")
-            destination = folder / "preview"
-            destination.mkdir(exist_ok=True)
-            with (destination / "slides.pdf").open("wb") as dest, candidate.open("rb") as src:
-                shutil.copyfileobj(src, dest)
-            _save(destination / "metadata.json", {"sha256": meta["sha256"],
-                                                   "created_at": datetime.now(timezone.utc).isoformat(),
-                                                   "method": "libreoffice"})
+        dest = folder / "preview"
+        dest.mkdir(exist_ok=True)
+        lock = folder / "preview" / ".rendering.lock"
+        try:
+            handle = os.open(lock, os.O_CREAT | os.O_EXCL | os.O_WRONLY, 0o600)
+            os.close(handle)
+        except FileExistsError as exc:
+            raise ValueError("다른 미리보기 변환 작업이 진행 중입니다.") from exc
+        try:
+            if self.preview_status(inspection_id)["available"]:
+                return self.preview_status(inspection_id)
+            engine = convert_pptx(source, dest / "slides.pdf")
+            _save(dest / "metadata.json", {
+                "sha256": meta["sha256"],
+                "created_at": datetime.now(timezone.utc).isoformat(),
+                "method": engine,
+            })
+        finally:
+            lock.unlink(missing_ok=True)
         return self.preview_status(inspection_id)
 
     def preview_bytes(self, inspection_id: str) -> bytes:
