@@ -55,9 +55,82 @@ function renderReadiness(r){
   }
  }
 }
+function localDate(day){
+ return [day.getFullYear(),String(day.getMonth()+1).padStart(2,'0'),String(day.getDate()).padStart(2,'0')].join('-');
+}
+function mondayOf(day){
+ const d=new Date(day.getFullYear(),day.getMonth(),day.getDate(),12);
+ d.setDate(d.getDate()-((d.getDay()+6)%7));
+ return d;
+}
+let boardMonday=localDate(mondayOf(new Date()));
+function moveWeek(delta){
+ const [y,m,d]=boardMonday.split('-').map(Number);
+ const target=new Date(y,m-1,d,12);
+ target.setDate(target.getDate()+delta*7);
+ boardMonday=localDate(target);
+ return renderWeekly().catch(error);
+}
+function prefillWeekJob(slot){
+ $('service').value=slot.service;
+ $('date').value=slot.date;
+ $('create').scrollIntoView({behavior:'smooth',block:'center'});
+ $('message').textContent='날짜와 예배 종류를 채웠습니다. 작업 만들기를 누르면 이전 자료를 가져오지 않는 새 작업이 생성됩니다.';
+}
+async function openWeekJob(jobId){
+ try{
+  await show(jobId);
+  $('detail').scrollIntoView({behavior:'smooth',block:'start'});
+ }catch(e){error(e);}
+}
+function makeWeeklyButton(parent,label,run,extraClass=''){
+ const b=item(parent,'button',label);b.type='button';b.className=extraClass;
+ b.onclick=run;return b;
+}
+function renderSlot(container,slot){
+ const unit=item(container,'div','');unit.className='weekly-unit';
+ item(unit,'h4',slot.label);
+ const state=slot.latest?.state||'none';
+ const wording=slot.latest?.status||'아직 작업 없음';
+ const status=item(unit,'p',wording);status.className='weekly-state';status.dataset.state=state;
+ const actions=item(unit,'div','');actions.className='weekly-actions';
+ if(slot.latest){
+  makeWeeklyButton(actions,'작업 열기',()=>openWeekJob(slot.latest.job_id),'weekly-open');
+  if(slot.has_multiple){
+   const details=item(unit,'details','');details.className='weekly-versions';
+   item(details,'summary',`같은 날짜 작업 ${slot.jobs.length}개 보기`);
+   const list=item(details,'div','');list.className='weekly-version-list';
+   for(const [index,job] of slot.jobs.entries()){
+    const label=`${index===0?'최근 등록 · ':''}${job.status} · ${job.job_id.slice(0,8)}`;
+    makeWeeklyButton(list,label,()=>openWeekJob(job.job_id),'subtle-button');
+   }
+  }
+ }else{
+  makeWeeklyButton(actions,'새 작업 준비',()=>prefillWeekJob(slot),'subtle-button');
+ }
+}
+async function renderWeekly(){
+ const data=await json('/api/weekly-board?date='+encodeURIComponent(boardMonday));
+ $('weekly-dates').textContent=`${data.week_start} ~ ${data.week_end}`;
+ const box=$('weekly-cards');box.replaceChildren();
+ const slots=Object.fromEntries(data.slots.map(slot=>[slot.service,slot]));
+ for(const [title,group] of [
+  ['수요일',[slots.wednesday]],
+  ['금요일',[slots.friday]],
+  ['주일',[slots.sunday,slots.bulletin]]
+ ]){
+  const card=item(box,'article','');card.className='weekly-card';
+  item(card,'h3',title);
+  item(card,'p',group[0].date).className='weekly-card-date';
+  for(const slot of group)renderSlot(card,slot);
+ }
+}
+$('week-previous').onclick=()=>moveWeek(-1);
+$('week-next').onclick=()=>moveWeek(1);
+$('week-today').onclick=()=>{boardMonday=localDate(mondayOf(new Date()));return renderWeekly().catch(error);};
 function updateType(){const kind=types.find(x=>x.kind===$('input-kind').value);$('slot-wrap').hidden=!(kind&&kind.slots.length);$('input-slot').replaceChildren();if(kind){for(const slot of kind.slots){const opt=document.createElement('option');opt.value=slot;opt.textContent=slot;$('input-slot').append(opt);}$('file').accept=kind.extensions.join(',');$('file').value='';}}
 $('input-kind').onchange=updateType;
-async function refresh(){try{const rows=await json('/api/jobs');jobsCache=rows;$('jobs').replaceChildren();for(const job of rows){const b=item($('jobs'),'button',`${job.date} · ${names[job.service]} · ${labels[job.state]||job.state}`);b.onclick=async()=>{await show(job.job_id);$('detail').scrollIntoView({behavior:'smooth',block:'start'});};}if(current)await show(current);}catch(e){error(e);}}
+async function refresh(){try{const rows=await json('/api/jobs');jobsCache=rows;await renderWeekly();$('jobs').replaceChildren();for(const job of rows){const b=item($('jobs'),'button',`${job.date} · ${names[job.service]} · ${labels[job.state]||job.state}`);b.onclick=async()=>{await show(job.job_id);$('detail').scrollIntoView({behavior:'smooth',block:'start'});};}if(current)await show(current);}catch(e){error(e);}}
 async function show(id){
  const changed=current!==id;current=id;const job=await json('/api/jobs/'+id);
  $('detail').hidden=false;$('title').textContent=job.date+' '+names[job.service];$('state').textContent=(labels[job.state]||job.state)+(job.message?' — '+job.message:'');
