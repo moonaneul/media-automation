@@ -48,3 +48,32 @@
 #field-states summary{cursor:pointer;font-weight:600;padding:6px 0}
 #field-states ul{columns:auto}
 @media(max-width:600px){.input-status-row{grid-template-columns:1fr;gap:2px}#previous-jobs summary .hint{display:block;margin-left:0}}
+
+/* Week dashboard: keep progress visible without becoming an admin console */
+.weekly-section{padding:24px}
+.weekly-heading{display:flex;justify-content:space-between;gap:20px;align-items:start;margin-bottom:20px}
+.weekly-heading h2{margin-bottom:4px}
+.weekly-heading .hint{margin:0}
+.weekly-nav{display:flex;gap:7px;flex-wrap:wrap}
+.subtle-button{background:#f4f7f4;color:#29533e;border-color:#d6ded7}
+.weekly-nav button{padding:7px 11px;font-size:14px}
+.weekly-cards{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
+.weekly-card{padding:17px;border:1px solid #e0e5df;border-radius:12px;background:#fcfdfb;min-width:0}
+.weekly-card h3{margin:0}
+.weekly-card-date{font-size:14px;color:#69746b;margin:0 0 12px}
+.weekly-card .weekly-unit+.weekly-unit{border-top:1px solid #e2e7e1;margin-top:16px;padding-top:14px}
+.weekly-unit h4{margin:0 0 6px;font-size:16px}
+.weekly-state{font-size:14px;font-weight:600;margin:6px 0 11px;line-height:1.5}
+.weekly-state[data-state="none"]{color:#69746b}
+.weekly-state[data-state="generated"]{color:#315747}
+.weekly-state[data-state="needs_input"]{color:#89692d}
+.weekly-state[data-state="failed"],.weekly-state[data-state="interrupted"]{color:#a05535}
+.weekly-state[data-state="queued"],.weekly-state[data-state="running"]{color:#375d82}
+.weekly-actions{display:flex;gap:8px;flex-wrap:wrap}
+.weekly-actions button{font-size:14px;padding:7px 11px;flex:0 0 auto}
+.weekly-versions{margin-top:10px;font-size:13px}
+.weekly-versions summary{cursor:pointer;color:#50695a}
+.weekly-version-list{display:grid;gap:5px;margin-top:8px}
+.weekly-version-list button{text-align:left;font-size:12px;padding:7px;overflow-wrap:anywhere}
+@media(max-width:840px){.weekly-cards{grid-template-columns:1fr 1fr}.weekly-card:last-child{grid-column:1/-1}}
+@media(max-width:600px){.weekly-heading{display:block}.weekly-nav{margin-top:14px}.weekly-cards{grid-template-columns:1fr}.weekly-card:last-child{grid-column:auto}}
