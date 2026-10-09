@@ -116,6 +116,12 @@ def make_server(application: Application, port: int = 8765):
                         self.reply(200, application.qa_confirm(job, data['path'], data))
                     elif self.command == 'GET' and parts[3:] == ['qa', 'report']:
                         self.reply(200, application.qa_report(job, query['path'][0]), 'application/json; charset=utf-8')
+                    elif self.command == 'GET' and parts[3:] == ['preview', 'status']:
+                        self.reply(200, application.preview_status(job, query['path'][0]))
+                    elif self.command == 'POST' and parts[3:] == ['preview']:
+                        self.reply(200, application.preview_build(job, self.body_json()['path']))
+                    elif self.command == 'GET' and parts[3:] == ['preview']:
+                        self.reply(200, application.preview_bytes(job, query['path'][0]), 'application/pdf')
                     elif self.command == 'GET' and parts[3:] == ['artifact']:
                         target = application.artifact(job, query['path'][0])
                         self.reply(200, target.read_bytes(), mimetypes.guess_type(target.name)[0] or 'application/octet-stream')
