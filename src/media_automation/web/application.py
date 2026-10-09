@@ -154,6 +154,10 @@ class Application:
             relative = f"input/bulletin/{record['date'].replace('-', '')}/state.yaml"
             return self.upload(job_id, relative, data)
 
+    def weekly_dashboard(self, day: str) -> dict:
+        from .weekly_board import build_dashboard
+        return build_dashboard(self.list(), day)
+
     def list(self) -> list[dict]:
         with self.lock:
             return sorted((self.get(p.parent.name) for p in self.jobs.jobs_root.glob('*/job.json')),
