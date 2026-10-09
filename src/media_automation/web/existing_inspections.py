@@ -4,7 +4,7 @@ Never stages an imported file as a production-job input or artifact.
 """
 from __future__ import annotations
 
-from datetime import date, datetime, timezone
+from datetime import date, datetime, timedelta, timezone
 import hashlib
 import json
 import os
@@ -17,6 +17,8 @@ from . import qa_review
 from .pptx_preview import availability, convert_pptx
 
 MAX_FILE = 128 * 1024 * 1024
+PREVIEW_TTL = timedelta(hours=24)
+PREVIEW_CAP_BYTES = 512 * 1024 * 1024
 SERVICES = {"wednesday", "sunday", "friday_zoom", "friday_in_person", "bulletin"}
 _ID = re.compile(r"[0-9a-f]{32}\Z")
 _NAME = re.compile(r"[\x00-\x1f\x7f]")
@@ -42,7 +44,52 @@ class ExistingInspections:
     def __init__(self, root: Path):
         self.root = root.resolve()
 
+    def _cleanup_preview_sessions(self) -> None:
+        """Delete expired preview-only copies, never legacy QA records or original files."""
+        if not self.root.is_dir():
+            return
+        now = datetime.now(timezone.utc)
+        for folder in self.root.iterdir():
+            if not folder.is_dir() or folder.is_symlink() or not _ID.fullmatch(folder.name):
+                continue
+            metadata = folder / "inspection.json"
+            if not metadata.is_file() or metadata.is_symlink():
+                continue
+            try:
+                data = json.loads(metadata.read_text(encoding="utf-8"))
+                if data.get("preview_only") is not True:
+                    continue
+                expires_at = datetime.fromisoformat(data["expires_at"])
+                if expires_at.tzinfo is None:
+                    continue
+                if expires_at <= now and not (folder / "preview/.rendering.lock").exists():
+                    shutil.rmtree(folder)
+            except (OSError, KeyError, ValueError, json.JSONDecodeError):
+                continue
+
+    def _preview_usage(self) -> int:
+        if not self.root.is_dir():
+            return 0
+        total = 0
+        for folder in self.root.iterdir():
+            if not folder.is_dir() or folder.is_symlink() or not _ID.fullmatch(folder.name):
+                continue
+            try:
+                data = json.loads((folder / "inspection.json").read_text(encoding="utf-8"))
+                if data.get("preview_only") is not True:
+                    continue
+                suffix = data.get("suffix")
+                if suffix not in (".pdf", ".pptx"):
+                    continue
+                file = folder / ("source" + suffix)
+                if file.is_file() and not file.is_symlink():
+                    total += file.stat().st_size
+            except (OSError, ValueError, KeyError, json.JSONDecodeError):
+                continue
+        return total
+
     def _dir(self, inspection_id: str) -> Path:
+        self._cleanup_preview_sessions()
         if not _ID.fullmatch(inspection_id):
             raise ValueError("올바르지 않은 검수 ID입니다.")
         path = self.root / inspection_id
@@ -73,6 +120,9 @@ class ExistingInspections:
             raise ValueError("주보는 PDF, 예배 PPT는 PPTX 파일만 검수할 수 있습니다.")
         if not isinstance(content, bytes) or not 0 < len(content) <= MAX_FILE:
             raise ValueError("파일 크기는 1바이트 이상 128MiB 이하여야 합니다.")
+        self._cleanup_preview_sessions()
+        if self._preview_usage() + len(content) > PREVIEW_CAP_BYTES:
+            raise ValueError("임시 미리보기 저장 공간이 512MiB 한도에 도달했습니다. 24시간이 지난 복사본은 다음 접근 시 정리됩니다.")
         self.root.mkdir(parents=True, exist_ok=True)
         inspection_id = uuid4().hex
         folder = self.root / inspection_id
@@ -86,6 +136,8 @@ class ExistingInspections:
                 "filename": filename, "suffix": suffix, "sha256": _digest(source),
                 "created_at": datetime.now(timezone.utc).isoformat(),
                 "type": "existing_file_only",
+                "preview_only": True,
+                "expires_at": (datetime.now(timezone.utc) + PREVIEW_TTL).isoformat(),
             }
             _save(folder / "inspection.json", data)
             return self.get(inspection_id)
@@ -106,6 +158,7 @@ class ExistingInspections:
         return result
 
     def list(self) -> list[dict]:
+        self._cleanup_preview_sessions()
         if not self.root.is_dir():
             return []
         result = []
