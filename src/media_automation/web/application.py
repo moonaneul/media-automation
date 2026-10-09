@@ -10,6 +10,7 @@ from .inputs import catalog, inspect_intake, next_revision_path, readiness, type
 from .notice_review import preview, confirmed_yaml
 from .common_sunday import shared_paths, summary as sunday_summary
 from . import qa_review
+from .existing_inspections import ExistingInspections
 
 ALLOWED = {'.yaml', '.yml', '.json', '.txt', '.hwp', '.hwpx', '.ppt', '.pptx', '.pdf', '.png', '.jpg', '.jpeg', '.mp3', '.mp4', '.ttf'}
 
@@ -20,6 +21,7 @@ class Application:
         self.jobs = ProductionJobs(repository, storage)
         self.lock = threading.RLock()
         self.active: str | None = None
+        self.existing = ExistingInspections(storage / '_existing_inspections')
 
     def get(self, job_id: str) -> dict:
         with self.lock:
