@@ -10,6 +10,7 @@ from .inputs import catalog, inspect_intake, next_revision_path, readiness, type
 from .notice_review import preview, confirmed_yaml
 from .common_sunday import shared_paths, summary as sunday_summary
 from . import qa_review
+from . import job_previews
 from .existing_inspections import ExistingInspections
 
 ALLOWED = {'.yaml', '.yml', '.json', '.txt', '.hwp', '.hwpx', '.ppt', '.pptx', '.pdf', '.png', '.jpg', '.jpeg', '.mp3', '.mp4', '.ttf'}
@@ -255,6 +256,23 @@ class Application:
             record = self.get(job_id)
             directory = self.jobs._directory(job_id)
             return qa_review.report_bytes(directory, relative, artifact, record['service'])
+
+    def preview_status(self, job_id: str, relative: str) -> dict:
+        with self.lock:
+            artifact = self.artifact(job_id, relative)
+            return job_previews.status(self.jobs._directory(job_id), relative, artifact)
+
+    def preview_build(self, job_id: str, relative: str) -> dict:
+        with self.lock:
+            if self.active is not None:
+                raise ValueError("예배 제작 중에는 PowerPoint 미리보기를 변환할 수 없습니다.")
+            artifact = self.artifact(job_id, relative)
+            return job_previews.build(self.jobs._directory(job_id), relative, artifact)
+
+    def preview_bytes(self, job_id: str, relative: str) -> bytes:
+        with self.lock:
+            artifact = self.artifact(job_id, relative)
+            return job_previews.read(self.jobs._directory(job_id), relative, artifact)
 
     def recover(self):
         """Do not imply success after server interruption or silently resume an old task."""
