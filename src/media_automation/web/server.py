@@ -62,6 +62,23 @@ def make_server(application: Application, port: int = 8765):
                     job = parts[2]
                     if self.command == 'GET' and len(parts) == 3:
                         self.reply(200, application.get(job))
+                    elif self.command == 'GET' and parts[3:] == ['sunday-common']:
+                        self.reply(200, application.sunday_common_summary(job))
+                    elif self.command == 'POST' and parts[3:] == ['import-sunday-week']:
+                        self.reply(200, application.import_sunday_week(job, self.body_json()['sunday_job_id']))
+                    elif self.command == 'GET' and parts[3:] == ['notice-preview']:
+                        self.reply(200, application.notice_preview(job))
+                    elif self.command == 'POST' and parts[3:] == ['confirm-notice']:
+                        self.reply(200, application.confirm_notice(job))
+                    elif self.command == 'GET' and parts[3:] == ['input-types']:
+                        self.reply(200, application.catalog(job))
+                    elif self.command == 'POST' and parts[3:] == ['typed-files']:
+                        self.reply(201, application.upload_typed(
+                            job, query['kind'][0], query['filename'][0],
+                            self.body(MAX_UPLOAD), query.get('slot', [None])[0]))
+                    elif self.command == 'POST' and parts[3:] == ['bulletin-number']:
+                        self.reply(200, application.set_bulletin_number(
+                            job, self.body_json()['number']))
                     elif self.command == 'POST' and parts[3:] == ['files']:
                         self.reply(201, application.upload(job, query['path'][0], self.body(MAX_UPLOAD)))
                     elif self.command == 'POST' and parts[3:] == ['run']:
