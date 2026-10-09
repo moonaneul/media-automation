@@ -63,6 +63,7 @@ async function show(id){
  $('field-states').replaceChildren();if(r.fields.length){item($('field-states'),'h4','이번 주 안내 항목 상태');const ul=item($('field-states'),'ul','');for(const field of r.fields)item(ul,'li',`${field.name}: ${field.state}`);}
  $('run').disabled=!r.ready||['queued','running','interrupted'].includes(job.state);
  $('run-help').textContent=r.ready?'제작기가 추가 내용 검증에 실패하면 성공 결과는 노출되지 않습니다.':'필수 입력과 미확인 항목이 해결되기 전에는 실행할 수 없습니다.';
+ await qaSelect(job,changed);
  $('artifacts').replaceChildren();for(const path of job.artifacts||[]){if(job.state!=='generated')continue;const b=item($('artifacts'),'button',path.split('/').pop());b.onclick=async()=>{try{const resp=await api('/api/jobs/'+id+'/artifact?path='+encodeURIComponent(path));const url=URL.createObjectURL(await resp.blob());const a=document.createElement('a');a.href=url;a.download=path.split('/').pop();a.click();setTimeout(()=>URL.revokeObjectURL(url),60000);}catch(e){error(e);}};}
 }
 $('create').onsubmit=async e=>{e.preventDefault();try{const job=await json('/api/jobs',{service:$('service').value,date:$('date').value});current=null;$('message').textContent='새 작업을 준비했습니다.';await show(job.job_id);await refresh();}catch(e){error(e);}};
@@ -75,3 +76,51 @@ refresh();setInterval(refresh,5000);
 $('confirm-notice').onclick=async()=>{if(!current)return;try{await json('/api/jobs/'+current+'/confirm-notice',{});$('message').textContent='검토한 이번 주 안내를 해석 YAML로 저장했습니다. 추가 자료와 제작 검수는 별도로 필요합니다.';await refresh();}catch(e){error(e);}};
 
 $('import-sunday').onsubmit=async e=>{e.preventDefault();if(!current)return;try{await json('/api/jobs/'+current+'/import-sunday-week',{sunday_job_id:$('source-sunday-job').value});$('message').textContent='이번 주 주일 작업의 공통 입력 3개를 명시적으로 가져왔습니다. 주보 원문과의 교차검수는 제작기에서 별도로 합니다.';await refresh();}catch(e){error(e);}};
+
+
+let qaCurrent=null;
+async function qaSelect(job,changed){
+ const select=$('qa-artifact'),paths=job.state==='generated'?(job.artifacts||[]):[];
+ const previous=select.value;
+ select.replaceChildren();
+ for(const path of paths){const opt=document.createElement('option');opt.value=path;opt.textContent=path.split('/').pop();select.append(opt);}
+ if(paths.includes(previous))select.value=previous;
+ const ready=paths.length>0;
+ $('qa-empty').hidden=ready;select.disabled=!ready;$('qa-run').disabled=!ready;
+ if(!ready){$('qa-results').replaceChildren();$('qa-human').hidden=true;$('qa-report').hidden=true;qaCurrent=null;return;}
+ if(changed)$('qa-reference').value='';
+ if(changed||qaCurrent?.artifact!==select.value) await qaLoad();
+}
+async function qaLoad(){
+ if(!current||!$('qa-artifact').value)return;
+ const path=$('qa-artifact').value;
+ const result=await json('/api/jobs/'+current+'/qa?path='+encodeURIComponent(path));
+ qaCurrent=result;
+ const box=$('qa-results');box.replaceChildren();
+ $('qa-human').hidden=!result.available;$('qa-report').hidden=!result.available;
+ if(!result.available){item(box,'p',result.message||'검수 전입니다.');return;}
+ const a=result.automatic;
+ item(box,'p',`자동검사: 오류 ${a.summary.error}건, 확인 필요 ${a.summary.review}건. 렌더링 및 재생은 자동 확인하지 않았습니다.`);
+ const ul=item(box,'ul','');
+ for(const issue of a.issues)item(ul,'li',`${issue.severity==='error'?'오류':'확인 필요'}: ${issue.message}${issue.slide?' (슬라이드 '+issue.slide+')':''}`);
+ item(box,'p',result.review_record_complete?'모든 사람 검수 항목 기록 완료 (자동 오류 없음)':'최종 검수 미완료');
+ $('qa-reviewer').value=result.human.reviewer||'';
+ $('qa-note').value=result.human.note||'';
+ const checks=$('qa-checks');checks.replaceChildren();
+ for(const [key,label] of Object.entries(result.check_labels)){
+  const wrap=item(checks,'label',label),select=document.createElement('select');select.dataset.qaCheck=key;
+  for(const [value,name] of [['pending','미확인'],['checked','확인 완료'],['issue','문제 발견']]){const opt=document.createElement('option');opt.value=value;opt.textContent=name;select.append(opt);}
+  select.value=result.human.checks[key]||'pending';wrap.append(select);
+ }
+}
+$('qa-artifact').onchange=()=>qaLoad().catch(error);
+$('qa-run').onclick=async()=>{try{const path=$('qa-artifact').value;await json('/api/jobs/'+current+'/qa/inspect',{path,reference:$('qa-reference').value});$('message').textContent='자동 검수 완료. 이전 사람 검수 기록은 초기화되었습니다.';await qaLoad();}catch(e){error(e);}};
+$('qa-human').onsubmit=async e=>{e.preventDefault();try{
+ const checks={};for(const select of document.querySelectorAll('[data-qa-check]'))checks[select.dataset.qaCheck]=select.value;
+ await json('/api/jobs/'+current+'/qa/confirm',{path:$('qa-artifact').value,sha256:qaCurrent.sha256,reviewer:$('qa-reviewer').value,note:$('qa-note').value,checks});
+ $('message').textContent='사람 검수 기록을 저장했습니다.';await qaLoad();
+}catch(err){error(err);}};
+$('qa-report').onclick=async()=>{try{
+ const path=$('qa-artifact').value,r=await api('/api/jobs/'+current+'/qa/report?path='+encodeURIComponent(path));
+ const blob=await r.blob(),url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download='qa-report.json';a.click();setTimeout(()=>URL.revokeObjectURL(url),60000);
+}catch(e){error(e);}};
