@@ -87,9 +87,9 @@ async function qaSelect(job,changed){
  if(paths.includes(previous))select.value=previous;
  const ready=paths.length>0;
  $('qa-empty').hidden=ready;select.disabled=!ready;$('qa-run').disabled=!ready;
- if(!ready){$('qa-results').replaceChildren();$('qa-human').hidden=true;$('qa-report').hidden=true;qaCurrent=null;return;}
+ if(!ready){$('qa-results').replaceChildren();$('qa-human').hidden=true;$('qa-report').hidden=true;qaCurrent=null;clearGeneratedPreview();$('qa-preview-build').disabled=true;return;}
  if(changed)$('qa-reference').value='';
- if(changed||qaCurrent?.artifact!==select.value) await qaLoad();
+ if(changed||qaCurrent?.artifact!==select.value){await qaLoad();await showGeneratedPreview();}
 }
 async function qaLoad(){
  if(!current||!$('qa-artifact').value)return;
@@ -113,7 +113,7 @@ async function qaLoad(){
   select.value=result.human.checks[key]||'pending';wrap.append(select);
  }
 }
-$('qa-artifact').onchange=()=>qaLoad().catch(error);
+$('qa-artifact').onchange=async()=>{try{await qaLoad();await showGeneratedPreview();}catch(e){error(e);}};
 $('qa-run').onclick=async()=>{try{const path=$('qa-artifact').value;await json('/api/jobs/'+current+'/qa/inspect',{path,reference:$('qa-reference').value});$('message').textContent='자동 검수 완료. 이전 사람 검수 기록은 초기화되었습니다.';await qaLoad();}catch(e){error(e);}};
 $('qa-human').onsubmit=async e=>{e.preventDefault();try{
  const checks={};for(const select of document.querySelectorAll('[data-qa-check]'))checks[select.dataset.qaCheck]=select.value;
@@ -190,3 +190,36 @@ $('existing-preview-build').onclick=async()=>{try{
  await json('/api/existing-inspections/'+existingId+'/preview',{});await existingShow(existingId);
 }catch(e){error(e);}};
 existingRefresh().catch(error);
+
+
+let generatedPreviewURL=null;
+function clearGeneratedPreview(){
+ if(generatedPreviewURL){URL.revokeObjectURL(generatedPreviewURL);generatedPreviewURL=null;}
+ $('qa-preview').replaceChildren();
+ $('qa-preview-help').textContent='';
+}
+async function showGeneratedPreview(){
+ clearGeneratedPreview();
+ if(!current||!$('qa-artifact').value)return;
+ const path=$('qa-artifact').value;
+ const state=await json('/api/jobs/'+current+'/preview/status?path='+encodeURIComponent(path));
+ $('qa-preview-help').textContent=state.message||'';
+ $('qa-preview-build').disabled=!!state.available;
+ if(state.available){
+   const r=await api('/api/jobs/'+current+'/preview?path='+encodeURIComponent(path));
+   generatedPreviewURL=URL.createObjectURL(await r.blob());
+   const frame=document.createElement('iframe');
+   frame.title='제작 결과 PDF 미리보기';
+   frame.src=generatedPreviewURL;
+   frame.style.width='100%';
+   frame.style.height='620px';
+   $('qa-preview').append(frame);
+ }
+}
+$('qa-preview-build').onclick=async()=>{
+ try{
+  const path=$('qa-artifact').value;
+  await json('/api/jobs/'+current+'/preview',{path});
+  await showGeneratedPreview();
+ }catch(e){error(e);}
+};
