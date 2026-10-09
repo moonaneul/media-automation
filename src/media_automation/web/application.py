@@ -9,6 +9,7 @@ from media_automation.production.jobs import ProductionJobs, inside
 from .inputs import catalog, inspect_intake, next_revision_path, readiness, typed_path
 from .notice_review import preview, confirmed_yaml
 from .common_sunday import shared_paths, summary as sunday_summary
+from . import qa_review
 
 ALLOWED = {'.yaml', '.yml', '.json', '.txt', '.hwp', '.hwpx', '.ppt', '.pptx', '.pdf', '.png', '.jpg', '.jpeg', '.mp3', '.mp4', '.ttf'}
 
@@ -223,6 +224,35 @@ class Application:
             if not target.is_file():
                 raise ValueError('결과 파일이 없습니다.')
             return target
+
+    def qa_status(self, job_id: str, relative: str) -> dict:
+        with self.lock:
+            artifact = self.artifact(job_id, relative)
+            record = self.get(job_id)
+            directory = self.jobs._directory(job_id)
+            return qa_review.status(directory, relative, artifact, record['service'])
+
+    def qa_inspect(self, job_id: str, relative: str,
+                   reference: str | None = None) -> dict:
+        with self.lock:
+            artifact = self.artifact(job_id, relative)
+            record = self.get(job_id)
+            directory = self.jobs._directory(job_id)
+            return qa_review.inspect(directory, relative, artifact, record['service'], reference)
+
+    def qa_confirm(self, job_id: str, relative: str, payload: dict) -> dict:
+        with self.lock:
+            artifact = self.artifact(job_id, relative)
+            record = self.get(job_id)
+            directory = self.jobs._directory(job_id)
+            return qa_review.confirm(directory, relative, artifact, record['service'], payload)
+
+    def qa_report(self, job_id: str, relative: str) -> bytes:
+        with self.lock:
+            artifact = self.artifact(job_id, relative)
+            record = self.get(job_id)
+            directory = self.jobs._directory(job_id)
+            return qa_review.report_bytes(directory, relative, artifact, record['service'])
 
     def recover(self):
         """Do not imply success after server interruption or silently resume an old task."""
