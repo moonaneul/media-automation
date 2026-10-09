@@ -6,32 +6,21 @@
 <main>
 <section><h2>새 제작</h2><form id="create"><label>종류<select id="service"><option value="bulletin">주일 주보</option><option value="sunday">주일예배</option><option value="wednesday">수요예배</option><option value="friday">금요기도회 (Zoom)</option></select></label><label>날짜<input id="date" type="date" required></label><button>작업 만들기</button></form><p class="hint">새 작업은 항상 빈 상태로 시작합니다. 지난주 정보는 자동으로 가져오지 않습니다.</p></section>
 <section id="existing-section">
-<h2>기존 제작물 검수 (선택 기능)</h2>
-<p class="hint">이미 만들어 놓은 PPTX·PDF를 검사할 때만 사용하세요. 이번 주 새 PPT·주보를 제작할 때는 파일을 올릴 필요가 없습니다.</p>
+<h2>기존 PPT·PDF 미리보기 <small>(선택)</small></h2>
+<p class="hint">이미 만든 자료를 화면에서 확인할 때만 사용해요. 새로 제작한 파일은 다시 올릴 필요가 없어요. 업로드한 검수용 복사본은 24시간 후 정리 대상이며, 원본은 변경하지 않아요.</p>
 <form id="existing-upload">
 <label>예배 종류<select id="existing-service"><option value="sunday">주일예배</option><option value="wednesday">수요예배</option><option value="friday_zoom">금요 Zoom</option><option value="friday_in_person">금요 대면</option><option value="bulletin">주일 주보</option></select></label>
 <label>원본 날짜<input type="date" id="existing-date" required></label>
-<label>기존 완성본(PPTX·PDF)<input type="file" id="existing-file" accept=".pptx,.pdf" required></label>
-<button type="submit">검수용 복사본 등록</button>
+<label>PPTX 또는 주보 PDF<input type="file" id="existing-file" accept=".pptx" required></label>
+<button type="submit">미리보기 준비</button>
 </form>
 <div id="existing-list"></div>
 <div id="existing-detail" hidden>
 <h3 id="existing-title"></h3>
-<label>성경 본문 범위(선택)<input id="existing-reference" placeholder="예: 삼상 17:41~49"></label>
-<button id="existing-run" type="button">자동 검사 실행</button>
-<div id="existing-results" role="status"></div>
-<form id="existing-human" hidden>
-<label>검수자<input id="existing-reviewer" maxlength="80" required></label>
-<div id="existing-checks"></div>
-<label>검수 메모<textarea id="existing-note" rows="3" maxlength="2000"></textarea></label>
-<button type="submit">검수 기록 저장</button>
-</form>
-<button id="existing-report" type="button" hidden>검수 기록 JSON 받기</button>
-<h3>화면 미리보기</h3>
 <p id="existing-preview-help" class="hint"></p>
-<button id="existing-preview-build" type="button">미리보기 준비</button>
-<div id="existing-preview"></div>
-<p class="hint">PDF 미리보기는 브라우저 표시입니다. PPTX는 별도 변환 결과이며 실제 PowerPoint 화면·재생 및 인쇄 확인을 대체하지 않습니다.</p>
+<button id="existing-preview-build" type="button">PPTX 미리보기 생성</button>
+<div id="existing-preview" class="preview-frame"></div>
+<p class="hint">PDF 미리보기는 영상·음원·애니메이션 재생 또는 실제 인쇄 확인을 대신하지 않습니다.</p>
 </div>
 </section>
 <section><h2>제작 목록</h2><div id="jobs"></div></section>
@@ -60,25 +49,14 @@
 <p class="hint">안내 원문만 올리면 입력 정리가 끝난 것이 아닙니다. 해석·수정 지시 확인 후 생성된 이번 주 자료가 있어야 합니다. UNSET은 미제공, NONE은 이번 주 없음, VALUE는 이번 주 값 제공입니다.</p>
 <h3>5. 제작 및 결과</h3><p id="run-help" class="hint"></p><button id="run" type="button" disabled>제작 실행</button>
 <div id="artifacts"></div><p class="hint">생성 완료는 화면 검수, 실제 인쇄·접지, 동영상·음원 재생 또는 자료 사용 허락을 의미하지 않습니다.</p>
-<h3>6. 자동 검수 및 최종 확인</h3>
-<p class="hint">생성된 해당 작업의 PPT·PDF만 검사합니다. 자동 검수와 사람이 확인한 기록은 분리되며, 산출물이 달라지면 이전 검수는 무효입니다.</p>
-<div id="qa-pane"><p id="qa-empty">생성된 산출물을 선택하면 검수할 수 있습니다.</p>
-<label>검수할 산출물<select id="qa-artifact"></select></label>
-<label>성경 본문 범위(선택 사항, 직접 확인한 범위만 입력)<input id="qa-reference" placeholder="예: 삼상 17:41~49"></label>
-<button id="qa-run" type="button">자동 검사 실행</button>
-<div id="qa-results" role="status"></div>
-<form id="qa-human" hidden>
-<label>검수자<input id="qa-reviewer" maxlength="80" required></label>
-<div id="qa-checks"></div>
-<label>검수 메모<textarea id="qa-note" maxlength="2000" rows="3"></textarea></label>
-<button type="submit">사람 검수 기록 저장</button>
-</form>
-<button id="qa-report" type="button" hidden>검수 보고서 JSON 받기</button>
-<h4>제작 결과 미리보기</h4>
-<p id="qa-preview-help" class="hint"></p>
-<button id="qa-preview-build" type="button" disabled>미리보기 준비</button>
-<div id="qa-preview"></div>
-<p class="hint">PPTX 미리보기 PDF는 실제 영상·음원·애니메이션 재생 검수를 대신하지 않습니다.</p>
+<h3>6. 제작 결과 미리보기</h3>
+<p class="hint">웹에서 생성된 PPT·PDF를 다시 업로드하지 않고 화면에서 확인할 수 있습니다. 미리보기 PDF는 임시 캐시이고, 실제 제작 파일은 별도 보관됩니다.</p>
+<div id="preview-pane">
+<p id="preview-empty" class="hint">생성된 파일이 있으면 미리보기가 표시됩니다.</p>
+<label>제작 파일<select id="preview-artifact"></select></label>
+<p id="preview-help" class="hint"></p>
+<button type="button" id="preview-build" disabled>PPTX 미리보기 생성</button>
+<div id="preview-display" class="preview-frame"></div>
 </div>
 </section><p id="message" role="status" aria-live="polite"></p>
 </main>
