@@ -11,6 +11,7 @@ from .application import Application
 from .streaming_download import send_download
 from .runtime_paths import default_jobs_root
 from .preview_once import preview_once
+from . import blue_original
 
 MAX_UPLOAD = 128 * 1024 * 1024
 STATIC = Path(__file__).parent / 'static'
@@ -45,6 +46,13 @@ def make_server(application: Application, port: int = 8765):
             if self.command == 'GET' and path in {'/', '/app.js', '/style.css'}:
                 file = STATIC / ({'/':'index.html'}.get(path, path[1:]))
                 self.reply(200, file.read_bytes(), mimetypes.guess_type(file.name)[0] or 'text/plain')
+                return
+            if self.command == 'GET' and path in {'/blue-original', '/blue-original.css', '/blue-original.js', '/blue-auth.js', '/bulletin-number.js', '/notice-parser.js', '/song-search.js'}:
+                if path == '/blue-original':
+                    self.reply(200, blue_original.page(), 'text/html; charset=utf-8')
+                else:
+                    body, kind = blue_original.resource(path)
+                    self.reply(200, body, kind)
                 return
             if not secrets.compare_digest(self.headers.get('Authorization', ''), 'Bearer ' + token):
                 self.reply(401, {'error': '실행 시 표시된 접속 링크를 이용해주세요.'})
