@@ -14,6 +14,27 @@ def _replace_once(source: str, before: str, after: str) -> str:
 
 
 _AUTO_APPLY = r"""
+function copySundaySharingToSermon(){
+    if(service!=='sunday')return;
+    const r=record();
+    const candidate=SundayHwpAutofill.planSermonCopy(r.fields);
+    if(!candidate.ready)return msg(candidate.message);
+    const passage=r.fields['목장 본문'].value;
+    const heading=r.fields['목장 제목'].value;
+    if(!confirm(
+        '이번 주 주일 PPT의 본문과 설교 제목이 목장 나눔과 동일한가요?\\n\\n'
+        +'본문: '+passage+'\\n설교 제목: '+heading
+        +'\\n\\n같은 내용일 때만 [확인]을 누르세요.'
+    ))return;
+    const latest=SundayHwpAutofill.planSermonCopy(record().fields);
+    if(!latest.ready)return msg(latest.message);
+    for(const [label,value] of Object.entries(latest.updates)){
+        r.fields[label]={...value};
+    }
+    markChanged();
+    render();
+    msg('확인한 목장 본문과 제목을 이번 주 주일 PPT 입력칸에도 반영했습니다.');
+}
 function autoApplySundayHwp(){
     if(service!=='sunday'||!pendingDraft)return;
     const draft=pendingDraft;
@@ -85,6 +106,12 @@ def patch_original_script(script: str) -> str:
         "if(s.review.length){const btn=node('button','섬김표 후보 확인');"
         "btn.onclick=()=>{$('notice-text').value=record().source;parse();$('notice-dialog').showModal();};"
         "inner.append(btn);}"
+
+        "const sermon=SundayHwpAutofill.planSermonCopy(record().fields);"
+        "const sermonText=node('p','주일 PPT 본문·설교 제목: '+sermon.message,'hint');"
+        "inner.append(sermonText);"
+        "if(sermon.ready){const copy=node('button','목장 본문·제목을 주일 PPT에도 사용');"
+        "copy.onclick=copySundaySharingToSermon;inner.append(copy);}"
         "note.append(inner);root.append(note);}"
     )
     script = _replace_once(
