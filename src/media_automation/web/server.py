@@ -12,6 +12,7 @@ from .streaming_download import send_download
 from .runtime_paths import default_jobs_root
 from .preview_once import preview_once
 from . import blue_original
+from .notice_files import extract_notice
 
 MAX_UPLOAD = 128 * 1024 * 1024
 STATIC = Path(__file__).parent / 'static'
@@ -64,7 +65,9 @@ def make_server(application: Application, port: int = 8765):
             try:
                 query = parse_qs(parsed.query)
                 parts = path.strip('/').split('/')
-                if self.command == 'POST' and path == '/api/preview-once':
+                if self.command == 'POST' and path == '/api/notice-file':
+                    self.reply(200, {'text': extract_notice(query['filename'][0], self.body(8 * 1024 * 1024))})
+                elif self.command == 'POST' and path == '/api/preview-once':
                     result = preview_once(query['filename'][0], self.body(MAX_UPLOAD))
                     self.reply(200, result, 'application/pdf')
                 elif self.command == 'GET' and path == '/api/weekly-board':
