@@ -29,7 +29,7 @@ def page() -> bytes:
     original, style, script = _parts()
     # The same original DOM and exact application JavaScript, no field deletion.
     rendered = original.replace(style.group(0), '<link rel="stylesheet" href="/blue-original.css">', 1)
-    rendered = rendered.replace(script.group(0), '<script src="/sunday-hwp-autofill.js"></script>\\n<script src="/blue-original.js"></script>', 1)
+    rendered = rendered.replace(script.group(0), '<script src="/sunday-hwp-autofill.js"></script>\n<script src="/blue-original.js"></script>', 1)
     rendered = rendered.replace(
         '<script src="bulletin-number.js">',
         '<script src="/blue-auth.js"></script>\n<script src="/bulletin-number.js">',
