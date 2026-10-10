@@ -22,9 +22,9 @@ function copySundaySharingToSermon(){
     const passage=r.fields['목장 본문'].value;
     const heading=r.fields['목장 제목'].value;
     if(!confirm(
-        '이번 주 주일 PPT의 본문과 설교 제목이 목장 나눔과 동일한가요?\\n\\n'
-        +'본문: '+passage+'\\n설교 제목: '+heading
-        +'\\n\\n같은 내용일 때만 [확인]을 누르세요.'
+        '이번 주 주일 PPT의 본문과 설교 제목이 목장 나눔과 동일한가요?\n\n'
+        +'본문: '+passage+'\n설교 제목: '+heading
+        +'\n\n같은 내용일 때만 [확인]을 누르세요.'
     ))return;
     const latest=SundayHwpAutofill.planSermonCopy(record().fields);
     if(!latest.ready)return msg(latest.message);
