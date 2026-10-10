@@ -239,11 +239,13 @@ def test_complete_keeps_original_sunday_and_writes_number_only_to_derived(
         transfer_source,
         output_pdf,
         already_merged,
+        design,
     ):
         captured["sunday_yaml"] = sunday_yaml
         captured["transfer_source"] = transfer_source
         captured["output_pdf"] = output_pdf
         captured["already_merged"] = already_merged
+        captured["design"] = design
 
         return SimpleNamespace(
             pdf=SimpleNamespace(
@@ -269,6 +271,7 @@ def test_complete_keeps_original_sunday_and_writes_number_only_to_derived(
     )
 
     bulletin.complete(args)
+    assert captured["design"] == "modern"
 
     assert sunday.read_text(
         encoding="utf-8"

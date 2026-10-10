@@ -227,7 +227,157 @@ def empty_record():
     }
 
 
-def parse_notice(text: str):
+PASTOR_SECTIONS = {
+    '두 곡 찬양 후 기도 제목': 'first_prayer',
+    '메시지 후 기도 제목': 'word_prayer',
+    '마지막 찬양 후 기도제목': 'community_prayer',
+    '마지막 찬양 후 기도 제목': 'community_prayer',
+}
+
+SONG_NUMBERS = {
+    1: ('opening_song_1', 'first_prayer'),
+    2: ('opening_song_2', 'first_prayer'),
+    3: ('song_after_prayer', 'first_prayer'),
+    4: ('response_song', 'word_prayer'),
+    5: ('intercession_song', 'community_prayer'),
+}
+
+
+def parse_pastor_notice(text: str, reference_year: int | None = None):
+    """Parse the explicitly marked pastor notice, without guessing extra items.
+
+    Month/day headers use reference_year (the current year by default).
+    Personal prayer is a standing service step confirmed by the user.
+    Bible lookup remains the existing downstream workflow.
+    """
+    from datetime import date
+
+    year = reference_year if reference_year is not None else date.today().year
+    result = {field: empty_record() for field in FIELD_ALIASES}
+    unknown = []
+    section = None
+    last_prayer = None
+
+    def provide(field, value):
+        # Conflicting repeated values require review rather than silent overwrite.
+        record = result[field]
+        if record['status'] == 'provided' and record['value'] != value:
+            unknown.append(f'{field}: {value}')
+            record['review_required'] = True
+            return
+        result[field] = {
+            'status': 'provided' if value else 'blank',
+            'value': value or ([] if field in MULTILINE_FIELDS else None),
+            'review_required': False,
+        }
+
+    for raw in text.splitlines():
+        line = raw.lstrip('\ufeff').strip()
+        if not line:
+            # These explicitly marked sections continue across blank lines.
+            continue
+        if line == '-':
+            continue
+        header = re.fullmatch(r'\[금요\s*기도회\s*순서\]\s*(.+)', line)
+        if header:
+            value = header.group(1).strip()
+            short = re.fullmatch(r'(\d{1,2})\s*[/.-]\s*(\d{1,2})', value)
+            if short:
+                try:
+                    value = date(year, int(short[1]), int(short[2])).isoformat()
+                except ValueError:
+                    unknown.append(line)
+                    continue
+            else:
+                value = normalize_date(value)
+                try:
+                    date.fromisoformat(value)
+                except ValueError:
+                    unknown.append(line)
+                    continue
+            provide('date', value)
+            last_prayer = None
+            continue
+        heading = re.fullmatch(r'<\s*(.*?)\s*>', line)
+        if heading:
+            label = normalize_label(heading[1])
+            section = PASTOR_SECTIONS.get(label)
+            last_prayer = None
+            if section is None:
+                unknown.append(line)
+            elif result[section]['status'] == 'missing':
+                provide(section, '')
+            continue
+        song = re.fullmatch(r'(\d+)\s*\)\s*(.+)', line)
+        if song:
+            mapping = SONG_NUMBERS.get(int(song[1]))
+            if mapping and mapping[1] == section:
+                provide(mapping[0], song[2].strip())
+            else:
+                unknown.append(line)
+            last_prayer = None
+            continue
+        sermon = re.fullmatch(
+            r'([가-힣]+\s*\d+\s*:\s*\d+(?:\s*[~\-–]\s*\d+)?)\s*/\s*(.+)',
+            line,
+        )
+        if sermon:
+            provide('scripture', sermon[1].strip())
+            provide('sermon_title', sermon[2].strip())
+            last_prayer = None
+            continue
+        additional = re.fullmatch(r'읽을\s*말씀\s*(?:[:：\-–—]\s*)?(.*)', line)
+        if additional:
+            provide('additional_scripture', additional[1].strip())
+            last_prayer = None
+            continue
+        explicit = split_label(line)
+        if explicit:
+            field, value = explicit
+            provide(field, value)
+            section = field if field in MULTILINE_FIELDS else None
+            last_prayer = None
+            continue
+        topic = re.fullmatch(r'\d+\s*\.\s*(.+)', line)
+        if topic and section in MULTILINE_FIELDS:
+            record = result[section]
+            if not isinstance(record['value'], list):
+                record['value'] = [record['value']] if record['value'] else []
+            record['value'].append(topic[1].strip())
+            record['status'] = 'provided'
+            last_prayer = (section, len(record['value']) - 1)
+            continue
+        detail = re.fullmatch(r'[-*•·]\s*(.+)', line)
+        if detail and last_prayer and last_prayer[0] == section:
+            field, index = last_prayer
+            # Keep the supplied explanation with its own prayer title.
+            result[field]['value'][index] += '\n' + detail[1].strip()
+            continue
+        unknown.append(line)
+        last_prayer = None
+    return result, unknown
+
+
+def parse_notice(text: str, reference_year: int | None = None):
+    if re.search(r"(?m)^\s*\[금요\s*기도회\s*순서\]", text.lstrip("\ufeff")):
+        result, unknown = parse_pastor_notice(text, reference_year=reference_year)
+    else:
+        result, unknown = parse_labeled_notice(text)
+
+    # Standing Friday Zoom order confirmed by the user on 2026-10-08.
+    # This is a fixed service step, not content copied from a previous week.
+    # Explicit weekly values (including blank) continue to take precedence.
+    if result["personal_prayer"]["status"] == "missing":
+        result["personal_prayer"] = {
+            "status": "provided",
+            "value": ["개인 기도"],
+            "review_required": False,
+        }
+    return result, unknown
+
+
+def parse_labeled_notice(text: str):
+
     result = {
         field: empty_record()
         for field in FIELD_ALIASES
@@ -428,6 +578,25 @@ def build_bible_requests(data):
                 "display_rule": "세례→침례",
             }
         )
+
+    # Reference-only prayer explanation lines can be filled from the same source.
+    from media_automation.bible.json_source import split_references
+    for field in MULTILINE_FIELDS:
+        record = data[field]
+        values = record.get("value") or []
+        if isinstance(values, str):
+            values = [values]
+        for value in values:
+            for line in value.splitlines():
+                try:
+                    references = split_references(line.strip())
+                except ValueError:
+                    continue
+                for reference in references:
+                    requests.append({
+                        "source": field, "reference": reference,
+                        "translation": "개역개정", "display_rule": "세례→침례",
+                    })
 
     return {
         "requests": requests,

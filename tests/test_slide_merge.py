@@ -169,7 +169,7 @@ from media_automation.ppt import (
 )
 
 
-def test_platform_merger_rejects_macos_for_final_build(
+def test_platform_merger_supports_macos_without_powerpoint(
     monkeypatch,
 ):
     monkeypatch.setattr(
@@ -177,11 +177,8 @@ def test_platform_merger_rejects_macos_for_final_build(
         lambda: "Darwin",
     )
 
-    with pytest.raises(
-        RuntimeError,
-        match="Windows 제작 환경",
-    ):
-        create_platform_slide_merger()
+    from media_automation.ppt.slide_merge import OpenXmlSlideMerger
+    assert isinstance(create_platform_slide_merger(), OpenXmlSlideMerger)
 
 
 def test_mac_merger_rejects_insert_before_first_slide():

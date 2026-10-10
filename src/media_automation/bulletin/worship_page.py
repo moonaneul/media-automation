@@ -180,11 +180,12 @@ def _draw_section_title(
         12.5,
     )
 
-    canvas.drawString(
-        x,
-        y,
-        text,
-    )
+    canvas.setFillColorRGB(0, 0, 0)
+    if text == "오전 예배 순서":
+        canvas.drawCentredString(x + width / 2, y, text)
+    else:
+        canvas.drawString(x, y, f"<{text}>")
+    canvas.setFillColorRGB(0, 0, 0)
 
     canvas.line(
         x,
@@ -267,6 +268,7 @@ def draw_worship_page(
                 value,
             )
 
+        canvas.setDash(1.2, 1.2)
         canvas.line(
             left + label_width,
             cursor - 1 * mm,
@@ -274,6 +276,7 @@ def draw_worship_page(
             cursor - 1 * mm,
         )
 
+        canvas.setDash()
         cursor -= row_height
 
     cursor -= 5 * mm
@@ -351,12 +354,10 @@ def draw_worship_page(
                 ]
             )
 
-            canvas.rect(
-                column_x,
-                row_bottom,
-                column_width,
-                table_row_height,
-            )
+            canvas.setFillColorRGB(*( (0.82, 0.82, 0.82) if row_index == 0
+                                      or column_index == 0 else (1, 1, 1) ))
+            canvas.rect(column_x, row_bottom, column_width, table_row_height, fill=1)
+            canvas.setFillColorRGB(0, 0, 0)
 
             canvas.setFont(
                 (

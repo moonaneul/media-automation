@@ -27,3 +27,20 @@ python sunday.py resume YYYY-MM-DD
 
 과거 주차 자료나 비슷한 제목의 악보는 자동으로 선택하지 않습니다. 악보가 없으면
 해당 화면은 빈 상태로 두며, 사용 전 곡명·찬송가 번호·필요한 절과 후렴을 확인합니다.
+
+
+## macOS에서도 최종 제작
+
+등록된 PPTX 악보의 최종 병합은 Windows, macOS, Linux에서 실행할 수 있습니다.
+Windows는 기존 PowerPoint COM, macOS/Linux는 원본 XML과 연결 부품을 복사하는
+Open XML 병합기를 사용합니다. macOS의 편집 가능한 PowerPoint는 필요하지 않습니다.
+구형 PPT를 PPTX로 변환하는 단계는 기존 PowerPoint 변환 환경이 별도로 필요합니다.
+
+```bash
+python sunday.py complete 2026-09-27 input/sunday/20260927/source_rehearsal.pptx
+open "output/sunday/20260927_주일예배.pptx"
+```
+
+최종 병합 후 링크를 제거하고 4:3, 전환 빈 화면, 본문, 중앙 정렬, URL 등의
+자동 QA를 수행합니다. 구조 프리뷰는 악보 장수만 반영한 빈 화면이며 최종본과 다릅니다.
+실제 PowerPoint 화면에서 악보 잘림과 가독성은 사용자가 확인해야 합니다.

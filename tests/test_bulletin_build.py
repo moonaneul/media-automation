@@ -230,3 +230,23 @@ cf) 오후 예배 : 테스트
         build._load_transfer_source(hwp)
         == expected
     )
+
+
+def test_missing_number_cannot_overwrite_existing_pdf(tmp_path):
+    import pytest
+    from test_bulletin_merge import make_sunday
+
+    raw = make_sunday().model_dump(mode="json")
+    raw["bulletin"]["number"] = {"status": "UNSET"}
+    sunday = tmp_path / "sunday.yaml"
+    sunday.write_text(yaml.safe_dump(raw, allow_unicode=True), encoding="utf-8")
+    transfer = tmp_path / "transfer.txt"
+    transfer.write_text("9/27\n", encoding="utf-8")
+    output = tmp_path / "bulletin.pdf"
+    output.write_bytes(b"existing approved PDF")
+    with pytest.raises(ValueError, match="주보 호수가 없습니다"):
+        build_bulletin_from_files(
+            sunday_yaml=sunday, transfer_source=transfer, output_pdf=output,
+            already_merged=True,
+        )
+    assert output.read_bytes() == b"existing approved PDF"

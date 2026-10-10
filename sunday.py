@@ -275,14 +275,6 @@ def structure(args):
 
 
 def complete(args):
-    if platform.system() != "Windows":
-        raise SystemExit(
-            "ERROR: 실제 주일 PPT 병합은 현재 Windows + 편집 가능한 "
-            "Microsoft PowerPoint에서 실행해야 합니다.\n"
-            "Mac에서는 'python sunday.py structure <날짜> <원본.pptx>'로 "
-            "구조와 QA까지 확인할 수 있습니다."
-        )
-
     source = _resolved_source(args.source)
     run_script(
         "complete_sunday_week.py",
@@ -402,11 +394,11 @@ def status(args):
     ):
         print("\nSUNDAY INPUTS READY")
         print(
-            "NEXT (Mac/검증): python sunday.py structure "
+            "NEXT (구조 검증): python sunday.py structure "
             f"{date_value} <주일원본.pptx>"
         )
         print(
-            "NEXT (Windows/실제 조립): python sunday.py complete "
+            "NEXT (최종 제작): python sunday.py complete "
             f"{date_value} <주일원본.pptx>"
         )
 
@@ -470,7 +462,7 @@ def main():
 
     p = sub.add_parser(
         "complete",
-        help="Windows PowerPoint에서 실제 악보까지 병합한 주일 PPT 생성",
+        help="원본 악보를 병합한 주일 PPT 생성 (Windows/macOS/Linux)",
     )
     p.add_argument("date")
     p.add_argument("source", help="과거 주일 오전 2부 원본 PPT")

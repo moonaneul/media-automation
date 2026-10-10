@@ -2,10 +2,108 @@ from __future__ import annotations
 
 import platform
 import subprocess
+import os
+import tempfile
+import re
 from pathlib import Path
 from typing import Protocol
 
 from pptx import Presentation
+from pptx.opc.package import _Relationship
+from pptx.opc.packuri import PackURI
+from pptx.opc.constants import RELATIONSHIP_TYPE as RT, RELATIONSHIP_TARGET_MODE as RTM
+from pptx.oxml.xmlchemy import OxmlElement
+from pptx.oxml.ns import qn
+
+
+class OpenXmlSlideMerger:
+    """Copy original PPTX parts and relationships without a PowerPoint process.
+
+    Slide XML, pictures, layouts, masters, themes and other dependent parts are
+    retained; this does not reconstruct shapes or flatten the source slides.
+    """
+
+    def insert_all(self, destination, source, *, after_slide):
+        count = len(Presentation(source).slides)
+        if count:
+            self.insert_range(destination, source, after_slide=after_slide,
+                              start_slide=1, end_slide=count)
+
+    def insert_range(self, destination, source, *, after_slide, start_slide, end_slide):
+        destination, source = Path(destination).resolve(), Path(source).resolve()
+        if destination == source:
+            raise ValueError("원본과 대상 PPT는 서로 다른 파일이어야 합니다.")
+        target, original = Presentation(destination), Presentation(source)
+        if not 1 <= start_slide <= end_slide <= len(original.slides):
+            raise ValueError("삽입할 슬라이드 범위가 원본 장수를 벗어났습니다.")
+        if not 0 <= after_slide <= len(target.slides):
+            raise ValueError("삽입 위치가 대상 장수를 벗어났습니다.")
+        if (target.slide_width, target.slide_height) != (original.slide_width, original.slide_height):
+            # Legacy 4:3 templates can differ by a half point due to rounding.
+            # Expand that small margin; never scale or crop the original shapes.
+            if (abs(target.slide_width - original.slide_width) > 12700 or
+                    abs(target.slide_height - original.slide_height) > 12700):
+                raise ValueError("원본 화면 보존을 위해 대상과 악보 PPT의 화면 크기가 같아야 합니다.")
+            target.slide_width = max(target.slide_width, original.slide_width)
+            target.slide_height = max(target.slide_height, original.slide_height)
+
+        package = target.part.package
+        names = {str(part.partname) for part in package.iter_parts()}
+        copied = {}
+
+        def clone(part):
+            if part in copied:
+                return copied[part]
+            name = str(part.partname)
+            stem, extension = name.rsplit('.', 1)
+            numbered = re.fullmatch(r'(.*?)(\d+)', stem)
+            index = int(numbered.group(2)) if numbered else 1
+            while name in names:
+                index += 1
+                name = (f"{numbered.group(1)}{index}.{extension}" if numbered
+                        else f"{stem}_import{index}.{extension}")
+            names.add(name)
+            result = type(part).load(PackURI(name), part.content_type, package, part.blob)
+            copied[part] = result  # layouts/masters and notes/slides contain cycles
+            for rel in part.rels.values():
+                dependency = rel.target_ref if rel.is_external else clone(rel.target_part)
+                # Preserve rIds used inside the unchanged source XML.
+                result.rels._rels[rel.rId] = _Relationship(
+                    result.partname.baseURI, rel.rId, rel.reltype,
+                    RTM.EXTERNAL if rel.is_external else RTM.INTERNAL, dependency,
+                )
+            return result
+
+        ids = target.slides._sldIdLst
+        for offset, slide in enumerate(list(original.slides)[start_slide-1:end_slide]):
+            part = clone(slide.part)
+            rid = target.part.relate_to(part, RT.SLIDE)
+            element = ids.add_sldId(rid)
+            ids.remove(element)
+            ids.insert(after_slide + offset, element)
+
+        masters = target.part._element.find(qn('p:sldMasterIdLst'))
+        if masters is None:
+            masters = OxmlElement('p:sldMasterIdLst')
+            target.part._element.insert(0, masters)
+        master_id = max([2147483647] + [int(e.get('id')) for e in masters])
+        for part in copied.values():
+            if part.content_type != 'application/vnd.openxmlformats-officedocument.presentationml.slideMaster+xml':
+                continue
+            master_id += 1
+            element = OxmlElement('p:sldMasterId')
+            element.set('id', str(master_id))
+            element.set(qn('r:id'), target.part.relate_to(part, RT.SLIDE_MASTER))
+            masters.append(element)
+
+        # A failed save must not leave a partially written destination.
+        with tempfile.NamedTemporaryFile(dir=destination.parent, suffix='.pptx', delete=False) as f:
+            temporary = Path(f.name)
+        try:
+            target.save(temporary)
+            os.replace(temporary, destination)
+        finally:
+            temporary.unlink(missing_ok=True)
 
 
 class SlideMerger(Protocol):
@@ -303,13 +401,10 @@ def create_platform_slide_merger() -> SlideMerger:
         return PowerPointComSlideMerger()
 
     if system == "Darwin":
-        raise RuntimeError(
-            "최종 악보 PPT 병합은 현재 "
-            "Microsoft PowerPoint가 설치된 "
-            "Windows 제작 환경에서만 지원합니다. "
-            "Mac에서는 --validate-only로 "
-            "입력 자료를 검증해주세요."
-        )
+        return OpenXmlSlideMerger()
+
+    if system == "Linux":
+        return OpenXmlSlideMerger()
 
     raise RuntimeError(
         f"지원하지 않는 운영체제입니다: {system}"

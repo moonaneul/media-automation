@@ -1,4 +1,4 @@
-﻿from __future__ import annotations
+from __future__ import annotations
 
 import argparse
 import subprocess
@@ -138,14 +138,6 @@ def main():
         / f"friday-zoom-{token}.yaml"
     )
 
-    run(
-        sys.executable,
-        "scripts/intake_to_friday_zoom_weekly.py",
-        "--intake",
-        intake,
-        "--output",
-        weekly,
-    )
 
     # --------------------------------------------------------
     # 4. Bible request -> Bible YAML
@@ -171,6 +163,22 @@ def main():
         bible_requests,
         "--output",
         bible_output,
+    )
+
+    run(
+        sys.executable,
+        "scripts/fill_friday_zoom_prayer_scripture.py",
+        "--intake", intake,
+        "--bible", bible_output,
+    )
+
+    run(
+        sys.executable,
+        "scripts/intake_to_friday_zoom_weekly.py",
+        "--intake",
+        intake,
+        "--output",
+        weekly,
     )
 
     # --------------------------------------------------------

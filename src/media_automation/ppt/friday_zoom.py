@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from functools import lru_cache
 from io import BytesIO
+import re
 
 from PIL import Image
 from pptx import Presentation
@@ -213,28 +214,26 @@ def add_prayer_topics_slide(
         )
         frame.word_wrap = True
 
-        paragraph = frame.paragraphs[0]
-
-        paragraph.text = (
-            f"{index}. {topic}"
-        )
-
-        paragraph.alignment = (
-            PP_ALIGN.LEFT
-        )
-
-        paragraph.line_spacing = 1.45
-
-        for run in paragraph.runs:
-            run.font.size = Pt(
-                36 if len(topics) >= 3 else 38
+        for line_index, line in enumerate(topic.split("\n")):
+            paragraph = (
+                frame.paragraphs[0]
+                if line_index == 0
+                else frame.add_paragraph()
             )
-
-            run.font.color.rgb = RGBColor(
-                255,
-                255,
-                255,
+            paragraph.text = f"{index}. {line}" if line_index == 0 else line
+            paragraph.alignment = PP_ALIGN.LEFT
+            paragraph.line_spacing = 1.45
+            paragraph.space_before = Pt(0)
+            paragraph.space_after = Pt(0)
+            # Supporting Scripture stays within the animated topic shape.
+            is_scripture = line_index > 0 and bool(
+                re.search(r"\[\d+(?:[~–-]\d+)?\]|[가-힣]+\s*\d+\s*:\s*\d+", line)
             )
+            for run in paragraph.runs:
+                run.font.size = Pt(
+                    28 if is_scripture else (36 if len(topics) >= 3 else 38)
+                )
+                run.font.color.rgb = RGBColor(255, 255, 255)
 
     return slide
 
@@ -539,7 +538,7 @@ def add_zoom_scripture_passage_slides(
             first_paragraph = False
 
             number_paragraph.text = (
-                str(verse.number)
+                verse.display_number
             )
 
             number_paragraph.alignment = (
@@ -700,29 +699,14 @@ def render_friday_zoom_block(
                 "필요합니다."
             )
 
-        passage = (
-            bible_provider.get_passage(
-                block.value.reference
-            )
-        )
+        from media_automation.bible.json_source import split_references
 
         slides = []
-
-        if include_scripture_reference_slide:
-            slides.append(
-                add_zoom_scripture_reference_slide(
-                    prs,
-                    passage.reference,
-                )
-            )
-
-        slides.extend(
-            add_zoom_scripture_passage_slides(
-                prs,
-                passage,
-            )
-        )
-
+        for reference in split_references(block.value.reference):
+            passage = bible_provider.get_passage(reference)
+            if include_scripture_reference_slide:
+                slides.append(add_zoom_scripture_reference_slide(prs, passage.reference))
+            slides.extend(add_zoom_scripture_passage_slides(prs, passage))
         return slides
 
     raise ValueError(

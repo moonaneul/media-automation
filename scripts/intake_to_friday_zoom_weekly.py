@@ -147,9 +147,9 @@ def status_from_shape(
         "value",
         "provided",
     }:
-        return current
+        return "VALUE"
 
-    return "value"
+    return "VALUE"
 
 
 def song_value(
@@ -184,6 +184,7 @@ def song_value(
         else:
             result["title"] = title
 
+        result["media"] = {"status": "UNSET"}
         return result
 
     return {

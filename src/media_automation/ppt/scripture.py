@@ -74,10 +74,13 @@ def _validate_passage(
             f"{passage.reference}"
         )
 
-    for previous, current in zip(
-        numbers,
-        numbers[1:],
-    ):
+    for verse in passage.verses:
+        if verse.end_number is not None and verse.end_number < verse.number:
+            raise ValueError(f"성경 통합 절 범위가 잘못되었습니다: {passage.reference}")
+
+    for previous_verse, current_verse in zip(passage.verses, passage.verses[1:]):
+        previous = previous_verse.end_number or previous_verse.number
+        current = current_verse.number
         if current != previous + 1:
             raise ValueError(
                 f"성경 절이 누락되었습니다: "
@@ -172,7 +175,7 @@ def add_scripture_passage_slides(
         )
 
         number_paragraph.text = (
-            f"{verse.number}."
+            f"{verse.display_number}."
         )
 
         number_paragraph.alignment = (

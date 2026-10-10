@@ -102,11 +102,8 @@ def _section_title(
         11.5,
     )
 
-    canvas.drawString(
-        x,
-        y,
-        text,
-    )
+    canvas.setFillColorRGB(0, 0, 0)
+    canvas.drawString(x, y, text if text.startswith("◇") else f"<{text}>")
 
     canvas.line(
         x,
@@ -141,6 +138,7 @@ def _draw_wrapped(
         font_size,
     )
 
+    canvas.setFillColorRGB(0, 0, 0)
     cursor = y
 
     for line in lines:
@@ -326,6 +324,8 @@ def draw_news_page(
 
             row_cursor -= meeting_row_height
 
+    canvas.rect(left - 1 * mm, meeting_start_y - 5 * meeting_row_height + 1 * mm,
+                content_width + 2 * mm, 5 * meeting_row_height + 3 * mm)
     cursor = (
         meeting_start_y
         - 5 * meeting_row_height
@@ -385,23 +385,17 @@ def draw_news_page(
         8.1,
     )
 
-    for index, value in enumerate(
-        static.core_values,
-        start=1,
-    ):
-        if cursor < bottom:
-            raise ValueError(
-                "주보 4쪽 핵심가치가 "
-                "페이지 영역을 넘습니다."
-            )
-
-        canvas.drawString(
-            left,
-            cursor,
-            f"{index}. {value}",
-        )
-
-        cursor -= 5.8 * mm
+    core_columns = (static.core_values[:3], static.core_values[3:])
+    core_top = cursor
+    for column_index, values in enumerate(core_columns):
+        row_cursor = core_top
+        column_x = left + column_index * (content_width / 2)
+        for index, value in enumerate(values, start=1 + column_index * 3):
+            if row_cursor < bottom:
+                raise ValueError("주보 4쪽 핵심가치가 페이지 영역을 넘습니다.")
+            canvas.drawString(column_x, row_cursor, f"{index}. {value}")
+            row_cursor -= 5.8 * mm
+    cursor = core_top - 3 * 5.8 * mm
 
     cursor -= 3 * mm
 

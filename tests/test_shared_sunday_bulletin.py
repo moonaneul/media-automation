@@ -9,6 +9,7 @@ from media_automation.bulletin.transfer import parse_bulletin_transfer_text
 from media_automation.bulletin.weekly import (
     alignment_differences, merge_for_sunday, sermon_crosscheck,
 )
+from media_automation.weekly_data.models import SundayData
 from test_bulletin_merge import make_sunday
 from test_bulletin_cli import bulletin, configure_roots
 
@@ -100,6 +101,11 @@ def test_pdf_builder_does_not_remerge_verified_weekly(tmp_path, monkeypatch):
     import media_automation.bulletin.build as build
 
     sunday = make_sunday()
+    sunday = SundayData.model_validate({
+        **sunday.model_dump(mode="json"),
+        "bulletin": {**sunday.bulletin.model_dump(mode="json"),
+                     "number": {"status": "VALUE", "value": "13-39"}},
+    })
     sunday_file = tmp_path / "sunday.yaml"
     sunday_file.write_text(
         yaml.safe_dump(sunday.model_dump(mode="json"), allow_unicode=True),
@@ -130,3 +136,24 @@ def test_crosscheck_flags_sermon_content_mismatch():
         "설교 본문 ↔ 목장 본문",
         "설교 제목 ↔ 목장 제목",
     ]
+
+
+@pytest.mark.parametrize("schedule", ["9/6(일) : 지난 일정", ""])
+def test_stale_monthly_heading_rejects_replacement_without_erasing_input(tmp_path, schedule):
+    directory = tmp_path / "registered"
+    first = tmp_path / "first.txt"
+    first.write_text("10/11\n<10월 사역 일정>\n", encoding="utf-8")
+    registered = register_transfer(first, directory, date(2026, 10, 11))
+    correction = tmp_path / "correction.txt"
+    correction.write_text(f"10/11\n<9월 사역 일정>\n{schedule}\n", encoding="utf-8")
+
+    with pytest.raises(ValueError, match="월간 일정 제목의 월이 다릅니다"):
+        register_transfer(correction, directory, date(2026, 10, 11), replace=True)
+    assert registered.read_bytes() == first.read_bytes()
+
+
+def test_current_month_schedule_allows_explicit_next_month_event():
+    parsed = parse_bulletin_transfer_text(
+        "10/11\n<10월 사역 일정>\n11/1(일) : 전달된 다음 달 행사\n", year=2026,
+    )
+    assert parsed.monthly_schedule.items[0].display_date == "11/1(일)"

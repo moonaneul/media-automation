@@ -1,12 +1,12 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+import os
+from pathlib import Path
 
 from reportlab.lib.units import mm
 from reportlab.pdfbase import pdfmetrics
-from reportlab.pdfbase.cidfonts import (
-    UnicodeCIDFont,
-)
+from reportlab.pdfbase.ttfonts import TTFont
 from reportlab.pdfgen.canvas import Canvas
 
 from media_automation.bulletin.document import (
@@ -14,8 +14,8 @@ from media_automation.bulletin.document import (
 )
 
 
-FONT_REGULAR = "HYSMyeongJo-Medium"
-FONT_BOLD = "HYSMyeongJo-Medium"
+FONT_REGULAR = "BulletinKorean"
+FONT_BOLD = "BulletinKorean"
 
 
 @dataclass(frozen=True, slots=True)
@@ -46,23 +46,46 @@ class BulletinCoverStatic:
 
 
 def register_korean_fonts() -> None:
-    registered = set(
-        pdfmetrics.getRegisteredFontNames()
+    if FONT_REGULAR in pdfmetrics.getRegisteredFontNames():
+        return
+
+    configured = os.environ.get("MEDIA_BULLETIN_FONT")
+    if configured:
+        candidates = [Path(configured).expanduser()]
+    else:
+        candidates = [
+            Path("/System/Library/Fonts/Supplemental/AppleGothic.ttf"),
+            Path(os.environ.get("WINDIR", "C:/Windows")) / "Fonts/malgun.ttf",
+            Path("/usr/share/fonts/truetype/nanum/NanumGothic.ttf"),
+        ]
+    for candidate in candidates:
+        if candidate.is_file():
+            # Embed the font so PDF viewers do not require Adobe Korea maps
+            # or locally installed substitute fonts.
+            pdfmetrics.registerFont(TTFont(FONT_REGULAR, str(candidate)))
+            return
+    raise RuntimeError(
+        "주보 PDF에 포함할 한글 TTF 글꼴이 없습니다. "
+        "MEDIA_BULLETIN_FONT에 사용할 한글 글꼴 파일 경로를 지정해주세요."
     )
 
-    if FONT_REGULAR not in registered:
-        pdfmetrics.registerFont(
-            UnicodeCIDFont(
-                FONT_REGULAR
-            )
-        )
 
-    if FONT_BOLD not in registered:
-        pdfmetrics.registerFont(
-            UnicodeCIDFont(
-                FONT_BOLD
-            )
-        )
+
+def draw_bold_slogan(canvas: Canvas, text: str, center_x: float,
+                     baseline: float, font_size: float) -> None:
+    # AppleGothic has no separate bold face. Fill and stroke the embedded
+    # glyphs to give this heading consistent weight in all PDF viewers.
+    canvas.saveState()
+    canvas.setFillColorRGB(0, 0, 0)
+    canvas.setStrokeColorRGB(0, 0, 0)
+    canvas.setLineWidth(font_size * 0.025)
+    text_width = pdfmetrics.stringWidth(text, FONT_REGULAR, font_size)
+    heading = canvas.beginText(center_x - text_width / 2, baseline)
+    heading.setFont(FONT_REGULAR, font_size)
+    heading.setTextRenderMode(2)
+    heading.textOut(text)
+    canvas.drawText(heading)
+    canvas.restoreState()
 
 
 def draw_cover_page(
@@ -79,6 +102,27 @@ def draw_cover_page(
 
     if static is None:
         static = BulletinCoverStatic()
+        background = Path(__file__).resolve().parents[3] / "assets/bulletin/cover_autumn.jpg"
+        if background.is_file():
+            canvas.saveState()
+            canvas.drawImage(str(background), x, y, width=width, height=height,
+                             preserveAspectRatio=True, anchor="c")
+            canvas.setFillColorRGB(0, 0, 0)
+            canvas.setFont(FONT_REGULAR, 9.5)
+            if cover.bulletin_number:
+                canvas.drawString(x + 10 * mm, y + height - 11 * mm,
+                                  f"No. {cover.bulletin_number}")
+            canvas.drawRightString(x + width - 10 * mm, y + height - 11 * mm,
+                                  cover.date_text)
+            draw_bold_slogan(canvas, static.slogan, x + width / 2,
+                             y + height * 0.805, 20)
+            canvas.setFont(FONT_REGULAR, 9)
+            for index, line in enumerate(static.verse_lines):
+                canvas.drawCentredString(x + width / 2,
+                                        y + height * 0.745 - index * 4.5 * mm, line)
+            canvas.restoreState()
+            return
+        raise FileNotFoundError(f"주보 표지 원본 이미지가 없습니다: {background}")
 
     margin = 10 * mm
     top = y + height - margin
@@ -122,11 +166,8 @@ def draw_cover_page(
         FONT_BOLD,
         17,
     )
-    canvas.drawCentredString(
-        x + width / 2,
-        y + height * 0.57,
-        static.slogan,
-    )
+    draw_bold_slogan(canvas, static.slogan, x + width / 2,
+                     y + height * 0.57, 17)
 
     # 마 28:19
     canvas.setFont(

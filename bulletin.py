@@ -362,6 +362,7 @@ def complete(args) -> None:
         transfer_source=transfer,
         output_pdf=output,
         already_merged=True,
+        design=getattr(args, "design", "modern"),
     )
 
     print("\n=== BULLETIN COMPLETE ===")
@@ -423,6 +424,8 @@ def main() -> None:
         "--output",
         help="출력 PDF 경로(생략 시 output/bulletin/날짜_주보.pdf)",
     )
+    p.add_argument("--design", choices=("modern", "classic"), default="modern",
+                   help="확정된 새 디자인(기본) 또는 기존 디자인")
     p.set_defaults(func=complete)
 
     args = parser.parse_args()

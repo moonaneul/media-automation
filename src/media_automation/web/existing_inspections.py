@@ -1,0 +1,247 @@
+"""Read-only copies of pre-existing worship outputs in separate inspection sessions.
+
+Never stages an imported file as a production-job input or artifact.
+"""
+from __future__ import annotations
+
+from datetime import date, datetime, timedelta, timezone
+import hashlib
+import json
+import os
+from pathlib import Path
+import re
+import shutil
+from uuid import uuid4
+
+from . import qa_review
+from .pptx_preview import availability, convert_pptx
+
+MAX_FILE = 128 * 1024 * 1024
+PREVIEW_TTL = timedelta(hours=24)
+PREVIEW_CAP_BYTES = 512 * 1024 * 1024
+SERVICES = {"wednesday", "sunday", "friday_zoom", "friday_in_person", "bulletin"}
+_ID = re.compile(r"[0-9a-f]{32}\Z")
+_NAME = re.compile(r"[\x00-\x1f\x7f]")
+
+
+def _digest(path: Path) -> str:
+    h = hashlib.sha256()
+    with path.open("rb") as handle:
+        for chunk in iter(lambda: handle.read(1024 * 1024), b""):
+            h.update(chunk)
+    return h.hexdigest()
+
+
+def _save(destination: Path, data: dict) -> None:
+    temp = destination.with_suffix(".tmp")
+    temp.write_text(json.dumps(data, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+    temp.replace(destination)
+
+
+class ExistingInspections:
+    """Local-only inspection archive, independent of all ProductionJobs states."""
+
+    def __init__(self, root: Path):
+        self.root = root.resolve()
+
+    def _cleanup_preview_sessions(self) -> None:
+        """Delete expired preview-only copies, never legacy QA records or original files."""
+        if not self.root.is_dir():
+            return
+        now = datetime.now(timezone.utc)
+        for folder in self.root.iterdir():
+            if not folder.is_dir() or folder.is_symlink() or not _ID.fullmatch(folder.name):
+                continue
+            metadata = folder / "inspection.json"
+            if not metadata.is_file() or metadata.is_symlink():
+                continue
+            try:
+                data = json.loads(metadata.read_text(encoding="utf-8"))
+                if data.get("preview_only") is not True:
+                    continue
+                expires_at = datetime.fromisoformat(data["expires_at"])
+                if expires_at.tzinfo is None:
+                    continue
+                if expires_at <= now and not (folder / "preview/.rendering.lock").exists():
+                    shutil.rmtree(folder)
+            except (OSError, KeyError, ValueError, json.JSONDecodeError):
+                continue
+
+    def _preview_usage(self) -> int:
+        if not self.root.is_dir():
+            return 0
+        total = 0
+        for folder in self.root.iterdir():
+            if not folder.is_dir() or folder.is_symlink() or not _ID.fullmatch(folder.name):
+                continue
+            try:
+                data = json.loads((folder / "inspection.json").read_text(encoding="utf-8"))
+                if data.get("preview_only") is not True:
+                    continue
+                suffix = data.get("suffix")
+                if suffix not in (".pdf", ".pptx"):
+                    continue
+                file = folder / ("source" + suffix)
+                if file.is_file() and not file.is_symlink():
+                    total += file.stat().st_size
+            except (OSError, ValueError, KeyError, json.JSONDecodeError):
+                continue
+        return total
+
+    def _dir(self, inspection_id: str) -> Path:
+        self._cleanup_preview_sessions()
+        if not _ID.fullmatch(inspection_id):
+            raise ValueError("올바르지 않은 검수 ID입니다.")
+        path = self.root / inspection_id
+        if not path.is_dir() or path.is_symlink() or not (path / "inspection.json").is_file():
+            raise ValueError("기존 파일 검수 작업을 찾을 수 없습니다.")
+        return path
+
+    def _meta(self, inspection_id: str) -> tuple[Path, dict, Path]:
+        folder = self._dir(inspection_id)
+        data = json.loads((folder / "inspection.json").read_text(encoding="utf-8"))
+        suffix = data["suffix"]
+        path = folder / ("source" + suffix)
+        if path.is_symlink() or not path.is_file():
+            raise ValueError("검수용 복사본이 없습니다.")
+        return folder, data, path
+
+    def create(self, service: str, day: str, filename: str, content: bytes) -> dict:
+        if service not in SERVICES:
+            raise ValueError("지원하지 않는 예배 종류입니다.")
+        if not isinstance(day, str) or date.fromisoformat(day).isoformat() != day:
+            raise ValueError("날짜는 YYYY-MM-DD 형식으로 입력해주세요.")
+        if not isinstance(filename, str) or not filename or len(filename) > 200:
+            raise ValueError("원본 파일 이름을 확인해주세요.")
+        if Path(filename).name != filename or "/" in filename or "\\" in filename or _NAME.search(filename):
+            raise ValueError("파일 이름에 경로 또는 제어 문자가 들어 있습니다.")
+        suffix = Path(filename).suffix.lower()
+        if suffix != (".pdf" if service == "bulletin" else ".pptx"):
+            raise ValueError("주보는 PDF, 예배 PPT는 PPTX 파일만 검수할 수 있습니다.")
+        if not isinstance(content, bytes) or not 0 < len(content) <= MAX_FILE:
+            raise ValueError("파일 크기는 1바이트 이상 128MiB 이하여야 합니다.")
+        self._cleanup_preview_sessions()
+        if self._preview_usage() + len(content) > PREVIEW_CAP_BYTES:
+            raise ValueError("임시 미리보기 저장 공간이 512MiB 한도에 도달했습니다. 24시간이 지난 복사본은 다음 접근 시 정리됩니다.")
+        self.root.mkdir(parents=True, exist_ok=True)
+        inspection_id = uuid4().hex
+        folder = self.root / inspection_id
+        folder.mkdir(mode=0o700)
+        source = folder / ("source" + suffix)
+        try:
+            with source.open("xb") as handle:
+                handle.write(content)
+            data = {
+                "inspection_id": inspection_id, "service": service, "date": day,
+                "filename": filename, "suffix": suffix, "sha256": _digest(source),
+                "created_at": datetime.now(timezone.utc).isoformat(),
+                "type": "existing_file_only",
+                "preview_only": True,
+                "expires_at": (datetime.now(timezone.utc) + PREVIEW_TTL).isoformat(),
+            }
+            _save(folder / "inspection.json", data)
+            return self.get(inspection_id)
+        except Exception:
+            shutil.rmtree(folder, ignore_errors=True)
+            raise
+
+    def get(self, inspection_id: str) -> dict:
+        folder, data, source = self._meta(inspection_id)
+        result = dict(data)
+        result["unchanged"] = _digest(source) == data["sha256"]
+        # A copied file that was altered locally cannot be used as if verified.
+        if result["unchanged"]:
+            result["qa"] = qa_review.status(folder, source.name, source, data["service"])
+        else:
+            result["qa"] = {"available": False, "stale": True, "message": "검수용 파일 내용이 변경되었습니다."}
+        result["preview"] = self.preview_status(inspection_id)
+        return result
+
+    def list(self) -> list[dict]:
+        self._cleanup_preview_sessions()
+        if not self.root.is_dir():
+            return []
+        result = []
+        for folder in self.root.iterdir():
+            if not folder.is_dir() or not _ID.fullmatch(folder.name):
+                continue
+            try:
+                result.append(self.get(folder.name))
+            except (ValueError, FileNotFoundError, OSError, KeyError, json.JSONDecodeError):
+                continue
+        return sorted(result, key=lambda item: item["created_at"], reverse=True)
+
+    def _ready(self, inspection_id: str) -> tuple[Path, dict, Path]:
+        folder, data, source = self._meta(inspection_id)
+        if _digest(source) != data["sha256"]:
+            raise ValueError("검수용 파일이 등록 이후 변경되었습니다. 새 검수 작업으로 등록해주세요.")
+        return folder, data, source
+
+    def inspect(self, inspection_id: str, reference: str | None = None) -> dict:
+        folder, meta, source = self._ready(inspection_id)
+        return qa_review.inspect(folder, source.name, source, meta["service"], reference)
+
+    def confirm(self, inspection_id: str, payload: dict) -> dict:
+        folder, meta, source = self._ready(inspection_id)
+        return qa_review.confirm(folder, source.name, source, meta["service"], payload)
+
+    def report(self, inspection_id: str) -> bytes:
+        folder, meta, source = self._ready(inspection_id)
+        return qa_review.report_bytes(folder, source.name, source, meta["service"])
+
+    def preview_status(self, inspection_id: str) -> dict:
+        folder, meta, source = self._meta(inspection_id)
+        if _digest(source) != meta["sha256"]:
+            return {"available": False, "message": "원본 사본이 변경되어 미리보기를 표시할 수 없습니다."}
+        if meta["suffix"] == ".pdf":
+            return {"available": True, "kind": "pdf", "method": "original",
+                    "message": "검수용 PDF 사본을 브라우저에서 표시합니다."}
+        preview = folder / "preview" / "slides.pdf"
+        details = folder / "preview" / "metadata.json"
+        if preview.is_file() and details.is_file():
+            data = json.loads(details.read_text(encoding="utf-8"))
+            if data.get("sha256") == meta["sha256"]:
+                method = data.get("method", "unknown")
+                message = (
+                    "Microsoft PowerPoint로 변환한 PDF 미리보기입니다."
+                    if method == "powerpoint" else
+                    "LibreOffice로 변환한 PDF 미리보기입니다. PowerPoint 화면과 다를 수 있습니다."
+                )
+                return {"available": True, "kind": "converted_pdf",
+                        "method": method, "message": message + " 영상·음원 재생은 별도 확인하세요."}
+        method, message = availability()
+        return {"available": False, "kind": "pptx", "method": method,
+                "message": message}
+
+    def build_preview(self, inspection_id: str) -> dict:
+        folder, meta, source = self._ready(inspection_id)
+        if meta["suffix"] == ".pdf" or self.preview_status(inspection_id)["available"]:
+            return self.preview_status(inspection_id)
+        dest = folder / "preview"
+        dest.mkdir(exist_ok=True)
+        lock = folder / "preview" / ".rendering.lock"
+        try:
+            handle = os.open(lock, os.O_CREAT | os.O_EXCL | os.O_WRONLY, 0o600)
+            os.close(handle)
+        except FileExistsError as exc:
+            raise ValueError("다른 미리보기 변환 작업이 진행 중입니다.") from exc
+        try:
+            if self.preview_status(inspection_id)["available"]:
+                return self.preview_status(inspection_id)
+            engine = convert_pptx(source, dest / "slides.pdf")
+            _save(dest / "metadata.json", {
+                "sha256": meta["sha256"],
+                "created_at": datetime.now(timezone.utc).isoformat(),
+                "method": engine,
+            })
+        finally:
+            lock.unlink(missing_ok=True)
+        return self.preview_status(inspection_id)
+
+    def preview_bytes(self, inspection_id: str) -> bytes:
+        folder, meta, source = self._ready(inspection_id)
+        current = self.preview_status(inspection_id)
+        if not current.get("available"):
+            raise ValueError("아직 미리보기가 준비되지 않았습니다.")
+        file = source if meta["suffix"] == ".pdf" else folder / "preview" / "slides.pdf"
+        return file.read_bytes()

@@ -1,6 +1,7 @@
-﻿from __future__ import annotations
+from __future__ import annotations
 
 import argparse
+import os
 from pathlib import Path
 
 import yaml
@@ -78,14 +79,11 @@ def normalize_path(
     ).resolve()
 
     try:
-        relative = file_path.relative_to(
-            output_dir
-        )
-
-        return relative.as_posix()
-
+        file_path.relative_to(Path.cwd().resolve())
     except ValueError:
         return str(file_path)
+    # Manifests are resolved relative to output/, on any computer.
+    return Path(os.path.relpath(file_path, output_dir)).as_posix()
 
 
 def expected_type(field: str):
