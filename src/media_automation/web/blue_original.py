@@ -42,12 +42,38 @@ def page() -> bytes:
     return rendered.encode("utf-8")
 
 
+def _guided_notice_script(original_script: str) -> str:
+    """Keep original blue input schema and parser; clarify review/apply workflow."""
+    attach_old = (
+        "$('parse-review').hidden=true;"
+        "msg('파일 내용을 읽었습니다. 포맷 채우기를 눌러 반영할 내용을 확인하세요.');"
+    )
+    attach_new = (
+        "$('parse-review').hidden=true;"
+        "parse();"
+        "msg('파일을 읽고 항목을 찾았습니다. 아래 해석 결과를 확인한 뒤 "
+        "[선택 항목 반영]을 눌러야 입력칸에 저장됩니다.');"
+    )
+    form_old = "const root=$('form-groups');root.replaceChildren();"
+    form_new = (
+        form_old +
+        "if(service==='sunday'&&record().noticeSongList){"
+        "const note=node('p','전달 주보에 적힌 찬양: '+record().noticeSongList+"
+        "' · 시작 찬양 또는 별도 찬송에 자동 배정하지 않습니다."
+        " 이번 주 주일예배 안내에서 순서를 확인해 입력하세요.','status warning');"
+        "root.append(note);}"
+    )
+    if original_script.count(attach_old) != 1 or original_script.count(form_old) != 1:
+        raise RuntimeError("원본 안내 처리 코드가 변경되어 안전하게 연결할 수 없습니다.")
+    return original_script.replace(attach_old, attach_new, 1).replace(form_old, form_new, 1)
+
+
 def resource(path: str) -> tuple[bytes, str]:
     original, style, script = _parts()
     if path == "/blue-original.css":
         return style.group(1).encode("utf-8"), "text/css; charset=utf-8"
     if path == "/blue-original.js":
-        return script.group(1).encode("utf-8"), "application/javascript; charset=utf-8"
+        return _guided_notice_script(script.group(1)).encode("utf-8"), "application/javascript; charset=utf-8"
     if path == "/blue-auth.js":
         return _AUTH_BOOTSTRAP.encode("utf-8"), "application/javascript; charset=utf-8"
     permitted = {
