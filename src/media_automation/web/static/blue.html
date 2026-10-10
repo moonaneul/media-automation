@@ -1,0 +1,133 @@
+<!doctype html>
+<html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>하늘빛기쁨 미디어 제작실</title>
+<link rel="stylesheet" href="/blue.css"><script src="/blue.js" defer></script></head>
+<body><div class="shell">
+<aside class="nav">
+  <div class="brand"><div class="mark" aria-hidden="true">✦</div><strong>하늘빛기쁨 미디어 제작실</strong></div>
+  <nav aria-label="공통 메뉴">
+    <button type="button" data-page="work" class="active">이번 주 예배</button>
+    <button type="button" data-page="library">찬양 자료실</button>
+    <button type="button" data-page="archive">보관 자료</button>
+    <button type="button" data-page="settings">설정</button>
+  </nav>
+  <div class="note">한 주의 안내부터<br>완료 파일까지, 함께.</div>
+</aside>
+<div class="main">
+<header class="topbar">
+  <strong>교회 미디어팀</strong>
+  <div class="mobile-menu"><select id="mobile-page" aria-label="공통 메뉴">
+    <option value="work">이번 주 예배</option><option value="library">찬양 자료실</option>
+    <option value="archive">보관 자료</option><option value="settings">설정</option>
+  </select></div>
+  <span>작업 환경 <span class="tag">파란 화면 통합 시험</span></span>
+</header>
+<main class="workspace">
+<section id="work-page">
+  <div class="weekbar">
+    <strong id="week-label">이번 주</strong>
+    <button type="button" data-week="-1">← 이전 주</button>
+    <button type="button" data-week="0">이번 주</button>
+    <button type="button" data-week="1">다음 주 →</button>
+  </div>
+  <div class="service-tabs" aria-label="예배 선택" style="max-width:560px">
+    <button type="button" data-service="wednesday" class="active">수요</button>
+    <button type="button" data-service="friday">금요</button>
+    <button type="button" data-service="sunday">주일</button>
+    <button type="button" data-service="bulletin">주보</button>
+  </div>
+  <div class="heading"><div><h1 id="service-title">수요예배</h1>
+    <div class="hint" id="service-date"></div></div>
+    <span class="status" id="job-status">작업 확인 중</span></div>
+  <div class="task-tabs" aria-label="작업 영역">
+    <button type="button" data-tab="content" class="active">내용</button>
+    <button type="button" data-tab="assets">자료</button>
+    <button type="button" data-tab="result">결과</button>
+  </div>
+  <div id="content-tab">
+    <div class="columns"><div>
+      <section class="panel intro"><div class="panel-body">
+        <h2>이번 주 안내부터 시작하기</h2>
+        <p class="hint">해당 주 안내와 수정 지시를 새 작업에 등록합니다. 지난주 내용을 자동으로 가져오지 않습니다.</p>
+        <div class="actions"><button type="button" id="new-job" class="primary">이번 주 새 작업 만들기</button>
+          <button type="button" id="refresh">새로고침</button></div>
+      </div></section>
+      <section class="panel"><div class="panel-head"><h2>이번 주 작업</h2></div><div class="panel-body">
+        <div id="job-list" class="blue-stacked"></div>
+        <p class="hint" id="no-jobs">아직 등록된 작업이 없습니다.</p>
+      </div></section>
+      <section class="panel" id="notice-panel" hidden><div class="panel-head"><h2>안내 해석 검토</h2></div>
+      <div class="panel-body blue-stacked">
+        <div id="notice-summary" class="blue-label"></div>
+        <div id="notice-fields" class="blue-fields"></div>
+        <div id="notice-review" class="blue-alert"></div>
+        <button type="button" id="confirm-notice" class="primary">안내 해석 확인·확정</button>
+        <p class="hint">원문을 확인한 뒤 확정합니다. 이미 확정한 작업은 덮어쓰지 않습니다.</p>
+      </div></section>
+      <section class="panel" id="bulletin-panel" hidden><div class="panel-head"><h2>주보 준비</h2></div>
+      <div class="panel-body blue-stacked">
+        <label>확정된 주보 호수<input id="bulletin-number" placeholder="13-40" pattern="[0-9]+-[0-9]+"></label>
+        <button type="button" id="save-bulletin-number">주보 호수 등록</button>
+        <label>같은 주 주일 작업<select id="sunday-job"></select></label>
+        <button type="button" id="import-sunday">주일 공통자료 명시적으로 가져오기</button>
+        <p class="hint">주일 작업에서 확인된 내용만 가져옵니다. 질문·광고 등 전달 주보 내용의 추가 검수는 별도입니다.</p>
+      </div></section>
+    </div>
+    <aside class="preview-side input-progress" aria-label="입력 진행 상황">
+      <h3>입력 체크</h3><p id="readiness" class="hint"></p>
+      <div id="missing-items" class="blue-stacked"></div>
+      <button type="button" class="primary" data-action="go-assets" style="width:100%;margin-top:20px">자료 등록하기</button>
+      <ul class="summary-list"><li><span>작업 상태</span><span id="state-summary">미등록</span></li></ul>
+    </aside></div>
+  </div>
+  <div id="assets-tab" hidden>
+    <div class="section-label"><h2>이번 주 자료</h2><span class="hint">예배별 입력 유형 및 슬롯 선택</span></div>
+    <section class="panel"><div class="panel-body blue-stacked">
+      <p class="hint">예배 안내 TXT, 수정 안내, 검수 악보 PPTX, 영상 및 성경 데이터를 유형별로 등록할 수 있습니다.</p>
+      <form id="upload-form" class="blue-stacked">
+        <label>자료 유형<select id="input-kind" required></select></label>
+        <label id="slot-wrap" hidden>찬양·미디어 위치<select id="input-slot"></select></label>
+        <label>파일 선택<input type="file" id="input-file" required></label>
+        <button type="submit" class="primary">자료 등록</button>
+      </form>
+      <h3>등록된 파일</h3><ul id="input-files" class="blue-file-list"></ul>
+    </div></section>
+  </div>
+  <div id="result-tab" hidden>
+    <div class="result-top"><div><h2>예배 제작 결과</h2><p class="hint" id="build-help">필수 자료를 확인한 후 실행합니다.</p></div>
+    <button type="button" id="build" class="primary" disabled>제작 실행</button></div>
+    <div class="panel"><div class="panel-body blue-stacked">
+      <label>제작 결과 파일<select id="artifact-select"></select></label>
+      <div class="blue-row"><button type="button" id="preview-build">미리보기 만들기</button>
+        <button type="button" id="download">파일 다운로드</button></div>
+      <p id="preview-help" class="hint">슬라이드 미리보기는 동영상 및 음악 재생 확인을 대신하지 않습니다.</p>
+      <div id="preview-display" class="blue-result"></div>
+    </div></div>
+    <section class="panel"><div class="panel-head"><h2>결과 검수</h2></div><div class="panel-body blue-stacked">
+      <p class="hint">자동 검수와 실제 화면·재생·인쇄 확인은 구분합니다.</p>
+      <button type="button" id="qa-inspect">선택한 결과 자동 검수</button>
+      <div id="qa-summary" class="blue-label">검수 기록 없음</div>
+      <form id="qa-form" class="blue-stacked" hidden>
+        <label>검수자<input id="qa-reviewer" maxlength="80" required></label>
+        <div id="qa-checks"></div>
+        <label>검수 메모<textarea id="qa-note" maxlength="2000"></textarea></label>
+        <button type="submit" class="primary">검수 상태 저장</button>
+        <button type="button" id="qa-report">검수 보고서 다운로드</button>
+      </form>
+    </div></section>
+  </div>
+</section>
+<section id="library-page" hidden><h1>찬양 자료실</h1>
+  <section class="panel" style="margin-top:24px"><div class="panel-body">
+  <p>원래 찬양 자료실 메뉴와 디자인을 유지했어.</p>
+  <p class="hint">기존 검수 악보 PPTX는 현재 '이번 주 예배 → 자료'에서 작업별 등록할 수 있습니다. 공용 찬양 라이브러리 저장 방식과 OneDrive 연결은 아직 확정하지 않았습니다.</p>
+  </div></section></section>
+<section id="archive-page" hidden><h1>보관 자료</h1><p class="hint">이 웹앱에 직접 등록한 과거 작업만 표시합니다. OneDrive 보관함은 아직 연결 전입니다.</p>
+  <section class="panel" style="margin-top:24px"><div class="panel-body"><div id="archive-list" class="blue-stacked"></div></div></section></section>
+<section id="settings-page" hidden><h1>설정</h1><section class="panel" style="margin-top:24px"><div class="panel-body">
+<h2>통합 진행 상태</h2><p class="hint">기존 파란색 메뉴·레이아웃을 기반으로 공식 작업 API를 연결했습니다. 서버는 127.0.0.1에서만 접속할 수 있습니다.</p>
+<p class="hint">팀원 공용 계정, OneDrive, 찬양 라이브러리, 금요 대면 제작은 연결 전입니다.</p>
+<p class="hint">기존 예배별 PPT 디자인은 변경하지 않습니다.</p>
+</div></section></section>
+<div id="message" class="toast" role="status" aria-live="polite">원래 파란색 화면 통합본입니다. 새 작업은 비어 있는 상태로 시작합니다.</div>
+</main></div></div></body></html>
