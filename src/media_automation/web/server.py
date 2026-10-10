@@ -42,8 +42,8 @@ def make_server(application: Application, port: int = 8765):
                 return
             parsed = urlsplit(self.path)
             path = parsed.path
-            if self.command == 'GET' and path in {'/', '/app.js', '/style.css'}:
-                file = STATIC / ({'/':'index.html'}.get(path, path[1:]))
+            if self.command == 'GET' and path in {'/', '/app.js', '/style.css', '/blue', '/blue.html', '/blue.js', '/blue.css'}:
+                file = STATIC / ({'/':'index.html', '/blue':'blue.html'}.get(path, path[1:]))
                 self.reply(200, file.read_bytes(), mimetypes.guess_type(file.name)[0] or 'text/plain')
                 return
             if not secrets.compare_digest(self.headers.get('Authorization', ''), 'Bearer ' + token):
