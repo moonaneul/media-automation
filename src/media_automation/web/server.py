@@ -48,7 +48,7 @@ def make_server(application: Application, port: int = 8765):
                 file = STATIC / ({'/':'index.html'}.get(path, path[1:]))
                 self.reply(200, file.read_bytes(), mimetypes.guess_type(file.name)[0] or 'text/plain')
                 return
-            if self.command == 'GET' and path in {'/blue-original', '/blue-original.css', '/blue-original.js', '/blue-auth.js', '/bulletin-number.js', '/notice-parser.js', '/song-search.js'}:
+            if self.command == 'GET' and path in {'/blue-original', '/blue-original.css', '/blue-original.js', '/blue-auth.js', '/sunday-hwp-autofill.js', '/bulletin-number.js', '/notice-parser.js', '/song-search.js'}:
                 if path == '/blue-original':
                     self.reply(200, blue_original.page(), 'text/html; charset=utf-8')
                 else:
