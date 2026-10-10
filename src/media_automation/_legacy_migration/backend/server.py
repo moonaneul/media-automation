@@ -18,7 +18,7 @@ from bulletin_generation import generate_bulletin
 from notice_files import extract_notice
 from ppt_preview import preview
 
-UI = Path(__file__).resolve().parent.parent / 'blue-prototype'
+UI = Path(__file__).resolve().parent.parent / 'ui'
 
 def make_server(store, port=0, password=None, bind_host="127.0.0.1"):
     address = ipaddress.ip_address(bind_host)
