@@ -14,7 +14,7 @@ sources/ 원본은 읽기 전용이다. 실제 파일이 없으면 검사했다�
 
 ## 저장소와 기준 상태
 
-맥 원본: /Users/moonaneul/Documents/media-automation
+맥 원본: /Users/LOCAL_USER/Documents/media-automation
 브랜치: feature/friday-json-bible
 원격: https://github.com/moonaneul/media-automation.git
 이 전달 묶음은 코드 스냅샷이며 원격 GitHub가 최신이라는 의미는 아니다.
