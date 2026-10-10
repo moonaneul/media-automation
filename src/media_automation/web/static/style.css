@@ -4,3 +4,76 @@
 #notice-pane{border:1px solid #e1e5df;border-radius:12px;padding:14px 18px;margin:12px 0 28px}#notice-pane[hidden]{display:none}#notice-fields li{margin:5px 0;line-height:1.5}#notice-review p{margin:6px 0;color:#69422f;overflow-wrap:anywhere}#confirm-notice{margin-top:12px}
 
 #common-pane{border-top:1px solid #e1e5df;padding:12px 0 18px;margin:14px 0}#common-pane[hidden],#import-sunday[hidden]{display:none}#common-summary p{margin:7px 0}#common-summary li{overflow-wrap:anywhere}
+
+/* Preview-only UI: no manual QA checklist */
+#preview-pane,#existing-detail{border-top:1px solid #e1e5df;margin-top:14px;padding-top:14px}
+#preview-pane>label,#existing-detail>label{display:flex;flex-direction:column;gap:6px;margin:10px 0}
+#existing-section h2 small{font-size:14px;font-weight:500;color:#58655d}
+.preview-frame{margin-top:14px}
+.preview-frame iframe{display:block;width:100%;height:600px;border:1px solid #e1e5df;border-radius:8px}
+#preview-build[hidden],#existing-preview-build[hidden]{display:none}
+@media(max-width:600px){.preview-frame iframe{height:420px}}
+
+/* Compact preview-first layout */
+.compact-work-list{padding:16px 24px}
+#previous-jobs summary{cursor:pointer;font-weight:650}
+#previous-jobs summary .hint{font-weight:400;margin-left:10px}
+#previous-jobs[open] summary{margin-bottom:12px}
+#existing-upload{align-items:flex-end}
+#existing-upload label{flex:1 1 360px}
+#existing-preview-help{margin:12px 0}
+#detail{scroll-margin-top:20px}
+
+/* Status list: muted colors + visible words, never color alone */
+.readiness-summary{font-weight:650;margin:8px 0}
+.readiness-summary[data-status="provided"]{color:#315747}
+.readiness-summary[data-status="missing"]{color:#835a20}
+.input-status-list{list-style:none;padding:0;margin:12px 0;display:grid;gap:8px}
+.input-status-row{
+ display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:start;gap:12px;
+ border:1px solid #e1e5df;border-left:3px solid #bcc6bf;background:#fafbf9;
+ border-radius:7px;padding:8px 12px;line-height:1.5
+}
+.input-status-name{overflow-wrap:anywhere}
+.input-status-text{white-space:nowrap;font-weight:600}
+.input-status-row[data-status="provided"]{border-left-color:#5a8872}
+.input-status-row[data-status="provided"] .input-status-text{color:#315747}
+.input-status-row[data-status="missing"]{border-left-color:#ba8c3e;background:#fffdf8}
+.input-status-row[data-status="missing"] .input-status-text{color:#835a20}
+.input-status-row[data-status="review"]{border-left-color:#b86f45;background:#fffaf7}
+.input-status-row[data-status="review"] .input-status-text{color:#924c2e}
+.input-status-row[data-status="none"]{border-left-color:#a5aca7}
+.input-status-row[data-status="none"] .input-status-text{color:#64736a}
+#field-states details{margin:12px 0}
+#field-states summary{cursor:pointer;font-weight:600;padding:6px 0}
+#field-states ul{columns:auto}
+@media(max-width:600px){.input-status-row{grid-template-columns:1fr;gap:2px}#previous-jobs summary .hint{display:block;margin-left:0}}
+
+/* Week dashboard: keep progress visible without becoming an admin console */
+.weekly-section{padding:24px}
+.weekly-heading{display:flex;justify-content:space-between;gap:20px;align-items:start;margin-bottom:20px}
+.weekly-heading h2{margin-bottom:4px}
+.weekly-heading .hint{margin:0}
+.weekly-nav{display:flex;gap:7px;flex-wrap:wrap}
+.subtle-button{background:#f4f7f4;color:#29533e;border-color:#d6ded7}
+.weekly-nav button{padding:7px 11px;font-size:14px}
+.weekly-cards{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
+.weekly-card{padding:17px;border:1px solid #e0e5df;border-radius:12px;background:#fcfdfb;min-width:0}
+.weekly-card h3{margin:0}
+.weekly-card-date{font-size:14px;color:#69746b;margin:0 0 12px}
+.weekly-card .weekly-unit+.weekly-unit{border-top:1px solid #e2e7e1;margin-top:16px;padding-top:14px}
+.weekly-unit h4{margin:0 0 6px;font-size:16px}
+.weekly-state{font-size:14px;font-weight:600;margin:6px 0 11px;line-height:1.5}
+.weekly-state[data-state="none"]{color:#69746b}
+.weekly-state[data-state="generated"]{color:#315747}
+.weekly-state[data-state="needs_input"]{color:#89692d}
+.weekly-state[data-state="failed"],.weekly-state[data-state="interrupted"]{color:#a05535}
+.weekly-state[data-state="queued"],.weekly-state[data-state="running"]{color:#375d82}
+.weekly-actions{display:flex;gap:8px;flex-wrap:wrap}
+.weekly-actions button{font-size:14px;padding:7px 11px;flex:0 0 auto}
+.weekly-versions{margin-top:10px;font-size:13px}
+.weekly-versions summary{cursor:pointer;color:#50695a}
+.weekly-version-list{display:grid;gap:5px;margin-top:8px}
+.weekly-version-list button{text-align:left;font-size:12px;padding:7px;overflow-wrap:anywhere}
+@media(max-width:840px){.weekly-cards{grid-template-columns:1fr 1fr}.weekly-card:last-child{grid-column:1/-1}}
+@media(max-width:600px){.weekly-heading{display:block}.weekly-nav{margin-top:14px}.weekly-cards{grid-template-columns:1fr}.weekly-card:last-child{grid-column:auto}}

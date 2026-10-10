@@ -8,9 +8,136 @@ async function api(path,options={}){const r=await fetch(path,{...options,headers
 async function json(path,body){return (await api(path,body===undefined?{}:{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)})).json();}
 function error(e){$('message').textContent=e.message;}
 function item(parent,tag,text){const e=document.createElement(tag);e.textContent=text;parent.append(e);return e;}
+
+const fieldLabels={
+ opening_song_1:'시작 찬양 1',opening_song_2:'시작 찬양 2',opening_song_3:'시작 찬양 3',
+ separate_hymn:'별도 찬송',second_service_prayer:'2부 기도',church_news:'교회 소식',
+ offering_hymn:'봉헌 찬송',second_service_offering_prayer:'2부 봉헌기도',
+ special_song:'특송',sermon_title:'설교 제목',scripture:'성경 본문',
+ additional_scripture:'추가 말씀',decision_hymn:'결단 찬송',prayer:'기도',
+ additional_song:'추가 찬양',first_prayer:'첫 기도 제목',song_after_prayer:'기도 후 찬양',
+ response_song:'응답 찬양',word_prayer:'말씀 기도',intercession_song:'중보 찬양',
+ community_prayer:'공동체 기도',personal_prayer:'개인 기도'
+};
+const inputStatus={
+ VALUE:{icon:'✓',label:'입력됨',tone:'provided'},
+ NONE:{icon:'—',label:'이번 주 없음',tone:'none'},
+ UNSET:{icon:'○',label:'미제공',tone:'missing'}
+};
+function statusRow(parent,name,code,label){
+ const row=item(parent,'li','');
+ row.className='input-status-row';row.dataset.status=code;
+ const left=item(row,'span',name);left.className='input-status-name';
+ const right=item(row,'span',label);right.className='input-status-text';
+}
+function renderReadiness(r){
+ const box=$('readiness');box.replaceChildren();
+ const present=r.present||[],missing=r.missing||[],checks=r.checks||[],fields=r.fields||[];
+ const total=present.length+missing.length;
+ const summary=item(box,'p',r.ready?'✓ 제작 전 기초 확인 통과':'제작 전 확인이 필요해요');
+ summary.className='readiness-summary';summary.dataset.status=r.ready?'provided':'missing';
+ if(total)item(box,'p',`자료 ${present.length}/${total}개 등록 · 미제공 ${missing.length}개 · 내용 확인 ${checks.length}건`).className='hint';
+ const list=item(box,'ul','');list.className='input-status-list';
+ for(const name of present)statusRow(list,name,'provided','✓ 등록됨');
+ for(const name of missing)statusRow(list,name,'missing','○ 미제공');
+ for(const message of checks)statusRow(list,message,'review','! 확인 필요');
+ if(!total&&!checks.length)item(box,'p',r.note||'');
+ const fieldsArea=$('field-states');
+ const wasOpen=fieldsArea.querySelector('details')?.open||false;
+ fieldsArea.replaceChildren();
+ if(fields.length){
+  const details=item(fieldsArea,'details','');details.open=wasOpen;
+  const caption=item(details,'summary','이번 주 안내 항목 상태 보기');caption.className='status-details-toggle';
+  const entries=item(details,'ul','');entries.className='input-status-list';
+  for(const field of fields){
+   const spec=inputStatus[field.state]||inputStatus.UNSET;
+   statusRow(entries,fieldLabels[field.name]||field.name,spec.tone,`${spec.icon} ${spec.label}`);
+  }
+ }
+}
+function localDate(day){
+ return [day.getFullYear(),String(day.getMonth()+1).padStart(2,'0'),String(day.getDate()).padStart(2,'0')].join('-');
+}
+function mondayOf(day){
+ const d=new Date(day.getFullYear(),day.getMonth(),day.getDate(),12);
+ d.setDate(d.getDate()-((d.getDay()+6)%7));
+ return d;
+}
+let boardMonday=localDate(mondayOf(new Date()));
+function moveWeek(delta){
+ const [y,m,d]=boardMonday.split('-').map(Number);
+ const target=new Date(y,m-1,d,12);
+ target.setDate(target.getDate()+delta*7);
+ boardMonday=localDate(target);
+ return renderWeekly().catch(error);
+}
+function prefillWeekJob(slot){
+ $('service').value=slot.service;
+ $('date').value=slot.date;
+ $('create').scrollIntoView({behavior:'smooth',block:'center'});
+ $('message').textContent='날짜와 예배 종류를 채웠습니다. 작업 만들기를 누르면 이전 자료를 가져오지 않는 새 작업이 생성됩니다.';
+}
+async function openWeekJob(jobId){
+ try{
+  await show(jobId);
+  $('detail').scrollIntoView({behavior:'smooth',block:'start'});
+ }catch(e){error(e);}
+}
+function makeWeeklyButton(parent,label,run,extraClass=''){
+ const b=item(parent,'button',label);b.type='button';b.className=extraClass;
+ b.onclick=run;return b;
+}
+function renderSlot(container,slot,opened){
+ const unit=item(container,'div','');unit.className='weekly-unit';
+ item(unit,'h4',slot.label);
+ const state=slot.latest?.state||'none';
+ const wording=slot.latest?.status||'아직 작업 없음';
+ const status=item(unit,'p',wording);status.className='weekly-state';status.dataset.state=state;
+ const actions=item(unit,'div','');actions.className='weekly-actions';
+ if(slot.latest){
+  makeWeeklyButton(actions,'작업 열기',()=>openWeekJob(slot.latest.job_id),'weekly-open');
+  if(slot.latest_generated && slot.latest_generated.job_id!==slot.latest.job_id){
+   makeWeeklyButton(actions,'생성된 파일 열기',()=>openWeekJob(slot.latest_generated.job_id),'subtle-button');
+  }
+  if(slot.has_multiple){
+   const details=item(unit,'details','');details.className='weekly-versions';
+   details.dataset.key=slot.service+'|'+slot.date;
+   details.open=opened.has(details.dataset.key);
+   item(details,'summary',`같은 날짜 작업 ${slot.jobs.length}개 보기`);
+   const list=item(details,'div','');list.className='weekly-version-list';
+   for(const [index,job] of slot.jobs.entries()){
+    const label=`${index===0?'최근 등록 · ':''}${job.status} · ${job.job_id.slice(0,8)}`;
+    makeWeeklyButton(list,label,()=>openWeekJob(job.job_id),'subtle-button');
+   }
+  }
+ }else{
+  makeWeeklyButton(actions,'새 작업 준비',()=>prefillWeekJob(slot),'subtle-button');
+ }
+}
+async function renderWeekly(){
+ const data=await json('/api/weekly-board?date='+encodeURIComponent(boardMonday));
+ $('weekly-dates').textContent=`${data.week_start} ~ ${data.week_end}`;
+ const box=$('weekly-cards');
+ const opened=new Set([...box.querySelectorAll('.weekly-versions[open]')].map(x=>x.dataset.key));
+ box.replaceChildren();
+ const slots=Object.fromEntries(data.slots.map(slot=>[slot.service,slot]));
+ for(const [title,group] of [
+  ['수요일',[slots.wednesday]],
+  ['금요일',[slots.friday]],
+  ['주일',[slots.sunday,slots.bulletin]]
+ ]){
+  const card=item(box,'article','');card.className='weekly-card';
+  item(card,'h3',title);
+  item(card,'p',group[0].date).className='weekly-card-date';
+  for(const slot of group)renderSlot(card,slot,opened);
+ }
+}
+$('week-previous').onclick=()=>moveWeek(-1);
+$('week-next').onclick=()=>moveWeek(1);
+$('week-today').onclick=()=>{boardMonday=localDate(mondayOf(new Date()));return renderWeekly().catch(error);};
 function updateType(){const kind=types.find(x=>x.kind===$('input-kind').value);$('slot-wrap').hidden=!(kind&&kind.slots.length);$('input-slot').replaceChildren();if(kind){for(const slot of kind.slots){const opt=document.createElement('option');opt.value=slot;opt.textContent=slot;$('input-slot').append(opt);}$('file').accept=kind.extensions.join(',');$('file').value='';}}
 $('input-kind').onchange=updateType;
-async function refresh(){try{const rows=await json('/api/jobs');jobsCache=rows;$('jobs').replaceChildren();for(const job of rows){const b=item($('jobs'),'button',`${job.date} · ${names[job.service]} · ${labels[job.state]||job.state}`);b.onclick=()=>show(job.job_id);}if(current)await show(current);}catch(e){error(e);}}
+async function refresh(){try{const rows=await json('/api/jobs');jobsCache=rows;await renderWeekly();$('jobs').replaceChildren();for(const job of rows){const b=item($('jobs'),'button',`${job.date} · ${names[job.service]} · ${labels[job.state]||job.state}`);b.onclick=async()=>{await show(job.job_id);$('detail').scrollIntoView({behavior:'smooth',block:'start'});};}if(current)await show(current);}catch(e){error(e);}}
 async function show(id){
  const changed=current!==id;current=id;const job=await json('/api/jobs/'+id);
  $('detail').hidden=false;$('title').textContent=job.date+' '+names[job.service];$('state').textContent=(labels[job.state]||job.state)+(job.message?' — '+job.message:'');
@@ -56,16 +183,13 @@ async function show(id){
    if(candidates.some(c=>c.job_id===previousSelection))$('source-sunday-job').value=previousSelection;
    if(job.service==='bulletin'&&!candidates.length)item($('common-summary'),'p','가져올 수 있는 같은 주 주일 생성 작업이 없습니다.');
  }
- const r=job.requirements;$('readiness').replaceChildren();item($('readiness'),'p',r.ready?'필수 자료의 기초 확인 통과 · 내용과 화면 검수는 별도':'제작 전 확인 필요');
- for(const name of r.missing)item($('readiness'),'p','미등록: '+name);
- for(const check of r.checks)item($('readiness'),'p','확인 필요: '+check);
- if(!r.missing.length&&!r.checks.length)item($('readiness'),'p',r.note);
- $('field-states').replaceChildren();if(r.fields.length){item($('field-states'),'h4','이번 주 안내 항목 상태');const ul=item($('field-states'),'ul','');for(const field of r.fields)item(ul,'li',`${field.name}: ${field.state}`);}
+ const r=job.requirements;renderReadiness(r);
  $('run').disabled=!r.ready||['queued','running','interrupted'].includes(job.state);
  $('run-help').textContent=r.ready?'제작기가 추가 내용 검증에 실패하면 성공 결과는 노출되지 않습니다.':'필수 입력과 미확인 항목이 해결되기 전에는 실행할 수 없습니다.';
+ await generatedPreviewSelect(job,changed);
  $('artifacts').replaceChildren();for(const path of job.artifacts||[]){if(job.state!=='generated')continue;const b=item($('artifacts'),'button',path.split('/').pop());b.onclick=async()=>{try{const resp=await api('/api/jobs/'+id+'/artifact?path='+encodeURIComponent(path));const url=URL.createObjectURL(await resp.blob());const a=document.createElement('a');a.href=url;a.download=path.split('/').pop();a.click();setTimeout(()=>URL.revokeObjectURL(url),60000);}catch(e){error(e);}};}
 }
-$('create').onsubmit=async e=>{e.preventDefault();try{const job=await json('/api/jobs',{service:$('service').value,date:$('date').value});current=null;$('message').textContent='새 작업을 준비했습니다.';await show(job.job_id);await refresh();}catch(e){error(e);}};
+$('create').onsubmit=async e=>{e.preventDefault();try{const job=await json('/api/jobs',{service:$('service').value,date:$('date').value});current=null;$('message').textContent='새 작업을 준비했습니다.';await show(job.job_id);await refresh();$('detail').scrollIntoView({behavior:'smooth',block:'start'});}catch(e){error(e);}};
 $('upload').onsubmit=async e=>{e.preventDefault();if(!current)return;const file=$('file').files[0],kind=$('input-kind').value,slot=$('slot-wrap').hidden?'':$('input-slot').value;if(!file)return;
  try{const query=new URLSearchParams({kind,filename:file.name});if(slot)query.set('slot',slot);await api('/api/jobs/'+current+'/typed-files?'+query,{method:'POST',body:file});$('message').textContent='입력 파일을 등록했습니다. 내용 검증은 별개입니다.';await refresh();}catch(e){error(e);}};
 $('number-form').onsubmit=async e=>{e.preventDefault();try{await json('/api/jobs/'+current+'/bulletin-number',{number:$('bulletin-number').value});$('message').textContent='명시적으로 확인한 호수를 등록했습니다.';await refresh();}catch(e){error(e);}};
@@ -75,3 +199,84 @@ refresh();setInterval(refresh,5000);
 $('confirm-notice').onclick=async()=>{if(!current)return;try{await json('/api/jobs/'+current+'/confirm-notice',{});$('message').textContent='검토한 이번 주 안내를 해석 YAML로 저장했습니다. 추가 자료와 제작 검수는 별도로 필요합니다.';await refresh();}catch(e){error(e);}};
 
 $('import-sunday').onsubmit=async e=>{e.preventDefault();if(!current)return;try{await json('/api/jobs/'+current+'/import-sunday-week',{sunday_job_id:$('source-sunday-job').value});$('message').textContent='이번 주 주일 작업의 공통 입력 3개를 명시적으로 가져왔습니다. 주보 원문과의 교차검수는 제작기에서 별도로 합니다.';await refresh();}catch(e){error(e);}};
+
+
+
+let generatedPreviewURL=null, generatedPreviewKey=null, existingPreviewURL=null;
+function releasePreview(id,oldUrl){
+ if(oldUrl)URL.revokeObjectURL(oldUrl);
+ $(id).replaceChildren();
+}
+async function showPdfFrame(endpoint, target, source){
+ const response=await api(endpoint);
+ const url=URL.createObjectURL(await response.blob());
+ const frame=document.createElement('iframe');
+ frame.title=source+' PDF 미리보기';frame.src=url;frame.loading='lazy';
+ $(target).replaceChildren(frame);
+ return url;
+}
+async function generatedPreviewSelect(job,changed){
+ const select=$('preview-artifact');
+ const paths=job.state==='generated'?(job.artifacts||[]):[];
+ const previous=select.value;select.replaceChildren();
+ for(const path of paths){
+  const opt=document.createElement('option');opt.value=path;opt.textContent=path.split('/').pop();select.append(opt);
+ }
+ if(paths.includes(previous))select.value=previous;
+ const available=paths.length>0;
+ $('preview-empty').hidden=available;select.disabled=!available;
+ $('preview-build').disabled=!available;
+ if(!available){
+   generatedPreviewKey=null;
+   releasePreview('preview-display',generatedPreviewURL);generatedPreviewURL=null;
+   $('preview-help').textContent='';return;
+ }
+ const key=job.job_id+'|'+select.value;
+ if(changed||key!==generatedPreviewKey){
+  generatedPreviewKey=key;
+  await generatedPreviewShow();
+ }
+}
+async function generatedPreviewShow(){
+ releasePreview('preview-display',generatedPreviewURL);generatedPreviewURL=null;
+ if(!current||!$('preview-artifact').value)return;
+ const path=$('preview-artifact').value;
+ const result=await json('/api/jobs/'+current+'/preview/status?path='+encodeURIComponent(path));
+ $('preview-help').textContent=result.message||'';
+ $('preview-build').hidden=!!result.available;
+ $('preview-build').disabled=!!result.available;
+ if(result.available)generatedPreviewURL=await showPdfFrame(
+  '/api/jobs/'+current+'/preview?path='+encodeURIComponent(path),
+  'preview-display','제작 결과'
+ );
+}
+$('preview-artifact').onchange=()=>{generatedPreviewKey=current+'|'+$('preview-artifact').value;generatedPreviewShow().catch(error);};
+$('preview-build').onclick=async()=>{
+ try{await json('/api/jobs/'+current+'/preview',{path:$('preview-artifact').value});await generatedPreviewShow();}
+ catch(e){error(e);}
+};
+
+$('existing-upload').onsubmit=async event=>{
+ event.preventDefault();
+ const file=$('existing-file').files[0];
+ if(!file)return;
+ const button=event.submitter;
+ if(button)button.disabled=true;
+ releasePreview('existing-preview',existingPreviewURL);existingPreviewURL=null;
+ $('existing-preview-help').textContent='미리보기를 준비하는 중입니다. 큰 PPTX는 잠시 걸릴 수 있어요.';
+ try{
+  const query=new URLSearchParams({filename:file.name});
+  const response=await api('/api/preview-once?'+query,{method:'POST',body:file});
+  existingPreviewURL=URL.createObjectURL(await response.blob());
+  const frame=document.createElement('iframe');
+  frame.title=file.name+' 미리보기';
+  frame.src=existingPreviewURL;frame.loading='lazy';
+  $('existing-preview').append(frame);
+  $('existing-preview-help').textContent='현재 선택한 파일만 표시하고 있어요. 서버에 목록이나 복사본을 보관하지 않습니다.';
+ }catch(e){
+  $('existing-preview-help').textContent='미리보기를 열지 못했어요. 파일 또는 PowerPoint 변환 상태를 확인해주세요.';
+  error(e);
+ }finally{
+  if(button)button.disabled=false;
+ }
+};

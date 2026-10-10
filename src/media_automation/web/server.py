@@ -8,6 +8,7 @@ from pathlib import Path
 import secrets
 from urllib.parse import parse_qs, urlsplit
 from .application import Application
+from .preview_once import preview_once
 
 MAX_UPLOAD = 128 * 1024 * 1024
 STATIC = Path(__file__).parent / 'static'
@@ -28,7 +29,7 @@ def make_server(application: Application, port: int = 8765):
             self.send_header('Cache-Control', 'no-store')
             self.send_header('X-Content-Type-Options', 'nosniff')
             self.send_header('Referrer-Policy', 'no-referrer')
-            self.send_header('Content-Security-Policy', "default-src 'self'; script-src 'self'; style-src 'self'; frame-ancestors 'none'; base-uri 'none'; object-src 'none'")
+            self.send_header('Content-Security-Policy', "default-src 'self'; script-src 'self'; style-src 'self'; frame-src 'self' blob:; frame-ancestors 'none'; base-uri 'none'; object-src 'none'")
             self.end_headers()
             self.wfile.write(data)
 
@@ -53,7 +54,13 @@ def make_server(application: Application, port: int = 8765):
             try:
                 query = parse_qs(parsed.query)
                 parts = path.strip('/').split('/')
-                if self.command == 'GET' and path == '/api/jobs':
+                if self.command == 'POST' and path == '/api/preview-once':
+                    result = preview_once(query['filename'][0], self.body(MAX_UPLOAD))
+                    self.reply(200, result, 'application/pdf')
+                elif self.command == 'GET' and path == '/api/weekly-board':
+                    from datetime import date
+                    self.reply(200, application.weekly_dashboard(query.get('date', [date.today().isoformat()])[0]))
+                elif self.command == 'GET' and path == '/api/jobs':
                     self.reply(200, application.list())
                 elif self.command == 'POST' and path == '/api/jobs':
                     data = self.body_json()
@@ -83,6 +90,22 @@ def make_server(application: Application, port: int = 8765):
                         self.reply(201, application.upload(job, query['path'][0], self.body(MAX_UPLOAD)))
                     elif self.command == 'POST' and parts[3:] == ['run']:
                         self.reply(202, application.start(job, self.body_json().get('source')))
+                    elif self.command == 'GET' and parts[3:] == ['qa']:
+                        self.reply(200, application.qa_status(job, query['path'][0]))
+                    elif self.command == 'POST' and parts[3:] == ['qa', 'inspect']:
+                        data = self.body_json()
+                        self.reply(200, application.qa_inspect(job, data['path'], data.get('reference')))
+                    elif self.command == 'POST' and parts[3:] == ['qa', 'confirm']:
+                        data = self.body_json()
+                        self.reply(200, application.qa_confirm(job, data['path'], data))
+                    elif self.command == 'GET' and parts[3:] == ['qa', 'report']:
+                        self.reply(200, application.qa_report(job, query['path'][0]), 'application/json; charset=utf-8')
+                    elif self.command == 'GET' and parts[3:] == ['preview', 'status']:
+                        self.reply(200, application.preview_status(job, query['path'][0]))
+                    elif self.command == 'POST' and parts[3:] == ['preview']:
+                        self.reply(200, application.preview_build(job, self.body_json()['path']))
+                    elif self.command == 'GET' and parts[3:] == ['preview']:
+                        self.reply(200, application.preview_bytes(job, query['path'][0]), 'application/pdf')
                     elif self.command == 'GET' and parts[3:] == ['artifact']:
                         target = application.artifact(job, query['path'][0])
                         self.reply(200, target.read_bytes(), mimetypes.guess_type(target.name)[0] or 'application/octet-stream')
