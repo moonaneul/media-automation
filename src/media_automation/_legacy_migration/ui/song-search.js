@@ -1,0 +1,7 @@
+(function(root){
+'use strict';
+const normalize=s=>s.normalize('NFKC').toLowerCase().replace(/[\s\p{P}\p{S}]/gu,'');
+function distance(a,b){let row=Array.from({length:b.length+1},(_,i)=>i);for(let i=1;i<=a.length;i++){const next=[i];for(let j=1;j<=b.length;j++)next[j]=Math.min(next[j-1]+1,row[j]+1,row[j-1]+(a[i-1]===b[j-1]?0:1));row=next;}return row[b.length];}
+function search(value,catalog=[],edition){const query=value.trim();if(!query)return{status:'empty',candidates:[]};const number=query.match(/^(?:(새찬송가|구찬송가|찬송가)\s*)?(\d+)\s*장?$/);let exact=[];if(number){const selected=number[1]==='새찬송가'?'new':number[1]==='구찬송가'?'old':edition;if(!selected)return{status:'edition',number:Number(number[2]),candidates:[]};exact=catalog.filter(s=>s.edition===selected&&s.number===Number(number[2]));}else{const q=normalize(query);exact=catalog.filter(s=>[s.title,...(s.aliases||[])].some(t=>normalize(t)===q));if(!exact.length){const candidates=catalog.map(s=>({song:s,score:Math.min(...[s.title,...(s.aliases||[])].map(t=>distance(q,normalize(t))/Math.max(q.length,normalize(t).length,1)))})).filter(s=>s.score<=.35).sort((a,b)=>a.score-b.score).slice(0,3).map(s=>s.song);return{status:candidates.length?'suggest':'missing',candidates};}}return{status:exact.length===1?'exact':exact.length?'choose':'missing',candidates:exact};}
+const api={search,normalize};if(typeof module!=='undefined')module.exports=api;else root.SongSearch=api;
+})(typeof window==='undefined'?{}:window);

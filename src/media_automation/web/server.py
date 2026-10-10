@@ -8,6 +8,8 @@ from pathlib import Path
 import secrets
 from urllib.parse import parse_qs, urlsplit
 from .application import Application
+from .streaming_download import send_download
+from .runtime_paths import default_jobs_root
 from .preview_once import preview_once
 
 MAX_UPLOAD = 128 * 1024 * 1024
@@ -108,7 +110,7 @@ def make_server(application: Application, port: int = 8765):
                         self.reply(200, application.preview_bytes(job, query['path'][0]), 'application/pdf')
                     elif self.command == 'GET' and parts[3:] == ['artifact']:
                         target = application.artifact(job, query['path'][0])
-                        self.reply(200, target.read_bytes(), mimetypes.guess_type(target.name)[0] or 'application/octet-stream')
+                        send_download(self, target)
                     else:
                         self.reply(404, {'error': '없는 경로입니다.'})
                 else:
@@ -143,7 +145,7 @@ def make_server(application: Application, port: int = 8765):
 def main():
     parser = argparse.ArgumentParser(description='맥 로컬 미디어 제작 화면')
     parser.add_argument('--repository', type=Path, default=Path.cwd())
-    parser.add_argument('--storage', type=Path, default=Path.home() / 'Library/Application Support/media-automation/jobs')
+    parser.add_argument('--storage', type=Path, default=default_jobs_root())
     parser.add_argument('--port', type=int, default=8765)
     args = parser.parse_args()
     application = Application(args.repository, args.storage)
