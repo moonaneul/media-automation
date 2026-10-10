@@ -8,6 +8,7 @@ from __future__ import annotations
 
 from pathlib import Path
 import re
+from .blue_bulletin_bridge import patch_original_script
 
 ORIGINAL = Path(__file__).resolve().parent.parent / "_legacy_migration" / "ui"
 _INDEX = ORIGINAL / "index.html"
@@ -28,7 +29,7 @@ def page() -> bytes:
     original, style, script = _parts()
     # The same original DOM and exact application JavaScript, no field deletion.
     rendered = original.replace(style.group(0), '<link rel="stylesheet" href="/blue-original.css">', 1)
-    rendered = rendered.replace(script.group(0), '<script src="/blue-original.js"></script>', 1)
+    rendered = rendered.replace(script.group(0), '<script src="/sunday-hwp-autofill.js"></script>\\n<script src="/blue-original.js"></script>', 1)
     rendered = rendered.replace(
         '<script src="bulletin-number.js">',
         '<script src="/blue-auth.js"></script>\n<script src="/bulletin-number.js">',
@@ -73,7 +74,9 @@ def resource(path: str) -> tuple[bytes, str]:
     if path == "/blue-original.css":
         return style.group(1).encode("utf-8"), "text/css; charset=utf-8"
     if path == "/blue-original.js":
-        return _guided_notice_script(script.group(1)).encode("utf-8"), "application/javascript; charset=utf-8"
+        return patch_original_script(_guided_notice_script(script.group(1))).encode("utf-8"), "application/javascript; charset=utf-8"
+    if path == "/sunday-hwp-autofill.js":
+        return (Path(__file__).resolve().parent / "static" / "sunday_hwp_autofill.js").read_bytes(), "application/javascript; charset=utf-8"
     if path == "/blue-auth.js":
         return _AUTH_BOOTSTRAP.encode("utf-8"), "application/javascript; charset=utf-8"
     permitted = {
