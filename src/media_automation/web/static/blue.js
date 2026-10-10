@@ -59,6 +59,6 @@ $('download').onclick=()=>{const p=activeArtifact();if(p)download('/api/jobs/'+c
 $('qa-inspect').onclick=async()=>{if(!activeArtifact())return;try{renderQA(await api('/api/jobs/'+current+'/qa/inspect',{path:activeArtifact()}));notify('구조 검사를 실행했습니다. 화면·재생은 직접 확인해 주세요.')}catch(e){err(e)}};
 $('qa-form').onsubmit=async e=>{e.preventDefault();if(!qa?.available)return;const checks={};$('qa-checks').querySelectorAll('select').forEach(s=>checks[s.dataset.check]=s.value);try{renderQA(await api('/api/jobs/'+current+'/qa/confirm',{path:activeArtifact(),sha256:qa.sha256,reviewer:$('qa-reviewer').value,note:$('qa-note').value,checks}));notify('검수 상태를 저장했습니다.')}catch(ex){err(ex)}};
 $('qa-report').onclick=()=>{if(activeArtifact())download('/api/jobs/'+current+'/qa/report?path='+encodeURIComponent(activeArtifact()),'inspection.json').catch(err)};
-await refresh();notify('파란 화면 통합 시험판입니다. 예배별 원본 템플릿은 수정하지 않습니다.');setInterval(()=>refresh().catch(()=>{}),12000)}
+await refresh();notify('파란 화면 통합 시험판입니다. 예배별 원본 템플릿은 수정하지 않습니다.');}
 init().catch(err);
 })();
