@@ -1,0 +1,10 @@
+import fs from 'node:fs/promises';
+import {FileBlob,PresentationFile} from '@oai/artifact-tool';
+const [input,output,pageText]=process.argv.slice(2);
+const page=Number(pageText);
+if(!Number.isInteger(page)||page<1)throw Error('Invalid page');
+const presentation=await PresentationFile.importPptx(await FileBlob.load(input));
+const slide=presentation.slides.items[page-1];
+if(!slide)throw Error('Page does not exist');
+const png=await presentation.export({slide,format:'png',scale:1});
+await fs.writeFile(output,new Uint8Array(await png.arrayBuffer()));

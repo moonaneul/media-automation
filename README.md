@@ -516,3 +516,8 @@ python bulletin.py complete 2026-10-04
 모든 제작 및 개발 작업은 `AGENTS.md`를 기준으로 합니다.
 
 **규칙이 충돌할 경우 `AGENTS.md`가 최우선입니다.**
+
+
+## 2026-10-10 데스크톱 웹앱 작업 기록
+
+휴대폰 제작·금요 미디어 재생 검수 및 온라인 운영 후속 작업은 [인수인계 기록](docs/desktop_webapp_handoff_20261010.md)을 참고하세요. [구현 스냅샷](experiments/desktop-webapp-20261010/)은 작업 보관용이며 기존 엔진과 별도로 유지합니다.
