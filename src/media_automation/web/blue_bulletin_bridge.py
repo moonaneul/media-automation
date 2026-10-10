@@ -70,6 +70,41 @@ function autoApplySundayHwp(){
 """
 
 
+
+_PROGRESS_AUDIT = r"""
+function updateSundayInputSourceExplanation(){
+    const sidebar=$('input-progress-list');
+    let note=document.getElementById('sunday-source-explanation');
+    if(service!=='sunday'||!record().noticeImportSummary){
+        if(note)note.remove();
+        return;
+    }
+    if(!note){
+        note=node('p',undefined,'hint');
+        note.id='sunday-source-explanation';
+        sidebar.before(note);
+    }
+    const r=record();
+    const pptLabels=[
+        '시작 찬양 1','시작 찬양 2','시작 찬양 3','별도 찬송',
+        '주일 인도자','1부 찬양 인도자','2부 찬양 인도자',
+        '봉헌 찬송','특송','성경 본문','설교 제목','결단 찬송'
+    ];
+    const required=pptLabels.filter(label=>{
+        const f=r.fields[label];
+        return !(f?.state==='VALUE'&&String(f.value||'').trim())&&f?.state!=='NONE';
+    });
+    const imported=r.noticeImportSummary||{};
+    const review=Array.isArray(imported.review)?imported.review.length:0;
+    const songs=imported.songList?
+        ' · 주보 찬양 '+imported.songList+' (사용 순서 미지정)':'';
+    note.textContent='전달 주보 자동 입력 '+(imported.applied?.length||0)+
+        '개 · 별도 주일예배 안내가 필요한 미입력 '+required.length+
+        '개 · 섬김표 원본 대조 '+review+'개'+songs+
+        '. ○는 인식 실패만을 의미하지 않습니다. HWP에 없는 예배 순서는 임의로 채우지 않습니다.';
+}
+"""
+
 def patch_original_script(script: str) -> str:
     script = _replace_once(
         script,
@@ -113,6 +148,17 @@ def patch_original_script(script: str) -> str:
         "if(sermon.ready){const copy=node('button','목장 본문·제목을 주일 PPT에도 사용');"
         "copy.onclick=copySundaySharingToSermon;inner.append(copy);}"
         "note.append(inner);root.append(note);}"
+    )
+    script = _replace_once(
+        script,
+        "function renderInputProgress(){",
+        _PROGRESS_AUDIT + "\nfunction renderInputProgress(){",
+    )
+    script = _replace_once(
+        script,
+        " $('progress-count').textContent=filled+' / '+total+' 확인';",
+        " $('progress-count').textContent=filled+' / '+total+' 입력상태';"
+        "updateSundayInputSourceExplanation();",
     )
     script = _replace_once(
         script,
