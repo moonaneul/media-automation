@@ -13,6 +13,24 @@ SOURCES=Path(__file__).resolve().parents[4] / 'data/private/bible_sources'
 
 PROVIDED=Path(__file__).resolve().parents[4] / 'data/private/bible_fixed.json'
 
+# Explicit chapter endpoints. Never infer a chapter's end from the last verse
+# present in a possibly incomplete local file.
+CHAPTER_ENDS={('행',27):44,('행',28):31}
+
+def expand_chapter_reference(reference):
+    match=re.fullmatch(r'([가-힣]+)\s*(\d+)\s*(?:[~～–—-]\s*(\d+))?\s*장',reference)
+    if not match:return [reference]
+    from media_automation.bible.master import normalize_book
+    book=normalize_book(match[1]);start=int(match[2]);end=int(match[3] or start)
+    if start<1 or end<start:raise ValueError('장 범위를 확인하세요: '+reference)
+    passages=[]
+    for chapter in range(start,end+1):
+        last=CHAPTER_ENDS.get((book,chapter))
+        if last is None:
+            raise ValueError('이 장의 마지막 절이 등록되지 않았습니다. 장:절 범위를 명시하세요: '+reference)
+        passages.append(f'{book} {chapter}:1~{last}')
+    return passages
+
 def resolve(order, source_dir=None, provided_file=None):
     use_provided = source_dir is None or provided_file is not None
     source_dir=Path(source_dir if source_dir is not None else os.environ.get('MEDIA_BIBLE_SOURCES',SOURCES))
@@ -60,7 +78,8 @@ def resolve(order, source_dir=None, provided_file=None):
             continue
         if not re.search('성경 본문|추가 말씀',block['key']):continue
         try:
-            references=[clean_leading_marks(s).strip() for s in re.split(r'[,，;；\n]',block['content']) if s.strip()]
+            references=[reference for s in re.split(r'[,，;；\n]',block['content']) if s.strip()
+                        for reference in expand_chapter_reference(clean_leading_marks(s).strip())]
             if not references:raise ValueError('성경 주소 없음')
             units=[]
             validated=True
