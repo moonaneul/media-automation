@@ -1,0 +1,129 @@
+{
+  "status": "staged_not_activated",
+  "canonical_web": "src/media_automation/web",
+  "staging_directory": "src/media_automation/_legacy_migration",
+  "files": [
+    {
+      "origin": "shared-work/server.py",
+      "destination": "backend/server.py",
+      "sha256": "499983c37114eab85668433ea4a3cb861ba396f0260b25c2146e2bcb4c980ead",
+      "size": 20718
+    },
+    {
+      "origin": "shared-work/generation.py",
+      "destination": "backend/generation.py",
+      "sha256": "47a78f8a3d0c47e7e25ae90954882abb0a2b2168a721a68b803187db6607393a",
+      "size": 3848
+    },
+    {
+      "origin": "shared-work/ppt_conversion.py",
+      "destination": "backend/ppt_conversion.py",
+      "sha256": "96c3278962f47f09d6d19b2bcd949e1e2b738dfbdfc7627bbbbe5907211e7178",
+      "size": 2121
+    },
+    {
+      "origin": "shared-work/ppt_preview.py",
+      "destination": "backend/ppt_preview.py",
+      "sha256": "198cdb1eb7233ab3c375c5d84e646dd3e1032a35af2e72de37fb619476e3c009",
+      "size": 1248
+    },
+    {
+      "origin": "shared-work/zoom_media.py",
+      "destination": "backend/zoom_media.py",
+      "sha256": "9b8aa8cbad2b0271e67effe7cc5e1723cf4b749738c2f36bc7beb653b236d2dc",
+      "size": 9535
+    },
+    {
+      "origin": "shared-work/friday_template.py",
+      "destination": "backend/friday_template.py",
+      "sha256": "c79dddb50c42efcba917ac074e30410b007c9b4df3a604b24eea9a84da489a3d",
+      "size": 10453
+    },
+    {
+      "origin": "shared-work/weekly_assets.py",
+      "destination": "backend/weekly_assets.py",
+      "sha256": "c14feb4d90b7c71e29cf79c4894823ab325e47a048b4a0516a7d51560c8a590a",
+      "size": 1958
+    },
+    {
+      "origin": "shared-work/work_store.py",
+      "destination": "backend/work_store.py",
+      "sha256": "2c6dbe4d3f2fe1aae3376c61cfecb50bcce5169e9e80214facca8ca65b609bd1",
+      "size": 9667
+    },
+    {
+      "origin": "shared-work/production_order.py",
+      "destination": "backend/production_order.py",
+      "sha256": "5c71978be263be85bb763fc7f4ed1a05ffcb58406189ce66a21f399a2d1a84f0",
+      "size": 3550
+    },
+    {
+      "origin": "shared-work/bulletin_generation.py",
+      "destination": "backend/bulletin_generation.py",
+      "sha256": "a60fa7b5cfe36828016f9ae82c9bc858d924a48c19481a5550a8e497cc33a8eb",
+      "size": 1854
+    },
+    {
+      "origin": "shared-work/notice_files.py",
+      "destination": "backend/notice_files.py",
+      "sha256": "755b279c1dc04b2624587afeec1eaa9dc0eec475440a17e722a69b6013af37c3",
+      "size": 1242
+    },
+    {
+      "origin": "shared-work/bible_connection.py",
+      "destination": "backend/bible_connection.py",
+      "sha256": "6c435918ef1d0510ea45c700fe95864475c669a9248981bf29f7f8ed40272f7d",
+      "size": 4323
+    },
+    {
+      "origin": "blue-prototype/index.html",
+      "destination": "ui/index.html",
+      "sha256": "0492124e5b06fcec07e025aa8709873a961eee2f8bba33e260cc92c72f8fd8f4",
+      "size": 93682
+    },
+    {
+      "origin": "blue-prototype/bulletin-number.js",
+      "destination": "ui/bulletin-number.js",
+      "sha256": "e89b94b061ede052f601ae2bff56cf70d8420d1edc968af60f873e893b88d03b",
+      "size": 721
+    },
+    {
+      "origin": "blue-prototype/notice-parser.js",
+      "destination": "ui/notice-parser.js",
+      "sha256": "8589b3d29ffabf952ecf97dcadbb39318bf3dd1a458a1b3225b9acb489aab73e",
+      "size": 11687
+    },
+    {
+      "origin": "blue-prototype/song-search.js",
+      "destination": "ui/song-search.js",
+      "sha256": "848d6cfd4f9ab544802c164607dda63c2ec736bae2b4d098d353416191be3927",
+      "size": 1510
+    },
+    {
+      "origin": "shared-work/online-operating-plan.md",
+      "destination": "review-docs/online-operating-plan.md",
+      "sha256": "89b82163f85197dcb7b59f9146c7dc8a5da22f8988c80f9b982dd6ae98eb4f86",
+      "size": 5084
+    },
+    {
+      "origin": "shared-work/deployment-readiness.md",
+      "destination": "review-docs/deployment-readiness.md",
+      "sha256": "2aeb478adf9a30d03015a79324ea995bfa4ce00bdf37c6f30ed5f77dcfd411e0",
+      "size": 4562
+    },
+    {
+      "origin": "shared-work/cloud-benchmark.json",
+      "destination": "review-docs/cloud-benchmark.json",
+      "sha256": "61ba07bad4880436ee5d1431f93ffe0453ae0fbaa7381ae1c10d4dff71f1bedc",
+      "size": 235
+    }
+  ],
+  "missing_optional": [],
+  "blocked_until_review": [
+    "기존 웹앱 프론트/백엔드 연결과 API 계약 대조",
+    "Mac/Windows/Linux 실행 경로 분리 및 의존성 설치 확인",
+    "금요 PPT 템플릿·영상·BGM의 별도 비공개 연결",
+    "개별 예배 화면·PowerPoint 실제 영상 및 음원 재생 검수",
+    "HTTPS와 운영 인증 전 외부 공개 금지"
+  ]
+}
