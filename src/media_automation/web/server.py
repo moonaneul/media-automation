@@ -8,7 +8,11 @@ from pathlib import Path
 import secrets
 from urllib.parse import parse_qs, urlsplit
 from .application import Application
+from .streaming_download import send_download
+from .runtime_paths import default_jobs_root
 from .preview_once import preview_once
+from . import blue_original
+from .notice_files import extract_notice
 
 MAX_UPLOAD = 128 * 1024 * 1024
 STATIC = Path(__file__).parent / 'static'
@@ -44,6 +48,13 @@ def make_server(application: Application, port: int = 8765):
                 file = STATIC / ({'/':'index.html'}.get(path, path[1:]))
                 self.reply(200, file.read_bytes(), mimetypes.guess_type(file.name)[0] or 'text/plain')
                 return
+            if self.command == 'GET' and path in {'/blue-original', '/blue-original.css', '/blue-original.js', '/blue-auth.js', '/sunday-hwp-autofill.js', '/bulletin-number.js', '/notice-parser.js', '/song-search.js'}:
+                if path == '/blue-original':
+                    self.reply(200, blue_original.page(), 'text/html; charset=utf-8')
+                else:
+                    body, kind = blue_original.resource(path)
+                    self.reply(200, body, kind)
+                return
             if not secrets.compare_digest(self.headers.get('Authorization', ''), 'Bearer ' + token):
                 self.reply(401, {'error': '실행 시 표시된 접속 링크를 이용해주세요.'})
                 return
@@ -54,7 +65,9 @@ def make_server(application: Application, port: int = 8765):
             try:
                 query = parse_qs(parsed.query)
                 parts = path.strip('/').split('/')
-                if self.command == 'POST' and path == '/api/preview-once':
+                if self.command == 'POST' and path == '/api/notice-file':
+                    self.reply(200, {'text': extract_notice(query['filename'][0], self.body(8 * 1024 * 1024))})
+                elif self.command == 'POST' and path == '/api/preview-once':
                     result = preview_once(query['filename'][0], self.body(MAX_UPLOAD))
                     self.reply(200, result, 'application/pdf')
                 elif self.command == 'GET' and path == '/api/weekly-board':
@@ -108,7 +121,7 @@ def make_server(application: Application, port: int = 8765):
                         self.reply(200, application.preview_bytes(job, query['path'][0]), 'application/pdf')
                     elif self.command == 'GET' and parts[3:] == ['artifact']:
                         target = application.artifact(job, query['path'][0])
-                        self.reply(200, target.read_bytes(), mimetypes.guess_type(target.name)[0] or 'application/octet-stream')
+                        send_download(self, target)
                     else:
                         self.reply(404, {'error': '없는 경로입니다.'})
                 else:
@@ -143,7 +156,7 @@ def make_server(application: Application, port: int = 8765):
 def main():
     parser = argparse.ArgumentParser(description='맥 로컬 미디어 제작 화면')
     parser.add_argument('--repository', type=Path, default=Path.cwd())
-    parser.add_argument('--storage', type=Path, default=Path.home() / 'Library/Application Support/media-automation/jobs')
+    parser.add_argument('--storage', type=Path, default=default_jobs_root())
     parser.add_argument('--port', type=int, default=8765)
     args = parser.parse_args()
     application = Application(args.repository, args.storage)
