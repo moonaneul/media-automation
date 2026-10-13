@@ -1,5 +1,19 @@
 from pathlib import Path
 
+from media_automation.bulletin.original_design import wrap_original_text
+
+
+def test_original_wrap_preserves_question_and_keeps_punctuation_with_text():
+    class MeasuredFont:
+        def text_length(self, text, fontsize):
+            return len(text)
+
+    text = '질문내용인가요?'
+    lines = wrap_original_text(text, MeasuredFont(), 10, 7)
+    assert ''.join(lines) == text
+    assert all(not line.startswith('?') for line in lines)
+    assert all(len(line) <= 7 for line in lines)
+
 from media_automation.bulletin.document import (
     build_bulletin_document,
 )

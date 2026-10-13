@@ -116,6 +116,10 @@ def test_pdf_builder_does_not_remerge_verified_weekly(tmp_path, monkeypatch):
     captured = {}
     monkeypatch.setattr(build, "build_bulletin_document", lambda weekly: captured.setdefault("weekly", weekly))
     monkeypatch.setattr(build, "render_bulletin_pdf", lambda document, output: output)
+    # Private original assets may be installed locally; isolate this merge test
+    # from either renderer without replacing the weekly-data capture above.
+    import media_automation.bulletin.original_design as original
+    monkeypatch.setattr(original, "render_original_bulletin", lambda document, output: output)
 
     result = build.build_bulletin_from_files(
         sunday_yaml=sunday_file,

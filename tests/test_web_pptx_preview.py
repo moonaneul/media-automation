@@ -82,3 +82,17 @@ def test_pdf_previews_need_no_converter(monkeypatch, tmp_path):
     p.write_bytes(b"%PDF-irrelevant-for-direct-preview")
     assert job_previews.status(tmp_path, "output/test.pdf", p)["available"]
     assert job_previews.read(tmp_path, "output/test.pdf", p) == p.read_bytes()
+
+
+def test_libreoffice_preview_rejects_missing_korean_font(monkeypatch, tmp_path):
+    monkeypatch.setattr(pptx_preview, 'availability', lambda: ('libreoffice', 'ready'))
+    monkeypatch.setattr(pptx_preview, '_libreoffice_binary', lambda: 'mock-soffice')
+    def fake_run(command, **kwargs):
+        out = Path(command[command.index('--outdir')+1])/'presentation.pdf'
+        doc = canvas.Canvas(str(out)); doc.drawString(20,20,'1.'); doc.showPage(); doc.save()
+        return subprocess.CompletedProcess(command,0,b'',b'')
+    monkeypatch.setattr(pptx_preview.subprocess,'run',fake_run)
+    source=tmp_path/'source.pptx';prs=Presentation();slide=prs.slides.add_slide(prs.slide_layouts[6]);slide.shapes.add_textbox(0,0,1000000,1000000).text='기도 제목';prs.save(source)
+    output=tmp_path/'preview.pdf'
+    with pytest.raises(ValueError, match='한글 글꼴'):pptx_preview.convert_pptx(source,output)
+    assert not output.exists()

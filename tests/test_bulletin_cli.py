@@ -271,7 +271,7 @@ def test_complete_keeps_original_sunday_and_writes_number_only_to_derived(
     )
 
     bulletin.complete(args)
-    assert captured["design"] == "modern"
+    assert captured["design"] == "original"
 
     assert sunday.read_text(
         encoding="utf-8"

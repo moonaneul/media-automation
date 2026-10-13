@@ -66,7 +66,7 @@ def build_bulletin_from_files(
     transfer_source: str | Path | None = None,
     transfer_text: str | Path | None = None,
     already_merged: bool = False,
-    design: str = "classic",
+    design: str = "original",
 ) -> BulletinBuildResult:
     sunday_path = Path(sunday_yaml)
 
@@ -140,7 +140,14 @@ def build_bulletin_from_files(
         merge_result.sunday
     )
 
-    if design == "modern":
+    if design == "original":
+        from reportlab.lib.pagesizes import A4, landscape
+        from media_automation.bulletin.original_design import render_original_bulletin
+        from media_automation.bulletin.pdf import build_imposition_plan
+        path = render_original_bulletin(document, output_pdf)
+        width,height = landscape(A4)
+        pdf_result = BulletinPdfResult(path=path,sheets=build_imposition_plan(),width=width,height=height)
+    elif design == "modern":
         from reportlab.lib.pagesizes import A4, landscape
         from media_automation.bulletin.modern import render_modern_bulletin
         from media_automation.bulletin.pdf import build_imposition_plan

@@ -250,3 +250,12 @@ def test_missing_verse_is_rejected():
             prs,
             passage,
         )
+
+
+def test_korean_verse_wrap_preserves_every_word():
+    from media_automation.ppt.scripture import _wrap_verse_words
+    text='다니엘은 뜻을 정하여 왕의 음식과 그가 마시는 포도주로 자기를 더럽히지 아니하리라 하고 자기를 더럽히지 아니하도록 환관장에게 구하니'
+    wrapped=_wrap_verse_words(text,32)
+    assert wrapped.replace('\v',' ')==text
+    assert all(line.split() for line in wrapped.split('\v'))
+    assert '마\v시는' not in wrapped and '환관\v장에게' not in wrapped

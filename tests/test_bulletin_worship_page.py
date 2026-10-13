@@ -119,3 +119,14 @@ def test_build_serving_rows():
         "",
         "",
     )
+
+
+def test_reference_columns_keep_content_and_service_roles_separate():
+    from media_automation.bulletin.worship_page import build_worship_order_columns
+    page = BulletinWorshipPage(separate_hymn='79장', scripture='단 1:8~9', sermon_title='믿음과 상황이 충돌할 때', preacher='이은철 목사', first_service_prayer='인도자', second_service_prayer='김한섭', closing_prayer='이은철 목사')
+    rows = {''.join(label.split()): (content, person) for label, content, person in build_worship_order_columns(page)}
+    assert rows['찬송'] == ('79장', '다 같이')
+    assert rows['성경봉독'] == ('단 1:8~9', '인도자')
+    assert rows['기도'] == ('', '1부 인도자\n2부 김한섭')
+    assert rows['말씀선포'] == ('믿음과 상황이 충돌할 때', '이은철 목사')
+    assert rows['폐회기도'] == ('', '이은철 목사')

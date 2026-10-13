@@ -154,9 +154,10 @@ def test_friday_zoom_scripture_can_group_verses():
         bible_provider=provider,
     )
 
-    # 짧은 본문은 실제 금요 Zoom 사례처럼
-    # 한 화면에 최대 3절까지 표시할 수 있다.
-    assert len(prs.slides) == 1
+    # 원본 레이아웃의 두 절 영역을 넘기지 않도록 분리한다.
+    assert len(prs.slides) == 2
+    text = "\n".join(shape.text for slide in prs.slides for shape in slide.shapes if shape.has_text_frame)
+    assert all(f"샘플 본문 {number}절" in text for number in (16,17,18))
 
     first_slide_text = "\n".join(
         shape.text
@@ -173,4 +174,5 @@ def test_friday_zoom_scripture_can_group_verses():
     assert "샘플 본문 17절" in first_slide_text
     assert "18" in first_slide_text
 
-    assert "샘플 본문 18절" in first_slide_text
+    assert "샘플 본문 18절" not in first_slide_text
+    assert "샘플 본문 18절" in text

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import re
+import unicodedata
 from pptx import Presentation
 from pptx.dml.color import RGBColor
 from pptx.enum.text import PP_ALIGN
@@ -46,6 +47,23 @@ def _body_font_size(text: str) -> int:
         return 30
 
     return 32
+
+
+def _wrap_verse_words(text: str, font_size: int) -> str:
+    # Leave a small margin for PowerPoint font substitution. Explicit soft breaks
+    # prevent a Korean word being split by differing native layout engines.
+    capacity = 560 / font_size
+    def width(value):
+        return sum(1 if unicodedata.east_asian_width(c) in ('W', 'F') else .45 for c in value)
+    lines, line = [], ''
+    for word in text.split():
+        candidate = (line + ' ' + word).strip()
+        if line and width(candidate) > capacity:
+            lines.append(line); line = word
+        else:
+            line = candidate
+    if line:lines.append(line)
+    return '\v'.join(lines)
 
 
 def _validate_passage(
@@ -201,7 +219,10 @@ def add_scripture_passage_slides(
             body_frame.add_paragraph()
         )
 
-        body_paragraph.text = body_text
+        font_size = _body_font_size(body_text)
+        body_paragraph.text = _wrap_verse_words(body_text, font_size)
+        # Keep Korean words together when PowerPoint lays out the verse.
+        body_paragraph._p.get_or_add_pPr().set('eaLnBrk', '0')
         body_paragraph.alignment = (
             PP_ALIGN.LEFT
         )

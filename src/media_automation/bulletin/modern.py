@@ -1,4 +1,4 @@
-"""Optional modern preview; retains the same weekly document and page contents."""
+"""Latest approved 2026-10-10 church bulletin layout."""
 from pathlib import Path
 from reportlab.pdfbase import pdfmetrics
 from reportlab.lib.pagesizes import A4, landscape
@@ -6,9 +6,12 @@ from reportlab.lib.units import mm
 from reportlab.pdfgen.canvas import Canvas
 from media_automation.bulletin.cover import FONT_REGULAR, register_korean_fonts, draw_bold_slogan, BulletinCoverStatic
 from media_automation.bulletin.cell_group_page import wrap_text
-from media_automation.bulletin.worship_page import build_worship_order_rows, build_serving_rows
+from media_automation.bulletin.worship_page import build_worship_order_columns, build_serving_rows
 from media_automation.bulletin.news_page import BulletinNewsStatic
 from media_automation.bulletin.pdf import build_imposition_plan
+
+
+LAYOUT_VERSION = "approved-20261010-final"
 
 
 class Page:
@@ -53,15 +56,16 @@ class Page:
         return top + 7
 
 
-def cover(p, document, photo):
+def cover(p, document, photo, static=None):
     data = document.cover
-    static = BulletinCoverStatic()
+    static = static or BulletinCoverStatic()
     if not data.bulletin_number:
         raise ValueError('주보 호수가 없습니다.')
     p.text(f'No. {data.bulletin_number}', 12, 13, 8.5)
     p.text(data.date_text, 136.5, 13, 8.5, right=True)
-    p.text('영혼 구원하여', 12, 31, 22, bold=True)
-    p.text('제자 삼는 교회', 12, 42, 22, bold=True)
+    slogan_lines = ('영혼 구원하여', '제자 삼는 교회') if static.slogan=='영혼 구원하여 제자 삼는 교회' else wrap_text(static.slogan,font_name=FONT_REGULAR,font_size=22,max_width=124.5*mm)
+    if len(slogan_lines)>2: raise ValueError('표어가 표지 두 줄을 넘습니다.')
+    for index,line in enumerate(slogan_lines): p.text(line,12,31+index*11,22,bold=True)
     top = 53
     for line in static.verse_lines:
         top = p.para(line, top, size=8.1, leading=4.2)
@@ -79,26 +83,52 @@ def cover(p, document, photo):
         text_width = pdfmetrics.stringWidth(text, FONT_REGULAR, size) / mm
         p.text(text, (148.5 - text_width) / 2, top, size, bold=bold)
 
-    centered(static.church_name, 177, 16, bold=True)
-    centered('담임목사 이 은 철', 185, 8.5)
+    # Stronger church identity with deliberate character spacing.
+    name = static.church_name
+    name_size, tracking = 18, .7
+    name_width = pdfmetrics.stringWidth(name, FONT_REGULAR, name_size) + max(0, len(name)-1)*tracking
+    if name_width > 124.5*mm:
+        name_size = 16
+        name_width = pdfmetrics.stringWidth(name, FONT_REGULAR, name_size) + max(0, len(name)-1)*tracking
+    p.c.saveState()
+    p.c.setFillColorRGB(0, 0, 0)
+    p.c.setStrokeColorRGB(0, 0, 0)
+    p.c.setLineWidth(.55)
+    text = p.c.beginText(p.x+(148.5*mm-name_width)/2, (210-176)*mm)
+    text.setFont(FONT_REGULAR, name_size)
+    text.setCharSpace(tracking)
+    text.setTextRenderMode(2)
+    text.textOut(name)
+    p.c.drawText(text)
+    p.c.restoreState()
+    centered('담임목사 '+static.senior_pastor,185,8.5)
     centered(static.address, 192, 7.6)
-    centered('전화 (02)2611-9191   ·   홈페이지 https://hjbbc.or.kr', 198, 7.6)
+    centered('전화 '+static.phone+'   ·   홈페이지 '+static.website,198,7.6)
 
 
 def worship(p, document):
     page = document.worship
     p.title('오전 예배 순서')
     top = 34
-    if page.leader:
+    if page.leader and page.leader.strip() != '인도자':
         p.text(f'인도 : {page.leader}', 136.5, top, 8.5, right=True)
         top += 6
-    for label, value in build_worship_order_rows(page):
-        p.text(''.join(label.split()), 12, top, 9)
-        lines = wrap_text(value, font_name=FONT_REGULAR, font_size=9, max_width=88*mm)
-        for index, line in enumerate(lines):
-            p.text(line, 136.5, top+index*4.2, 9, right=True)
-        top += max(6, len(lines)*4.2+1.8)
-    top += 7
+    for row_index, (label, content, person) in enumerate(build_worship_order_columns(page)):
+        content_lines = wrap_text(content, font_name=FONT_REGULAR, font_size=8.5, max_width=54*mm)
+        person_lines = [line for part in person.split('\n') for line in wrap_text(part, font_name=FONT_REGULAR, font_size=8.5, max_width=34*mm)]
+        row_height = max(5.2, max(len(content_lines), len(person_lines))*4.1+1.1)
+        if row_index % 2 == 0:
+            p.c.saveState()
+            p.c.setFillColorRGB(.965, .965, .965)
+            p.c.rect(p.x+12*mm, (210-top-row_height+3.5)*mm, 124.5*mm, row_height*mm, fill=1, stroke=0)
+            p.c.restoreState()
+        p.text(''.join(label.split()), 14, top, 9)
+        for index, line in enumerate(content_lines):
+            p.text(line, 47, top+index*4.1, 8.5)
+        for index, line in enumerate(person_lines):
+            p.text(line, 103, top+index*4.1, 8.5)
+        top += row_height
+    top += 5
     top = p.section('예배 / 섬김', top)
     positions = (12, 44, 66, 91, 119)
     sizes = (8, 7.8, 7.8, 7.5, 7.5)
@@ -107,9 +137,18 @@ def worship(p, document):
         p.text(text, x, top, size, bold=True)
     p.rule(top+2)
     top += 8
-    for row in build_serving_rows(page):
-        for text, x, size in zip(row, positions, sizes):
-            p.text(text, x, top, size)
+    serving_rows = build_serving_rows(page)
+    p.c.saveState()
+    p.c.setFillColorRGB(.967, .973, .98)
+    p.c.rect(p.x+12*mm, (210-top-10.5)*mm, 124.5*mm, 14*mm, fill=1, stroke=0)
+    p.c.restoreState()
+    for row_index, row in enumerate(serving_rows):
+        for column, (text, x, size) in enumerate(zip(row, positions, sizes)):
+            if column in (3, 4):
+                if row_index % 2 == 0:
+                    p.text(text, x, top+3.5, size)
+            else:
+                p.text(text, x, top, size)
         top += 7
     p.rule(top-3)
     top += 7
@@ -117,16 +156,29 @@ def worship(p, document):
     columns = ((12, '주일 오전', '(오전 9:00)', ('학생부 예배',)),
                (55, '주일 오후', '(오후 1:30)', (page.afternoon_service or '',)),
                (99, '수요 예배', '(오후 7:30)', ('찬양 다 같이', '말씀 이은철 목사', '합심기도 다 같이')))
-    for x, title, time, lines in columns:
-        p.text(title, x, top, 9, bold=True)
-        p.text(time, x, top+5, 8)
+    area_top = top - 3
+    area_bottom = top + 27
+    p.c.saveState()
+    p.c.setStrokeColorRGB(.86, .86, .86)
+    p.c.setLineWidth(.4)
+    for separator in (53.5, 95):
+        p.c.line(p.x+separator*mm, (210-area_top)*mm,
+                 p.x+separator*mm, (210-area_bottom)*mm)
+    p.c.restoreState()
+    for index, (_, title, time, lines) in enumerate(columns):
+        center = 12 + (index+.5)*41.5
+        def centered(text, baseline, size, bold=False):
+            width = pdfmetrics.stringWidth(text, FONT_REGULAR, size)/mm
+            p.text(text, center-width/2, baseline, size, bold=bold)
+        centered(title, top, 9, bold=True)
+        centered(time, top+5, 8)
         cursor = top+13
         for line in lines:
             for wrapped in wrap_text(line, font_name=FONT_REGULAR, font_size=8, max_width=37*mm):
-                p.text(wrapped, x, cursor, 8)
+                centered(wrapped, cursor, 8)
                 cursor += 4.6
         if cursor > 198:
-            raise ValueError('주보 2쪽 모임 안내가 페이지를 넘습니다.')
+            raise ValueError(f'주보 2쪽 모임 안내가 페이지를 넘습니다: {cursor}')
 
 
 def cell_group(p, document):
@@ -134,9 +186,13 @@ def cell_group(p, document):
     p.title('목장 말씀 나누기')
     if len(page.questions) != 4:
         raise ValueError('목장 질문은 4개여야 합니다.')
-    p.text(page.scripture or '', 12, 37, 9)
-    title_bottom = p.para(page.title or '', 47, size=16, leading=7)
-    top = max(65, title_bottom+10)
+    reference = page.scripture or ''
+    reference_width = pdfmetrics.stringWidth(reference, FONT_REGULAR, 9) / mm
+    title_width = 124.5 - reference_width - 6
+    if title_width < 35: raise ValueError('목장 본문 표기가 너무 길어 제목과 함께 배치할 수 없습니다.')
+    title_bottom = p.para(page.title or '', 36, size=14, leading=6, width=title_width)
+    p.text(reference, 136.5, 36, 9, right=True)
+    top = max(47, title_bottom+5)
     slot = (198-top)/4
     for index, question in enumerate(page.questions):
         cursor = top+index*slot
@@ -146,40 +202,44 @@ def cell_group(p, document):
             raise ValueError('목장 질문과 필기 여백이 페이지를 넘습니다.')
 
 
-def news(p, document):
+def news(p, document, static=None):
     page = document.news
-    static = BulletinNewsStatic()
+    static = static or BulletinNewsStatic()
     p.title('교회 소식')
     top = 36
     for index, item in enumerate(page.church_news, 1):
         p.text(f'{index:02d}', 12, top, 9, bold=True)
-        top = p.para(item, top, x=23, width=113.5, size=9, leading=4.7)+2
+        top = p.para(item, top, x=23, width=113.5, size=9, leading=4.6)+1.5
     top += 3
     top = p.section(f'{page.schedule_month}월 사역 일정' if page.schedule_month else '사역 일정', top)
     for date, content in page.monthly_schedule:
-        top = p.para(f'{date}  {content}', top, size=8.5, leading=4.5)+2
+        top = p.para(f'{date}  {content}', top, size=8.5, leading=4.6)+1.5
     top += 4
     top = p.section('예배 / 모임 안내', top)
     meeting_top = top
+    bottom = meeting_top
     for column, values in enumerate((static.meetings[:5], static.meetings[5:])):
         cursor = meeting_top
+        label_x = 12 + column * 64
+        time_x = label_x + 25
         for label, time in values:
-            x = 12+column*64
-            p.text(f'{label} / {time}', x, cursor, 7.1)
-            cursor += 6
-    top = meeting_top+34
+            label_end = p.para(label, cursor, x=label_x, width=23, size=7.8, leading=4.6)
+            time_end = p.para(time, cursor, x=time_x, width=35.5, size=7.8, leading=4.6)
+            cursor = max(label_end, time_end) + 1.5
+        bottom = max(bottom, cursor)
+    top = bottom + 2
     p.rule(top-3)
     top = p.section('하늘빛기쁨교회 사명선언문', top+4)
-    top = p.para(static.mission, top, size=8, leading=4.3)+4
+    top = p.para(static.mission, top, size=8, leading=4.6)+8
     top = p.section('하늘빛기쁨교회 핵심가치', top)
     for column, values in enumerate((static.core_values[:3], static.core_values[3:])):
         for index, value in enumerate(values):
-            p.text(f'{index+column*3+1}. {value}', 12+column*64, top+index*5, 7.7)
-    top += 20
-    p.para(f'* {static.joy_meaning}', top, size=7.1, leading=3.8)
+            p.text(f'{index+column*3+1}. {value}', 12+column*64, top+index*6.1, 7.7)
+    top += 18.3
+    p.para(f'* {static.joy_meaning}', top, size=7.1, leading=4.6)
 
 
-def render_modern_bulletin(document, output, photo):
+def render_modern_bulletin(document, output, photo, *, cover_static=None, news_static=None):
     register_korean_fonts()
     output = Path(output)
     output.parent.mkdir(parents=True, exist_ok=True)
@@ -191,7 +251,9 @@ def render_modern_bulletin(document, output, photo):
             c.saveState()
             p = Page(c, offset)
             if number == 1:
-                drawers[number](p, document, photo)
+                drawers[number](p, document, photo, cover_static)
+            elif number == 4:
+                drawers[number](p, document, news_static)
             else:
                 drawers[number](p, document)
             c.restoreState()

@@ -33,7 +33,7 @@ def test_hwp_notice_reads_using_canonical_parser(monkeypatch, tmp_path):
 
 
 def test_hwp_notice_http_requires_token_and_uses_original_query(tmp_path, monkeypatch):
-    monkeypatch.setattr("media_automation.web.server.extract_notice",
+    monkeypatch.setattr("media_automation.web.engine_api.extract_notice",
                         lambda filename, body: "제목: " + filename)
     repo = tmp_path / "repo"
     repo.mkdir()

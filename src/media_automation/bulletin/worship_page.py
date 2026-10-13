@@ -111,6 +111,23 @@ def build_worship_order_rows(
     )
 
 
+def build_worship_order_columns(page: BulletinWorshipPage) -> tuple[tuple[str, str, str], ...]:
+    """Separate weekly content from officiants, following the approved reference."""
+    rows = []
+    for label, value in build_worship_order_rows(page):
+        compact = ''.join(label.split())
+        if compact in ('찬송', '봉헌찬송', '결단찬송'):
+            content, person = value, '다 같이'
+        elif compact == '성경봉독':
+            content, person = value, '인도자'
+        elif compact == '말씀선포':
+            content, person = page.sermon_title or '', page.preacher or ''
+        else:
+            content, person = '', value.replace(' / ', '\n')
+        rows.append((label, content, person))
+    return tuple(rows)
+
+
 def build_serving_rows(
     page: BulletinWorshipPage,
 ) -> tuple[

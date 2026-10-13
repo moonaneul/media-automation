@@ -331,9 +331,9 @@ def add_zoom_sermon_title_slide(
 def _group_zoom_verses(
     passage: BiblePassage,
     *,
-    max_verses: int = 3,
-    max_lines: int = 7,
-    characters_per_line: int = 30,
+    max_verses: int = 2,
+    max_lines: int = 6,
+    characters_per_line: int = 22,
 ):
     """
     금요 Zoom 본문을 실제 화면 분량에 맞춰 묶는다.
