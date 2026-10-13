@@ -27,7 +27,7 @@ from .production_order import build_order, combine_friday_prayers
 from .bible_connection import resolve
 from .ppt_conversion import convert_original
 
-BUILD_VERSION = 'official-web-engine-v7-acts-whole-chapters'
+BUILD_VERSION = 'official-web-engine-v8-explicit-original-choice'
 ROOT = Path(__file__).resolve().parents[4]
 
 def compatible_original(filename, service, mode, slot):
@@ -62,6 +62,12 @@ def current_input(store, body):
     return current['data']
 
 
+class OriginalConversionError(Exception):
+    def __init__(self,asset):
+        self.asset=asset
+        super().__init__('구형 PPT 원본 변환에 실패했습니다: '+asset['filename'])
+
+
 def _asset(store, body, block):
     data = store.get(body['date'], body['service'])['data']
     compatible = lambda a: compatible_original(a['filename'], body['service'], data.get('fridayMode','zoom'), block['key'])
@@ -80,10 +86,12 @@ def _asset(store, body, block):
              song.get('number') == int(number[1]) and song.get('edition') == edition if number and edition else
              title in [re.sub(r'\s+', '', v) for v in [song['title'], *song['aliases']]])]
         chosen_asset = data.get('assetChoices', {}).get(block['key'])
-        assets = [asset for song in songs for asset in song['assets'] if asset.get('eligible') and compatible(asset)
-                  and (not chosen_asset or asset['digest'] == chosen_asset)]
+        if chosen_asset == 'NONE':return None
+        assets = [asset for song in songs for asset in song['assets'] if compatible(asset)
+                  and (asset['digest'] == chosen_asset and asset.get('review',{}).get('permission')!='not_allowed'
+                       if chosen_asset else asset.get('eligible'))]
         if len(assets) != 1: return None
-        asset = assets[0]
+        asset = dict(assets[0], selected_for_service=bool(chosen_asset))
     path = Path(store.path).with_suffix('.files') / asset['digest']
     if not path.is_file() or hashlib.sha256(path.read_bytes()).hexdigest() != asset['digest']: return None
     suffix = Path(asset['filename']).suffix.lower()
@@ -99,7 +107,9 @@ def _asset(store, body, block):
             if hashlib.sha256(named.read_bytes()).hexdigest() != asset['digest']:
                 raise ValueError('미디어 검증 캐시가 원본과 다릅니다.')
         path = named
-    if suffix == '.ppt': path = convert_original(path)
+    if suffix == '.ppt':
+        try:path = convert_original(path)
+        except Exception as error:raise OriginalConversionError(asset) from error
     return path, suffix, asset
 
 
@@ -147,9 +157,14 @@ def generate(store, body):
                 attached = next((a for a in store.attachments(body['date'],service) if a['slot']==key), None)
                 if attached and not compatible_original(attached['filename'], service, data.get('fridayMode','zoom'), key):
                     connections[key] = dict(status='incompatible_format', filename=attached['filename'])
-                asset = _asset(store, body, block) if block.get('state') == 'VALUE' else None
+                try:asset = _asset(store, body, block) if block.get('state') == 'VALUE' else None
+                except OriginalConversionError as error:
+                    asset=None
+                    connections[key]=dict(error.asset,status='conversion_failed',error=str(error))
                 if asset:
                     source, suffix, metadata = asset
+                    if metadata.get('selected_for_service') and not metadata.get('eligible'):
+                        unresolved.append(key+':original_review')
                     if not zoom and suffix in ('.ppt', '.pptx'):
                         try:
                             # Check the source before the merger can touch the output.
