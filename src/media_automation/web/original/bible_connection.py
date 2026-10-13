@@ -1,0 +1,96 @@
+"""Read only explicitly validated local Bible sources; never infer weekly input."""
+import os
+import json
+import re
+import sys
+from pathlib import Path
+import yaml
+from media_automation.input_text import clean_leading_marks
+
+from media_automation.bible.json_source import build_index,lookup
+
+SOURCES=Path(__file__).resolve().parents[4] / 'data/private/bible_sources'
+
+PROVIDED=Path(__file__).resolve().parents[4] / 'data/private/bible_fixed.json'
+
+# Explicit chapter endpoints. Never infer a chapter's end from the last verse
+# present in a possibly incomplete local file.
+CHAPTER_ENDS={('행',27):44,('행',28):31}
+
+def expand_chapter_reference(reference):
+    match=re.fullmatch(r'([가-힣]+)\s*(\d+)\s*(?:[~～–—-]\s*(\d+))?\s*장',reference)
+    if not match:return [reference]
+    from media_automation.bible.master import normalize_book
+    book=normalize_book(match[1]);start=int(match[2]);end=int(match[3] or start)
+    if start<1 or end<start:raise ValueError('장 범위를 확인하세요: '+reference)
+    passages=[]
+    for chapter in range(start,end+1):
+        last=CHAPTER_ENDS.get((book,chapter))
+        if last is None:
+            raise ValueError('이 장의 마지막 절이 등록되지 않았습니다. 장:절 범위를 명시하세요: '+reference)
+        passages.append(f'{book} {chapter}:1~{last}')
+    return passages
+
+def resolve(order, source_dir=None, provided_file=None):
+    use_provided = source_dir is None or provided_file is not None
+    source_dir=Path(source_dir if source_dir is not None else os.environ.get('MEDIA_BIBLE_SOURCES',SOURCES))
+    provided_file=Path(provided_file if provided_file is not None else os.environ.get('MEDIA_BIBLE_FILE',PROVIDED))
+    raw=json.loads(provided_file.read_text(encoding='utf-8-sig')) if use_provided and provided_file.is_file() else {}
+    checked={}
+    for path in sorted(source_dir.glob('*.yaml')):
+        source=yaml.safe_load(path.read_text())
+        if source.get('translation')!='개역개정' or source.get('validated') is not True:continue
+        for passage in source.get('passages',{}).values():
+            from media_automation.bible.json_source import parse_reference
+            book,chapter,_,_=parse_reference(passage['reference'])
+            for number,text in passage['verses'].items():
+                end=passage.get('verse_ends',{}).get(number,number)
+                key=f'{book}{chapter}:{number}'+(f'~{end}' if end!=number else '')
+                if key in checked and checked[key]!=text:raise ValueError('검수된 성경 자료가 서로 다릅니다: '+key)
+                checked[key]=text
+    index=build_index(raw) if raw else build_index(checked)
+    checked_index=build_index(checked);result={}
+    for block in order:
+        if block['kind']!='input' or block.get('state')!='VALUE':continue
+        if '기도' in block['key'] and '내용' in block['key']:
+            lines=[];expanded=False
+            for line in block['content'].splitlines():
+                reference=clean_leading_marks(line).strip('()（） ')
+                # Explicit addresses can accompany prose; already supplied verse text stays intact.
+                matches=list(re.finditer(r'[가-힣]+\s*\d+\s*:\s*\d+(?:\s*[~～–-]\s*\d+)?',reference))
+                if matches and not re.search(r'\[\d+\]',line):
+                    try:
+                        quotations=[]
+                        for match in matches:
+                            address=match.group()
+                            try:part=lookup(checked_index,address)['units']
+                            except KeyError:part=lookup(index,address)['units']
+                            quotations.append('\n'.join('['+str(u['start_verse'])+'] '+u['text'].replace('세례','침례') for u in part)+' ('+address+')')
+                        prose=reference
+                        for match in reversed(matches):prose=prose[:match.start()]+prose[match.end():]
+                        prose=prose.strip('()（） ,;，；')
+                        lines.append((prose+'\n' if prose else '')+'\n'.join(quotations))
+                        expanded=True
+                        continue
+                    except (ValueError,KeyError):pass
+                lines.append(line)
+            if expanded:result[block['key']]={'units':[],'resolved_content':'\n'.join(lines),'translation':'개역개정','text_review_pending':True}
+            continue
+        if not re.search('성경 본문|추가 말씀',block['key']):continue
+        try:
+            references=[reference for s in re.split(r'[,，;；\n]',block['content']) if s.strip()
+                        for reference in expand_chapter_reference(clean_leading_marks(s).strip())]
+            if not references:raise ValueError('성경 주소 없음')
+            units=[]
+            validated=True
+            for reference in references:
+                try:part=lookup(checked_index,reference)['units']
+                except KeyError:
+                    part=lookup(index,reference)['units'];validated=False
+                units.extend([{**unit,'passage_reference':reference} for unit in part])
+            result[block['key']]={'units':units,'translation':'개역개정','source_validated':validated,'source':'checked_passages' if validated else 'user_provided_bible','text_review_pending':not validated}
+        except (ValueError,KeyError) as error:
+            result[block['key']]={'units':[],'error':str(error)}
+    return result
+
+if __name__=='__main__':print(json.dumps(resolve(json.loads(sys.stdin.read())),ensure_ascii=False))

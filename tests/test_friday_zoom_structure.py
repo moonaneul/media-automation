@@ -91,7 +91,28 @@ def load_bible(
     )
 
 
-def test_20260911_structure_matches_real_ppt(
+
+def assert_complete_structure(prs, result, bible, additional):
+    ranges = result.slide_ranges
+    keys = ['pre_service', 'opening_songs[0]', 'opening_songs[1]', 'first_prayer',
+            'song_after_prayer', 'scripture', 'sermon_title']
+    if additional: keys.append('additional_scripture')
+    else: assert 'additional_scripture' not in ranges
+    keys += ['response_song', 'word_prayer', 'intercession_song', 'community_prayer', 'personal_prayer']
+    cursor = 1
+    for key in keys:
+        assert ranges[key].start == cursor
+        assert ranges[key].end >= ranges[key].start
+        cursor = ranges[key].end + 1
+    assert cursor - 1 == len(prs.slides)
+    # Pagination may change with typography; all supplied verse text must remain.
+    text = ''.join(shape.text for slide in prs.slides for shape in slide.shapes if shape.has_text_frame)
+    compact = lambda value: ''.join(value.split()).replace('세례','침례')
+    for passage in bible._passages.values():
+        for verse in passage.verses:
+            assert compact(verse.text) in compact(text)
+
+def test_20260911_structure_preserves_order_and_verses(
     tmp_path,
 ):
     weekly = load_weekly(
@@ -119,36 +140,10 @@ def test_20260911_structure_matches_real_ppt(
 
     prs = Presentation(output)
 
-    assert len(prs.slides) == 18
-
-    ranges = result.slide_ranges
-
-    assert ranges["pre_service"].start == 1
-    assert ranges["opening_songs[0]"].start == 2
-    assert ranges["opening_songs[1]"].start == 3
-    assert ranges["first_prayer"].start == 4
-    assert ranges["song_after_prayer"].start == 5
-
-    assert ranges["scripture"].start == 6
-    assert ranges["scripture"].end == 11
-
-    assert ranges["sermon_title"].start == 12
-
-    assert (
-        ranges[
-            "additional_scripture"
-        ].start
-        == 13
-    )
-
-    assert ranges["response_song"].start == 14
-    assert ranges["word_prayer"].start == 15
-    assert ranges["intercession_song"].start == 16
-    assert ranges["community_prayer"].start == 17
-    assert ranges["personal_prayer"].start == 18
+    assert_complete_structure(prs, result, bible, True)
 
 
-def test_20260918_structure_matches_real_ppt(
+def test_20260918_structure_preserves_order_and_verses(
     tmp_path,
 ):
     weekly = load_weekly(
@@ -176,33 +171,10 @@ def test_20260918_structure_matches_real_ppt(
 
     prs = Presentation(output)
 
-    assert len(prs.slides) == 17
+    assert_complete_structure(prs, result, bible, False)
 
-    ranges = result.slide_ranges
 
-    assert ranges["pre_service"].start == 1
-    assert ranges["opening_songs[0]"].start == 2
-    assert ranges["opening_songs[1]"].start == 3
-    assert ranges["first_prayer"].start == 4
-    assert ranges["song_after_prayer"].start == 5
-
-    assert ranges["scripture"].start == 6
-    assert ranges["scripture"].end == 11
-
-    assert ranges["sermon_title"].start == 12
-
-    assert (
-        "additional_scripture"
-        not in ranges
-    )
-
-    assert ranges["response_song"].start == 13
-    assert ranges["word_prayer"].start == 14
-    assert ranges["intercession_song"].start == 15
-    assert ranges["community_prayer"].start == 16
-    assert ranges["personal_prayer"].start == 17
-
-def test_20260904_structure_matches_real_ppt(
+def test_20260904_structure_preserves_order_and_verses(
     tmp_path,
 ):
     weekly = load_weekly(
@@ -230,28 +202,4 @@ def test_20260904_structure_matches_real_ppt(
 
     prs = Presentation(output)
 
-    assert len(prs.slides) == 18
-
-    ranges = result.slide_ranges
-
-    assert ranges["pre_service"].start == 1
-    assert ranges["opening_songs[0]"].start == 2
-    assert ranges["opening_songs[1]"].start == 3
-    assert ranges["first_prayer"].start == 4
-    assert ranges["song_after_prayer"].start == 5
-
-    assert ranges["scripture"].start == 6
-    assert ranges["scripture"].end == 12
-
-    assert ranges["sermon_title"].start == 13
-
-    assert (
-        "additional_scripture"
-        not in ranges
-    )
-
-    assert ranges["response_song"].start == 14
-    assert ranges["word_prayer"].start == 15
-    assert ranges["intercession_song"].start == 16
-    assert ranges["community_prayer"].start == 17
-    assert ranges["personal_prayer"].start == 18
+    assert_complete_structure(prs, result, bible, False)

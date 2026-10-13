@@ -8,6 +8,7 @@ from __future__ import annotations
 import os
 from pathlib import Path
 import shutil
+import re
 import subprocess
 import sys
 import tempfile
@@ -72,7 +73,8 @@ def convert_pptx(source: Path, destination: Path) -> str:
         raise ValueError(message)
     if source.suffix.lower() != ".pptx":
         raise ValueError("PPTX 미리보기에는 .pptx 파일만 사용할 수 있습니다.")
-    slides = len(Presentation(str(source)).slides)
+    presentation = Presentation(str(source))
+    slides = len(presentation.slides)
     if slides < 1:
         raise ValueError("슬라이드가 없는 PPTX는 미리보기를 생성할 수 없습니다.")
     destination.parent.mkdir(parents=True, exist_ok=True)
@@ -111,11 +113,17 @@ def convert_pptx(source: Path, destination: Path) -> str:
         try:
             if not generated.is_file() or generated.stat().st_size < 100:
                 raise ValueError("변환한 PDF 파일이 비어 있습니다.")
-            pages = len(PdfReader(str(generated)).pages)
+            reader = PdfReader(str(generated))
+            pages = len(reader.pages)
         except Exception as exc:
             raise ValueError("PPTX 변환 PDF가 올바르게 생성되지 않았습니다.") from exc
         if pages != slides:
             raise ValueError(f"미리보기 PDF 페이지 수({pages})와 원본 슬라이드 수({slides})가 다릅니다.")
+        if engine == 'libreoffice':
+            for slide, page in zip(presentation.slides, reader.pages):
+                native_text = '\n'.join(shape.text for shape in slide.shapes if shape.has_text_frame)
+                if re.search('[가-힣]', native_text) and not re.search('[가-힣]', page.extract_text() or ''):
+                    raise ValueError('한글 글꼴이 없는 미리보기입니다. 서버 한글 글꼴 설정을 확인하세요.')
         # Destination is a separate new file. No changes to source or temporary copy persist.
         with generated.open("rb") as src, destination.open("xb") as dst:
             shutil.copyfileobj(src, dst)

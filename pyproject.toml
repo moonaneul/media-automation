@@ -9,12 +9,17 @@ description = "Church worship media automation"
 requires-python = ">=3.11"
 dependencies = [
     "pydantic>=2.8,<3",
+    "msal>=1.32,<2",
+    "cryptography>=44,<47",
+    "requests>=2.32,<3",
     "PyYAML>=6,<7",
     "python-pptx>=1.0,<2",
+    "imageio-ffmpeg>=0.6,<1",
     "Pillow>=10,<13",
     "reportlab>=4,<5",
     "olefile>=0.47,<1",
     "pypdf>=5,<7",
+    "PyMuPDF>=1.26,<2",
     "pywin32>=306; platform_system == 'Windows'",
 ]
 
@@ -25,6 +30,9 @@ dev = [
 
 [tool.setuptools.packages.find]
 where = ["src"]
+
+[tool.setuptools.package-data]
+"media_automation.web.original" = ["*.json", "ui/*.html", "ui/*.js", "ui/*.json"]
 
 [tool.pytest.ini_options]
 pythonpath = ["src"]

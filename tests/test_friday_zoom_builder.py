@@ -176,7 +176,8 @@ def test_zoom_preview_renders_scripture_and_title(
     # 본문 범위 안내 1장
     # + 짧은 본문 1장
     # + 설교 제목 1장
-    assert len(prs.slides) == 3
+    # Long verses can span more slides; retain every supplied verse.
+    assert len(prs.slides) >= 3
 
     all_text = "\n".join(
         shape.text
@@ -189,4 +190,6 @@ def test_zoom_preview_renders_scripture_and_title(
 
 
     assert "샘플 16절" in all_text
+    assert "샘플 17절" in all_text
+    assert "샘플 18절" in all_text
     assert "예시 설교 제목" in all_text
