@@ -6,6 +6,9 @@ import re
 import uuid
 import hashlib
 import unicodedata
+from zipfile import BadZipFile
+from lxml.etree import XMLSyntaxError
+from pptx.exc import PackageNotFoundError
 from pptx import Presentation
 from pptx.util import Inches
 from pptx.dml.color import RGBColor
@@ -24,7 +27,7 @@ from .production_order import build_order, combine_friday_prayers
 from .bible_connection import resolve
 from .ppt_conversion import convert_original
 
-BUILD_VERSION = 'official-web-engine-v5-service-review-fixes'
+BUILD_VERSION = 'official-web-engine-v6-invalid-score-report'
 ROOT = Path(__file__).resolve().parents[4]
 
 def compatible_original(filename, service, mode, slot):
@@ -148,15 +151,23 @@ def generate(store, body):
                 if asset:
                     source, suffix, metadata = asset
                     if not zoom and suffix in ('.ppt', '.pptx'):
-                        prs.save(path)
                         try:
-                            OpenXmlSlideMerger().insert_all(path, source, after_slide=before)
-                            prs = Presentation(path)
-                            status = 'original_inserted'
-                            connections[key] = dict(metadata, status='connected')
-                        except ValueError:
+                            # Check the source before the merger can touch the output.
+                            Presentation(source)
+                        except (BadZipFile, PackageNotFoundError, XMLSyntaxError, KeyError, OSError):
                             status = 'missing_song_asset'
-                            connections[key] = dict(metadata, status='canvas_mismatch')
+                            connections[key] = dict(metadata, status='invalid_ppt_package',
+                                error='악보 원본을 정상 PPTX로 읽을 수 없습니다. 원본 파일을 확인하고 다시 첨부하세요.')
+                        else:
+                            prs.save(path)
+                            try:
+                                OpenXmlSlideMerger().insert_all(path, source, after_slide=before)
+                                prs = Presentation(path)
+                                status = 'original_inserted'
+                                connections[key] = dict(metadata, status='connected')
+                            except ValueError:
+                                status = 'missing_song_asset'
+                                connections[key] = dict(metadata, status='canvas_mismatch')
                     elif zoom and suffix == '.mp4':
                         slide = add_blank_slide(prs)
                         from media_automation.ppt.video_poster import video_poster
