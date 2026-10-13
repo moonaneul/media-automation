@@ -414,7 +414,7 @@ def test_sunday_people_are_split_in_bulletin_and_second_service_only_in_ppt():
     groups=[['주보 예배·섬김',['주일 인도자','1부 찬양 인도자','2부 찬양 인도자']],
         ['이번 주 섬김 · 주보',['이번 주 1부 기도','이번 주 1부 봉헌기도']],['기도와 봉헌',['2부 기도 담당자','2부 봉헌기도 담당자']]]
     blocks=[b for b in build_order(groups,fields,'sunday') if b['kind']!='blank']
-    assert [(b['key'],b['content']) for b in blocks]==[('2부 기도 담당자','기도\n둘기도'),('2부 봉헌기도 담당자','봉헌기도\n둘봉헌')]
+    assert [(b['key'],b['content']) for b in blocks]==[('2부 기도 담당자','기도\n둘기도'),('광고 순서','교회 소식'),('2부 봉헌기도 담당자','봉헌기도\n둘봉헌')]
 
 
 def test_sunday_fixed_closing_prayer_default_preserves_saved_override(tmp_path):
@@ -523,10 +523,11 @@ def test_ui_new_week_normalizes_partial_server_record_without_erasing_values():
     assert subprocess.check_output([node,'-e',code,str(html)],text=True).strip()=='ok'
 
 
-def test_sunday_news_is_bulletin_only_even_for_older_clients():
+def test_sunday_detailed_news_is_bulletin_only_and_fixed_ppt_notice_remains():
     from media_automation.web.original.production_order import build_order
     blocks=build_order([['기도',['2부 기도 담당자','교회 소식']]],{'2부 기도 담당자':value('검증 담당자'),'교회 소식':value('주보 소식')},'sunday')
     assert not any(b['key']=='교회 소식' for b in blocks)
+    assert next(b for b in blocks if b['key']=='광고 순서')['content']=='교회 소식'
 
 
 def test_sunday_shared_passage_rejects_saved_conflicting_title(tmp_path):

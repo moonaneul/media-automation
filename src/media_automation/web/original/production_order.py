@@ -4,11 +4,12 @@ from media_automation.input_text import clean_leading_marks
 def build_order(groups,fields,service=None):
     if not isinstance(groups,list) or not isinstance(fields,dict):raise ValueError('Invalid form order')
     # Normalize older clients that still send Wednesday ads at the end.
-    if service=='wednesday':
+    if service in ('wednesday','sunday'):
         groups=[[name,[label for label in labels if label!='광고 순서']] for name,labels in groups]
         for _,labels in groups:
-            if '기도 담당자' in labels:
-                labels.insert(labels.index('기도 담당자')+1,'광고 순서')
+            prayer='기도 담당자' if service=='wednesday' else '2부 기도 담당자'
+            if prayer in labels:
+                labels.insert(labels.index(prayer)+1,'광고 순서')
                 break
     order=[];seen=set();prayer_number=0;after_sermon=False
     for group in groups:
@@ -21,11 +22,14 @@ def build_order(groups,fields,service=None):
                 after_sermon=True;prayer_number=0
             if service=='sunday' and label=='교회 소식':continue
             if label.startswith('1부') or label in ('주일 인도자','찬양 인도자','2부 찬양 인도자','폐회 기도 담당자','전달 주보 찬양 목록','전달 섬김표 원문','표지 변경 사항'):continue
-            f=fields.get(label,{'state':'UNSET','value':''});state=f.get('state');text=f.get('value','')
+            f={'state':'VALUE','value':'광고' if service=='wednesday' else '교회 소식'} if label=='광고 순서' and service in ('wednesday','sunday') else fields.get(label,{'state':'UNSET','value':''});state=f.get('state');text=f.get('value','')
             if isinstance(text,str):text=re.sub(r'_x000[bB]_','\n',text).replace('\v','\n')
             if state not in ('VALUE','NONE','UNSET') or not isinstance(text,str):raise ValueError('Invalid input state')
             if state=='NONE':continue
-            if state=='VALUE':text=clean_leading_marks(text)
+            if state=='VALUE':
+                text=clean_leading_marks(text)
+                if '담당자' in label and re.sub(r'\s','',text) in ('설거지','기도','봉헌기도','수요예배기도','1부','2부','이번주','다음주'):
+                    raise ValueError(label+'에 표의 제목이 들어갔습니다. 담당자 이름을 확인하세요.')
             song=any(t in label for t in ('찬양','찬송','특송')) and not ('관련' in label or '기도' in label and label!='기도 후 찬양')
             if not song and state=='UNSET':
                 order.append({'kind':'input','key':label,'state':state,'content':''});continue
@@ -40,7 +44,7 @@ def build_order(groups,fields,service=None):
                     block['content']=str(prayer_number)+'. '+title
                 elif label in ('기도 담당자','2부 기도 담당자'):block['content']='기도\n'+text
                 elif label=='2부 봉헌기도 담당자':block['content']='봉헌기도\n'+text
-                elif label in ('교회 소식','광고 순서'):block['content']='광고'
+                elif label in ('교회 소식','광고 순서'):block['content']='교회 소식' if service=='sunday' else '광고'
                 elif label=='설교 제목':
                     reference=fields.get('성경 본문',{})
                     block['subtitle']=clean_leading_marks(reference.get('value','')) if reference.get('state')=='VALUE' else ''
@@ -67,4 +71,19 @@ def combine_friday_prayers(order, bible, *, include_personal=True):
         result.append(block)
     if include_personal and not any('개인 기도' in b['key'] for b in result):
         result.append(dict(kind='input',key='개인 기도',state='VALUE',content='지금은 개인 기도 시간입니다.\n더 깊은 주님과의 친밀함 가운데 나아가시기 바랍니다.',group='공동체·중보 기도'))
-    return result
+    # Older forms store an entire numbered prayer section in one textarea.
+    # Keep its supporting lines with the topic, but give every topic its own slide.
+    separated=[]
+    for block in result:
+        text=block.get('content') or ''
+        matches=list(re.finditer(r'^\s*\d+[.)]\s+\S.*$',text,re.M))
+        if block['kind']=='input' and '기도' in block['key'] and len(matches)>1:
+            prefix=text[:matches[0].start()].strip()
+            if prefix:
+                separated.append(dict(block,content=prefix))
+            for i,match in enumerate(matches):
+                end=matches[i+1].start() if i+1<len(matches) else len(text)
+                separated.append(dict(block,key=block['key']+' · '+str(i+1),content=text[match.start():end].strip()))
+        else:
+            separated.append(block)
+    return separated

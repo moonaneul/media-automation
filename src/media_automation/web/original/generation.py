@@ -24,7 +24,7 @@ from .production_order import build_order, combine_friday_prayers
 from .bible_connection import resolve
 from .ppt_conversion import convert_original
 
-BUILD_VERSION = 'official-web-engine-v4-sunday-shared-input'
+BUILD_VERSION = 'official-web-engine-v5-service-review-fixes'
 ROOT = Path(__file__).resolve().parents[4]
 
 def compatible_original(filename, service, mode, slot):
@@ -236,7 +236,7 @@ def generate(store, body):
         if zoom:
             prs.save(path)
             from media_automation.ppt.friday_reference import apply_reference_layout
-            reference_applied=apply_reference_layout(path,mapping,body['date'],ROOT/'assets/private/friday_reference')
+            reference_applied=apply_reference_layout(path,mapping,body['date'],Path(os.environ.get('MEDIA_FRIDAY_REFERENCE',str(ROOT/'assets/private/friday_reference'))))
             prs=Presentation(path)
             if not reference_applied:unresolved.append('금요 원본 디자인:template')
         background_music = {'inserted': [], 'actual_playback_verified': False}
@@ -250,7 +250,7 @@ def generate(store, body):
                 if not entries: continue
                 asset = _asset(store, body, {'key':slot, 'content':''})
                 if not asset:
-                    music=ROOT/'assets/private/friday_zoom'
+                    music=Path(os.environ.get('MEDIA_FRIDAY_MUSIC',str(ROOT/'assets/private/friday_zoom')))
                     manifest=music/'music.json'
                     config=json.loads(manifest.read_text()) if manifest.is_file() else {}
                     entry=config.get(role,{})

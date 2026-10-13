@@ -1,4 +1,5 @@
 """Read only explicitly validated local Bible sources; never infer weekly input."""
+import os
 import json
 import re
 import sys
@@ -12,8 +13,11 @@ SOURCES=Path(__file__).resolve().parents[4] / 'data/private/bible_sources'
 
 PROVIDED=Path(__file__).resolve().parents[4] / 'data/private/bible_fixed.json'
 
-def resolve(order, source_dir=SOURCES, provided_file=PROVIDED):
-    raw=json.loads(provided_file.read_text(encoding='utf-8-sig')) if source_dir==SOURCES and provided_file.is_file() else {}
+def resolve(order, source_dir=None, provided_file=None):
+    use_provided = source_dir is None or provided_file is not None
+    source_dir=Path(source_dir if source_dir is not None else os.environ.get('MEDIA_BIBLE_SOURCES',SOURCES))
+    provided_file=Path(provided_file if provided_file is not None else os.environ.get('MEDIA_BIBLE_FILE',PROVIDED))
+    raw=json.loads(provided_file.read_text(encoding='utf-8-sig')) if use_provided and provided_file.is_file() else {}
     checked={}
     for path in sorted(source_dir.glob('*.yaml')):
         source=yaml.safe_load(path.read_text())

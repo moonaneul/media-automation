@@ -123,6 +123,8 @@ function parseBulletin(raw,tables){
  }else{
   for(const [label,f]of Object.entries(result.fields))if(isPerson(label)&&/^인도자$/.test(f.value.trim())){delete result.fields[label];result.unknown.push(label+': 인도자 이름 확인 필요');}
  }
+ // A table heading is never a person's name, even when flattened cells shift.
+ for(const [label,f]of Object.entries(result.fields))if(isPerson(label)&&/^(?:설거지|기도|봉헌기도|수요예배기도|1부|2부|이번주|다음주|구분)$/.test(normalize(f.value))){delete result.fields[label];result.unknown.push(label+': 표 제목이 인식되어 자동 반영하지 않았습니다. 원본 담당자를 확인하세요.');}
  result.songList=result.fields['전달 주보 찬양 목록']?.value||'';
  const hymns=result.songList.match(/^\s*(\d+)\s*(?:장)?\s*[,，]\s*(\d+)\s*(?:장)?\s*[,，]\s*(\d+)\s*장?\s*$/);
  if(hymns)for(const [i,label]of ['별도 찬송','봉헌 찬송','결단 찬송'].entries())if(!result.fields[label])result.fields[label]={state:'VALUE',value:hymns[i+1]+'장'};
