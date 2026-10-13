@@ -6,7 +6,7 @@ from zipfile import ZipFile, ZIP_DEFLATED
 from lxml import etree as E
 from .sunday_typography import NS, q
 
-VERSION = 'friday-original-layout-readable-centered-v7'
+VERSION = 'friday-original-layout-readable-centered-v8-prayer-fit'
 
 def apply_friday_typography(path, mapping, *, zoom):
     path = Path(path)

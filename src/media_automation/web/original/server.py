@@ -1,4 +1,5 @@
 """Local server with authenticated HTTPS proxy mode; external exposure is configured explicitly."""
+import logging
 import argparse
 import ipaddress
 import os
@@ -377,7 +378,9 @@ def make_server(store, port=0, password=None, bind_host="127.0.0.1", public_orig
                         production_lock.release()
                     return self.reply(200,result)
                 except (ValueError,KeyError,TypeError) as exc:return self.reply(400,{'error':str(exc) or '입력과 저장 상태를 확인하세요.'})
-                except Exception:return self.reply(500,{'error':output_label+' 생성에 실패했습니다. 입력은 유지됩니다.'})
+                except Exception:
+                    logging.exception('%s generation failed',output_label)
+                    return self.reply(500,{'error':output_label+' 생성에 실패했습니다. 실행 중인 서버 터미널의 오류 내용을 확인하세요. 입력은 유지됩니다.'})
             if self.command=='POST' and parsed.path=='/api/production-order':
                 try:
                     if self.headers.get('Content-Type')!='application/json':raise ValueError()

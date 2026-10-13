@@ -11,7 +11,7 @@ from pptx.oxml.ns import qn
 from pptx.oxml.xmlchemy import OxmlElement
 from .slide_merge import OpenXmlSlideMerger
 
-VERSION='friday-original-layout-readable-centered-v7'
+VERSION='friday-original-layout-readable-centered-v8-prayer-fit'
 
 
 def replace_paragraph(paragraph, text):
@@ -65,6 +65,27 @@ def replace_prayer(shape, title, body):
     shape.width=Inches(10.78)
     shape.left=Inches(1.65)
     shape.height=Inches(4.8)
+    # Keep the original type sizes for short topics. Only overflowing topics
+    # use the larger safe area and a local reduction, with a readability floor.
+    title_points=int(title_props.get('sz','3600'))/100 if title_props is not None else 36
+    body_points=int(body_props.get('sz','3200'))/100 if body_props is not None else 32
+    title_lines=wrap_title(title,width=40 if title_points>=38 else 44).count('\v')+1
+    required=(title_lines*title_points+len(body_lines)*body_points+44)*1.15
+    if required>shape.height.pt:
+        shape.top=Inches(1.15)
+        shape.height=Inches(5.8)
+        available=shape.height.pt-frame.margin_top.pt-frame.margin_bottom.pt
+        scale=min(1,available/required)
+        if body_points*scale<24 or title_points*scale<28:
+            raise ValueError('기도 내용이 한 화면의 읽기 가능한 분량을 넘습니다. 해당 기도만 두 화면으로 나누어 입력하세요.')
+        if scale<1:
+            for props in source._p.iter(qn('a:rPr')):
+                if props.get('sz'):
+                    props.set('sz',str(round(int(props.get('sz'))*scale)))
+        ppr=source._p.get_or_add_pPr()
+        spacing=ppr.find(qn('a:lnSpc'))
+        if spacing is not None:ppr.remove(spacing)
+        spacing=OxmlElement('a:lnSpc');percent=OxmlElement('a:spcPct');percent.set('val','100000');spacing.append(percent);ppr.append(spacing)
 
 
 
