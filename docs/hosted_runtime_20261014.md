@@ -68,3 +68,5 @@
 기준 문서: [Google Job 실행](https://docs.cloud.google.com/run/docs/execute/jobs), [Job 실행 권한](https://docs.cloud.google.com/iam/docs/roles-permissions/run), [서비스 URL](https://docs.cloud.google.com/run/docs/triggering/https-request), [최소 인스턴스](https://docs.cloud.google.com/run/docs/configuring/min-instances), [Microsoft 분할 업로드](https://learn.microsoft.com/en-us/graph/api/driveitem-createuploadsession?view=graph-rest-1.0).
 
 2026-10-14 실제 적용 시작: SQL 007, 추가 주보 매핑 SQL 적용 및 008 rollback 검증 성공 화면을 확인했다. 기존 검증 런타임 이미지 digest 접근도 확인해 큰 Office/한글/SDK 계층을 다시 만들지 않고 그 이미지에 새 코드만 설치하도록 production Dockerfile을 변경했다. 실제 production 빌드는 아직이다.
+
+2026-10-14 비공개 배포: production Job과 web service를 runtime-hosted r2 digest로 생성했다. Cloud Run의 큰 HTTP 응답 제한에 대응해 hosted 다운로드를 명시적인 HTTP/1.1 chunked 전송으로 추가했고 정확한 바이트 전송/실패 처리 관련 테스트 21개가 통과했다. 이후 빌드는 Registry/Cloud Run과 같은 asia-northeast3 지역을 사용한다. 기존 입력 2026-10-07 수요예배로 실제 제작 시험을 진행하며 이번 주 값을 이전 주 값으로 대체하지 않는다.

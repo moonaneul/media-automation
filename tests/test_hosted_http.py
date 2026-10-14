@@ -114,3 +114,19 @@ def test_build_returns_job_id_without_waiting_or_exposing_snapshot(hosted_app):
     assert code==202 and json.loads(content)['id']=='pending-job'
     hosted.dispatcher.start.assert_called_once_with('pending-job')
     assert 'snapshot' not in json.loads(content)
+
+
+def test_generated_download_uses_chunked_transfer_and_preserves_exact_bytes(hosted_app,tmp_path,monkeypatch):
+    hosted,client,_,request=hosted_app;cookie=login(request)
+    content=b'0123456789'*200000
+    record={'filename':'verified.pptx'}
+    client.artifact_job.return_value={'output':'ppt','result':{'artifact':record}}
+    def download(cloud,record,target):
+        target.write_bytes(content)
+        return target
+    monkeypatch.setattr('media_automation.cloud.http.download_verified',download)
+    code,body,headers=request('/api/generated?id='+('a'*32)+'&format=pptx',cookie=cookie)
+    assert code==200 and body==content
+    assert headers['Transfer-Encoding']=='chunked'
+    assert headers.get('Content-Length') is None
+    assert headers['Connection']=='close'

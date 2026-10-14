@@ -15,7 +15,7 @@ from .supabase_work_store import WorkStoreUnavailable, validate_work
 from ..web.original.work_store import RevisionConflict, WorkStore
 from ..web.original.production_order import build_order
 from ..web.original.generation import compatible_original, render_configuration
-from ..web.streaming_download import send_download
+from .download import send_file as send_download
 
 
 class Hosted:
