@@ -217,3 +217,8 @@ def test_generated_result_can_be_loaded_on_another_device_without_local_files():
     assert 'outputs' not in current['data']
     changed=deepcopy(current);changed['data']['fields']['설교 제목']['value']='수정 제목'
     assert 'outputs' not in Hosted.with_results(client,'2026-10-14','wednesday',changed)['data']
+    stale=deepcopy(current)
+    stale['data']['outputs']={'ppt':{'fileId':'old-local-file','changed':True,'complete':False}}
+    assert Hosted.with_results(client,'2026-10-14','wednesday',stale)['data']['outputs']['ppt']['fileId']=='a'*32
+    stale['data']['outputs']['ppt']['complete']=True
+    assert Hosted.with_results(client,'2026-10-14','wednesday',stale)['data']['outputs']['ppt']['fileId']=='old-local-file'

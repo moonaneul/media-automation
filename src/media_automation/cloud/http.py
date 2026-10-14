@@ -382,7 +382,8 @@ class Hosted:
             kind=job['output'];result=job['result']
             outputs=current['data'].setdefault('outputs',{})
             # Keep an explicitly saved newer output or its completed review state.
-            if outputs.get(kind,{}).get('fileId'):continue
+            existing=outputs.get(kind,{})
+            if existing.get('fileId') and (existing.get('complete') or not existing.get('changed')):continue
             outputs[kind]={'generated':True,'complete':False,'changed':False,
                 'fileId':result['file_id'],'filename':result['filename'],'unresolved':result['unresolved'],
                 'format':'pdf' if kind=='pdf' else 'pptx','engineVersion':result.get('engine_version'),

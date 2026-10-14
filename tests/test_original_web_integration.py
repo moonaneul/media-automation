@@ -568,3 +568,18 @@ def test_pending_refresh_never_replaces_a_new_local_input():
     if not node:pytest.skip('Node.js required')
     code="""const fs=require('fs');const src=fs.readFileSync(process.argv[1],'utf8');const fn='async function loadShared'+src.split('async function loadShared')[1].split('async function flushShared')[0];const st={loaded:true,revision:1,dirty:false};const syncState=()=>st,endpoint=()=>'',key=()=>'k',syncLabel=()=>{};let saveOk=false;let records={k:{fields:{title:'local'}}};let release;const fetch=()=>new Promise(r=>release=r);const document={activeElement:{matches:()=>true}};const render=()=>{throw Error('input replaced');};eval(fn);(async()=>{let pending=loadShared('k');st.dirty=true;release({ok:true,json:async()=>({revision:2,data:{fields:{title:'remote'}}})});await pending;if(records.k.fields.title!=='local'||st.revision!==1)throw Error('lost local edit');console.log('ok');})();"""
     assert subprocess.check_output([node,'-e',code,str(ROOT/'src/media_automation/web/original/ui/index.html')],text=True).strip()=='ok'
+
+
+def test_production_save_waits_for_pending_refresh():
+    node=shutil.which('node')
+    if not node:pytest.skip('Node.js required')
+    code="""const fs=require('fs'),src=fs.readFileSync(process.argv[1],'utf8');
+const fn='async function loadShared'+src.split('async function loadShared')[1].split('async function startShared')[0];
+const st={loaded:true,revision:1,dirty:false,busy:false},syncState=()=>st,endpoint=()=>'',key=()=>'other',syncLabel=()=>{};
+let records={k:{fields:{}}},saveOk=false,release,finished=false;
+const fetch=()=>new Promise(r=>release=r);eval(fn);
+(async()=>{const refresh=loadShared('k');const ready=flushShared('k').then(()=>finished=true);
+await new Promise(r=>setImmediate(r));if(finished)throw Error('Production did not wait');
+release({ok:true,json:async()=>({revision:1,data:{fields:{}}})});await refresh;await ready;
+if(st.busy||!finished)throw Error('Production remains blocked');console.log('ok');})();"""
+    assert subprocess.check_output([node,'-e',code,str(ROOT/'src/media_automation/web/original/ui/index.html')],text=True).strip()=='ok'
