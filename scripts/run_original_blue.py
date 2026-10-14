@@ -16,7 +16,7 @@ def main():
     parser.add_argument(
         "--database",
         type=Path,
-        default=Path.home() / "Documents/media-automation-integration/original-blue-working/work.sqlite",
+        default=Path(__file__).resolve().parents[1] / "output/original-blue-working/work.sqlite",
     )
     args = parser.parse_args()
     if not (1 <= args.port <= 65535):

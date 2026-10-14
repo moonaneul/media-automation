@@ -24,6 +24,7 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
+cloud = ["google-cloud-secret-manager>=2.25,<3"]
 dev = [
     "pytest>=8,<9",
 ]

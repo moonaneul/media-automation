@@ -131,12 +131,17 @@ def test_song_file_fault_never_claims_complete(app, fault):
     body = build_body(); body['revision'] = 2
     body['groups'].insert(0, ['시작 찬양', ['시작 찬양 1']])
     status, result = request('/api/build', body)
+    assert status == 200 and result['complete'] is False
+    assert '시작 찬양 1:score_asset' in result['unresolved']
     if fault == 'corrupt':
-        assert status in (400, 500) and result['error']
-        assert not list(Path(store.path).with_suffix('.generated').glob('*.pptx'))
-    else:
-        assert status == 200 and result['complete'] is False
-        assert '시작 찬양 1:score_asset' in result['unresolved']
+        from pptx import Presentation
+        directory = Path(store.path).with_suffix('.generated')
+        report = json.loads((directory / (result['file_id'] + '.json')).read_text())
+        assert report['connections']['시작 찬양 1']['status'] == 'invalid_ppt_package'
+        deck = Presentation(directory / (result['file_id'] + '.pptx'))
+        slot = next(item for item in report['mapping'] if item['key'] == '시작 찬양 1')
+        assert not deck.slides[slot['start'] - 1].shapes
+        assert path.read_bytes() == b'broken zip'
     assert store.get('2026-10-07', 'wednesday')['data'] == data
 
 

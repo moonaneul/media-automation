@@ -18,24 +18,29 @@ from .generation import generate, BUILD_VERSION, SUNDAY_TYPOGRAPHY_VERSION as UI
 from .bulletin_generation import generate_bulletin, LAYOUT_VERSION as UI_BULLETIN_VERSION
 from .notice_files import extract_notice
 from .ppt_preview import preview
+from ..streaming_download import send_download
 
 UI = Path(__file__).resolve().parent / 'ui'
 
-def make_server(store, port=0, password=None, bind_host="127.0.0.1", public_origin=None):
+def make_server(store, port=0, password=None, bind_host="127.0.0.1", public_origin=None, supabase_auth=None):
     address = ipaddress.ip_address(bind_host)
     if address.version != 4 or not (address.is_loopback or address.is_private) or address.is_unspecified:
         raise ValueError("이 컴퓨터의 사설 IPv4 주소만 사용할 수 있습니다.")
-    if not address.is_loopback and (not password or len(password) < 12):
+    if not address.is_loopback and not supabase_auth and (not password or len(password) < 12):
         raise ValueError("휴대폰 연결에는 12자 이상의 접속 암호가 필요합니다.")
     if public_origin:
         origin = urlsplit(public_origin)
         if (origin.scheme != 'https' or not origin.hostname or origin.username or origin.password
                 or origin.path or origin.query or origin.fragment or origin.port not in (None,443)):
             raise ValueError('배포 접속 주소는 경로 없는 HTTPS 주소여야 합니다.')
-        if not address.is_loopback or not password or len(password) < 16:
+        if not address.is_loopback or (not supabase_auth and (not password or len(password) < 16)):
             raise ValueError('HTTPS 배포는 내부 서버와 16자 이상의 접속 암호가 필요합니다.')
     cookie_security = '; Secure' if public_origin else ''
+    from ...cloud.supabase_auth import AccessDenied, AuthUnavailable
+    if supabase_auth and password:
+        raise ValueError("Supabase login and shared password cannot be combined")
     sessions={}
+    access_tokens={}
     auth_lock=threading.Lock()
     production_lock=threading.Lock()
     from .onedrive import OneDrive
@@ -91,9 +96,24 @@ def make_server(store, port=0, password=None, bind_host="127.0.0.1", public_orig
             with auth_lock:
                 for expired in [key for key,value in sessions.items() if value<=now]:
                     sessions.pop(expired,None)
-                authenticated=not password or token in sessions
+                    access_tokens.pop(expired,None)
+                authenticated=(not password and not supabase_auth) or token in sessions
+                access_token=access_tokens.get(token)
+            if supabase_auth:
+                authenticated=False
+                if access_token:
+                    try:
+                        supabase_auth.authenticate("Bearer " + access_token)
+                        authenticated=True
+                    except AccessDenied:
+                        with auth_lock:
+                            sessions.pop(token,None)
+                            access_tokens.pop(token,None)
+                    except AuthUnavailable:
+                        if parsed.path != "/api/logout":
+                            return self.reply(503,{"error":"로그인 서버에 연결하지 못했습니다. 잠시 후 다시 시도하세요."})
             if self.command == 'GET' and parsed.path == '/api/mode':
-                return self.reply(200, {'shared':True, 'local_only':address.is_loopback,'password_required':bool(password),'authenticated':authenticated})
+                return self.reply(200, {'shared':True, 'local_only':address.is_loopback,'password_required':bool(password or supabase_auth),'auth_provider':'supabase' if supabase_auth else 'local','authenticated':authenticated})
             if self.command=='POST' and parsed.path=='/api/login':
                 try:
                     if self.headers.get('Content-Type')!='application/json':
@@ -101,9 +121,30 @@ def make_server(store, port=0, password=None, bind_host="127.0.0.1", public_orig
                     size=int(self.headers.get('Content-Length','-1'))
                     if not 0<size<=4096:
                         raise ValueError()
-                    value=json.loads(self.rfile.read(size)).get('password')
+                    body=json.loads(self.rfile.read(size))
+                    value=body.get('password')
                     if not isinstance(value,str):
                         raise ValueError()
+                    if supabase_auth:
+                        with auth_lock:
+                            failures[:]=[t for t in failures if t>now-60]
+                            if len(failures)>=10:
+                                return self.reply(429,{'error':'잠시 후 다시 시도하세요.'})
+                        try:
+                            access_token=supabase_auth.login(body.get('email'),value)
+                        except AccessDenied:
+                            with auth_lock: failures.append(now)
+                            return self.reply(401,{'error':'이메일·비밀번호 또는 미디어팀 승인 상태를 확인하세요.'})
+                        except AuthUnavailable:
+                            return self.reply(503,{'error':'로그인 서버에 연결하지 못했습니다.'})
+                        new_token=secrets.token_urlsafe(32)
+                        with auth_lock:
+                            sessions.pop(token,None)
+                            access_tokens.pop(token,None)
+                            sessions[new_token]=now+3600
+                            access_tokens[new_token]=access_token
+                        self.session_cookie='media_session='+new_token+'; HttpOnly; SameSite=Strict; Path=/; Max-Age=3600'+cookie_security
+                        return self.reply(200,{'authenticated':True})
                     with auth_lock:
                         failures[:]=[t for t in failures if t>now-60]
                         if len(failures)>=10:
@@ -120,18 +161,19 @@ def make_server(store, port=0, password=None, bind_host="127.0.0.1", public_orig
             if self.command=='POST' and parsed.path=='/api/logout':
                 with auth_lock:
                     sessions.pop(token,None)
+                    access_tokens.pop(token,None)
                 self.session_cookie='media_session=; HttpOnly; SameSite=Strict; Path=/; Max-Age=0'+cookie_security
                 return self.reply(200,{'authenticated':False})
             from .onedrive_http import handle as handle_cloud
             def cloud_session_valid(session_token):
                 with auth_lock:
-                    return not password or sessions.get(session_token,0)>time.time()
+                    return (not password and not supabase_auth) or sessions.get(session_token,0)>time.time()
             if parsed.path.startswith('/api/onedrive/'):
                 with cloud.lock:
                     if handle_cloud(cloud,self,parsed,expected_origin,authenticated,token,cloud_session_valid):
                         return
             if not authenticated:
-                return self.reply(401,{'error':'공용 비밀번호로 접속하세요.'})
+                return self.reply(401,{'error':'로그인 후 이용하세요.'})
             if parsed.path=='/api/bulletin-settings':
                 try:
                     with store.connect() as db:
@@ -323,7 +365,7 @@ def make_server(store, port=0, password=None, bind_host="127.0.0.1", public_orig
                 if extension not in ('pptx','pdf'):return self.reply(400,{'error':'파일 형식을 확인하세요.'})
                 file=Path(store.path).with_suffix('.generated')/(identifier+'.'+extension)
                 if not file.is_file():return self.reply(404,{'error':'파일을 찾지 못했습니다.'})
-                return self.reply(200,file.read_bytes(),'application/pdf' if extension=='pdf' else 'application/vnd.openxmlformats-officedocument.presentationml.presentation')
+                return send_download(self, file)
             if self.command=='POST' and parsed.path in ('/api/complete-bulletin','/api/complete'):
                 try:
                     size=int(self.headers.get('Content-Length','-1'))
