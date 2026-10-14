@@ -1,0 +1,20 @@
+# Allowlist: the Docker build must not upload the local project wholesale.
+**
+!pyproject.toml
+!src/
+!src/**
+!deploy/
+!deploy/cloud/
+!deploy/cloud/Dockerfile
+!deploy/cloud/Dockerfile.dockerignore
+**/__pycache__/**
+**/*.pyc
+**/*.egg-info/**
+**/.env*
+**/*.db
+**/*.sqlite*
+**/*.pem
+**/*.key
+**/*.enc
+!deploy/cloud/Dockerfile.runtime
+!deploy/cloud/Dockerfile.runtime.dockerignore

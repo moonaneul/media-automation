@@ -1,3 +1,5 @@
+> **현재 구현:** [클라우드 제작 연결 기록](../../docs/hosted_runtime_20261014.md). HTTP/worker entrypoint는 추가됐으며 SQL 007/008와 실제 Cloud Run 적용은 검증 전입니다. 기존 probe 이미지는 production 배포에 사용하지 않습니다.
+
 > **2026-10-14 최신 상태:** 로컬 8876은 Supabase 로그인 + 기존 SQLite로 운영 중입니다. Supabase 입력·목록·공통 자료 설정 적용과 Google 서버의 Supabase/암호화 OneDrive 연결 검사는 완료했습니다. Cloud Run 공개 웹서비스와 실제 제작 worker는 아직 미완성입니다. 최신 로컬 변경은 아직 GitHub에 커밋되지 않았습니다. 아래 과거 진행 기록의 ‘아직 미실행’ 표현은 당시 상태입니다. 다음 작업과 정리 기준은 [최신 인수인계](../../docs/cloud_handoff_20261014.md)를 우선 참고하세요.
 
 # OneDrive + Supabase + Cloud Run

@@ -59,7 +59,9 @@ def test_runtime_path_cannot_escape_allowed_source_roots(path):
 
 
 def test_bulletin_temp_store_and_environment_are_cleaned(monkeypatch):
-    snap=sample();snap['service']='sunday';monkeypatch.setenv('MEDIA_BIBLE_FILE','original-value')
+    snap=sample();snap['service']='sunday';digest=original(snap)
+    snap['tables']['runtime_assets']=[{'path':'assets/private/bulletin/'+n,'digest':digest} for n in ('original-design.pdf','original-regular.ttf','original-bold.ttf')]
+    monkeypatch.setenv('MEDIA_BIBLE_FILE','original-value')
     with materialize(snap,cloud(),'pdf') as store:
         path=Path(store.path);assert path.exists()
         assert os.environ['MEDIA_BIBLE_FILE']!='original-value'
@@ -70,3 +72,9 @@ def test_bulletin_temp_store_and_environment_are_cleaned(monkeypatch):
 def test_missing_design_is_rejected_before_blank_template_fallback():
     with pytest.raises(ValueError,match='design/Bible'):
         with materialize(sample(),cloud(),'ppt'):pass
+
+
+def test_bulletin_missing_originals_fails_before_rendering():
+    snap=sample();snap['service']='sunday'
+    with pytest.raises(ValueError,match='bulletin design/fonts'):
+        with materialize(snap,cloud(),'pdf'):pass

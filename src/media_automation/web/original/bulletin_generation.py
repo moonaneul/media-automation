@@ -21,12 +21,6 @@ def generate_bulletin(store, body):
     if body['service'] != 'sunday': raise ValueError('주보는 주일 작업에서 제작합니다.')
     data = current_input(store, body)
     fields = dict(data.get('fields', {}))
-    for label,name in [('1부 찬양 인도자','이광민'),('2부 찬양 인도자','장기훈'),('폐회 기도 담당자','이은철 목사')]:
-        if fields.get(label,{}).get('state','UNSET')=='UNSET':fields[label]={'state':'VALUE','value':name}
-    from media_automation.bulletin.numbering import number_for_date
-    fields['확정 주보 호수']={'state':'VALUE','value':number_for_date(body['date'])}
-    for label in ('이번 주 1부 기도','다음 주 1부 기도'):
-        fields[label]={'state':'VALUE','value':'인도자'}
     # Sunday worship and cell-group passage/title share the explicit current input.
     for source,target in [('성경 본문','목장 본문'),('설교 제목','목장 제목')]:
         if fields.get(source,{}).get('state') in ('VALUE','NONE'):
@@ -41,8 +35,8 @@ def generate_bulletin(store, body):
         row = db.execute('SELECT payload FROM bulletin_settings WHERE id=1').fetchone()
     settings = json.loads(row[0]) if row else json.loads(Path(__file__).with_name('bulletin-base-reference.json').read_text())
     annual, church = settings['annual'], settings['church']
-    unresolved = [label for label in ('성경 본문', '설교 제목', '목장 본문', '목장 제목', *['질문 '+str(n) for n in range(1,5)]) if not value(label)]
-    unresolved += [label for label in ('별도 찬송','봉헌 찬송','결단 찬송', '이번 주 1부 기도','2부 기도 담당자','이번 주 1부 봉헌기도','2부 봉헌기도 담당자',
+    unresolved = [label for label in ('확정 주보 호수', '성경 본문', '설교 제목', '목장 본문', '목장 제목', *['질문 '+str(n) for n in range(1,5)]) if not value(label)]
+    unresolved += [label for label in ('주일 인도자','설교자','1부 찬양 인도자','2부 찬양 인도자','폐회 기도 담당자','별도 찬송','봉헌 찬송','결단 찬송', '이번 주 1부 기도','2부 기도 담당자','이번 주 1부 봉헌기도','2부 봉헌기도 담당자',
         '이번 주 설거지','이번 주 수요예배 기도','다음 주 1부 기도','다음 주 2부 기도',
         '다음 주 1부 봉헌기도','다음 주 2부 봉헌기도','다음 주 설거지','다음 주 수요예배 기도') if fields.get(label,{}).get('state','UNSET')=='UNSET']
     if settings.get('reference_year') != date.fromisoformat(body['date']).year:
@@ -64,7 +58,7 @@ def generate_bulletin(store, body):
         schedule.append(tuple(parts) if len(parts)==2 else ('',line))
     month = re.search(r'(\d+)월', value('월간 일정 제목') or '')
     document = BulletinDocument(
-        BulletinCoverPage(value('확정 주보 호수'),f"{date.fromisoformat(body['date']).year}년 {date.fromisoformat(body['date']).month}월 {date.fromisoformat(body['date']).day}일"),
+        BulletinCoverPage(value('확정 주보 호수') or '',f"{date.fromisoformat(body['date']).year}년 {date.fromisoformat(body['date']).month}월 {date.fromisoformat(body['date']).day}일"),
         worship,
         BulletinCellGroupPage(value('목장 본문'),value('목장 제목'),tuple(value('질문 '+str(n)) or '' for n in range(1,5))),
         BulletinNewsPage(tuple(re.sub(r'^\s*\d+[.)]\s*','',line) for line in (value('교회 소식') or '').splitlines()),tuple(schedule),int(month[1]) if month else None))

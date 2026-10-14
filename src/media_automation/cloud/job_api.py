@@ -25,6 +25,30 @@ class JobClient(SupabaseWorkStore):
             raise WorkStoreUnavailable('Catalog does not match requested work')
         return result
 
+    def list(self, day, service):
+        validate_work(day, service)
+        return self._request('GET', '/rest/v1/media_jobs', params={'day': 'eq.' + day, 'service': 'eq.' + service,
+            'select': 'id,status,result,day,service,revision,output,deadline,created_at,input:snapshot->work->data,catalog_revision:snapshot->catalog_revision', 'order': 'created_at.desc', 'limit': '20'})
+
+    def status(self, identifier):
+        rows = self._request('GET', '/rest/v1/media_jobs', params={'id': 'eq.' + str(UUID(identifier)),
+            'select': 'id,status,result,day,service,revision,output,deadline', 'limit': '1'})
+        if not isinstance(rows, list) or len(rows) != 1:
+            raise WorkStoreUnavailable('제작 작업을 찾지 못했습니다.')
+        return rows[0]
+
+    def artifact_job(self, file_id):
+        if not isinstance(file_id, str) or len(file_id) != 32 or any(c not in '0123456789abcdef' for c in file_id):
+            raise ValueError('Invalid artifact ID')
+        rows = self._request('GET', '/rest/v1/media_jobs', params={'result->>file_id': 'eq.' + file_id,
+            'status': 'eq.succeeded', 'select': 'id,status,result,day,service,revision,output', 'limit': '1'})
+        if not isinstance(rows, list) or len(rows) != 1:
+            raise WorkStoreUnavailable('완료된 제작 파일을 찾지 못했습니다.')
+        return rows[0]
+
+    def cancel(self, identifier):
+        return self._request('POST', '/rest/v1/rpc/media_cancel_job', json={'p_id': str(UUID(identifier))})
+
     def start(self, day, service, revision, output, groups, request_key):
         validate_work(day, service)
         if type(revision) is not int or revision < 1 or output not in ('ppt', 'pdf') or not isinstance(groups, list):
@@ -57,7 +81,7 @@ class JobBackend:
         self._headers = {'apikey': secret_key}
 
     def call(self, name, body):
-        if name not in ('media_claim_job', 'media_finish_job'):
+        if name not in ('media_claim_job', 'media_finish_job', 'media_job_active', 'media_dispatch_job', 'media_register_file'):
             raise ValueError('Unsupported worker operation')
         try:
             response = requests.post(self.url + '/rest/v1/rpc/' + name, headers=self._headers,

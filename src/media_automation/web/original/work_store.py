@@ -156,8 +156,6 @@ class WorkStore:
         self.validate(day, service)
         with self.connect() as db:
             result = self.decode(db.execute('SELECT revision,payload,updated_at FROM works WHERE date=? AND service=?', (day, service)).fetchone())
-        if service == 'sunday' and result['revision'] == 0:
-            result['data'] = {'fields': {'폐회 기도 담당자': {'state': 'VALUE', 'value': '이은철 목사'}}}
         return result
 
     def save(self, day, service, expected_revision, data):

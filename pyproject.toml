@@ -33,6 +33,7 @@ dev = [
 where = ["src"]
 
 [tool.setuptools.package-data]
+"media_automation.cloud" = ["ui/*.js"]
 "media_automation.web.original" = ["*.json", "ui/*.html", "ui/*.js", "ui/*.json"]
 
 [tool.pytest.ini_options]

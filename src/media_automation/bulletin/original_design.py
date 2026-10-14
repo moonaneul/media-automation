@@ -4,6 +4,7 @@ The private reference is never published. Every weekly field is removed before
 inserting current input; absent values remain blank. Imposition remains 4|1,2|3.
 """
 from pathlib import Path
+import os
 import pymupdf as pdf
 from media_automation.people import confirmed_titles, format_people
 
@@ -38,7 +39,7 @@ def wrap_original_text(text, font, size, width):
 
 
 def render_original_bulletin(document, destination, *, cover_static=None, news_static=None, cover_photo=None):
-    assets = ROOT / 'assets/private/bulletin'
+    assets = Path(os.environ.get('MEDIA_BULLETIN_ASSETS', str(ROOT / 'assets/private/bulletin')))
     required = [assets/'original-design.pdf', assets/'original-regular.ttf', assets/'original-bold.ttf']
     if not all(p.is_file() for p in required):
         raise ValueError('기존 주보 원본 템플릿과 글꼴이 없습니다. 기존 디자인을 확인한 템플릿을 설치하세요.')
@@ -76,8 +77,8 @@ def render_original_bulletin(document, destination, *, cover_static=None, news_s
                       ((155,271.5,262,285),w.scripture),((140,288,283,302),w.sermon_title),
                       ((174,305.3,262,319),w.decision_hymn)]:
         slot(0,rect,text,10,align='center',baseline=rect[1]+10)
-    preacher=w.preacher or (cover_static.senior_pastor if cover_static else '')
-    for y,name in [(60.2,preacher),(288.1,preacher),(322.5,w.closing_prayer)]:
+    preacher=w.preacher or ''
+    for y,name in [(60.2,w.leader),(288.1,preacher),(322.5,w.closing_prayer)]:
         if name and name.replace(' ','')=='이은철':name='이 은 철 목 사'
         slot(0,(331,y,404,y+14),name,10,baseline=y+10)
     table=[(108,408,w.first_service_prayer),(169,408,w.first_service_offering_prayer),
@@ -99,7 +100,7 @@ def render_original_bulletin(document, destination, *, cover_static=None, news_s
     month=document.news.schedule_month
     slot(1,(22,137,406,153),f'<{month}월 사역 일정>' if month else '',10,baseline=149)
     slot(1,(22,158,406,243),'\n'.join((str(a)+' : ' if a else '')+str(b) for a,b in document.news.monthly_schedule),10,False,baseline=171,leading=15.5)
-    slot(1,(447,25,520,42),'No. '+document.cover.bulletin_number,10,baseline=38)
+    slot(1,(447,25,520,42),'No. '+document.cover.bulletin_number if document.cover.bulletin_number else '',10,baseline=38)
     slot(1,(700,25,823,42),document.cover.date_text,10,align='right',baseline=38)
     if cover_static:
         # The supplied cover artwork contains its contact block as an image.

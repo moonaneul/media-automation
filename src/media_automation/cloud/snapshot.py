@@ -12,7 +12,7 @@ from ..web.original.work_store import WorkStore
 
 
 RUNTIME_ROOTS = ('assets/worship/', 'assets/private/friday_reference/',
-                 'assets/private/friday_zoom/', 'data/private/bible_sources/')
+                 'assets/private/friday_zoom/', 'assets/private/bulletin/', 'data/private/bible_sources/')
 
 
 def validate_runtime_path(value):
@@ -74,6 +74,10 @@ class SnapshotStore(WorkStore):
         target = Path(self.path).with_suffix('.files') / digest
         if target.is_file():
             return target
+        if type(row.get('size')) is not int or not 0 < row['size'] <= 128 * 1024 * 1024:
+            raise ValueError('Cloud original exceeds size limit')
+        if sum(p.stat().st_size for p in target.parent.glob('*') if p.is_file()) + row['size'] > 768 * 1024 * 1024:
+            raise ValueError('Production originals exceed total size limit')
         item = self.cloud.item(row['item_id'])
         if (item.get('size') != row['size'] or 'file' not in item
                 or item.get('parentReference', {}).get('driveId') != row['drive_id']
@@ -113,6 +117,15 @@ def materialize(snapshot, cloud, output):
         names = {r['path']: r for r in assets}
         if output == 'pdf' and (service != 'sunday' or len(snapshot['tables']['settings']) != 1):
             raise ValueError('Confirmed bulletin settings required')
+        if output == 'pdf':
+            for name in ('original-design.pdf', 'original-regular.ttf', 'original-bold.ttf'):
+                relative = 'assets/private/bulletin/' + name
+                if relative not in names:
+                    raise ValueError('Required original bulletin design/fonts missing')
+                row = names[relative]
+                target = root / validate_runtime_path(relative)
+                target.parent.mkdir(parents=True, exist_ok=True)
+                shutil.copyfile(store.ensure_original(row['digest']), target)
         if output == 'ppt':
             start = 'friday-zoom' if zoom else 'friday-in-person' if service == 'friday' else service
             required = 'assets/worship/' + start + '-start.pptx'
@@ -128,7 +141,8 @@ def materialize(snapshot, cloud, output):
                 target = root / validate_runtime_path(row['path'])
                 target.parent.mkdir(parents=True, exist_ok=True)
                 shutil.copyfile(source, target)
-        variables = {'MEDIA_WORSHIP_TEMPLATES': root / 'assets/worship',
+        variables = {'MEDIA_BULLETIN_ASSETS': root / 'assets/private/bulletin',
+                     'MEDIA_WORSHIP_TEMPLATES': root / 'assets/worship',
                      'MEDIA_BIBLE_SOURCES': root / 'data/private/bible_sources',
                      'MEDIA_BIBLE_FILE': root / 'data/private/bible_fixed.json',
                      'MEDIA_FRIDAY_REFERENCE': root / 'assets/private/friday_reference',

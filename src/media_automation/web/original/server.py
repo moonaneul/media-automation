@@ -22,9 +22,9 @@ from ..streaming_download import send_download
 
 UI = Path(__file__).resolve().parent / 'ui'
 
-def make_server(store, port=0, password=None, bind_host="127.0.0.1", public_origin=None, supabase_auth=None):
+def make_server(store, port=0, password=None, bind_host="127.0.0.1", public_origin=None, supabase_auth=None, hosted=None):
     address = ipaddress.ip_address(bind_host)
-    if address.version != 4 or not (address.is_loopback or address.is_private) or address.is_unspecified:
+    if address.version != 4 or not (address.is_loopback or address.is_private) or (address.is_unspecified and hosted is None):
         raise ValueError("이 컴퓨터의 사설 IPv4 주소만 사용할 수 있습니다.")
     if not address.is_loopback and not supabase_auth and (not password or len(password) < 12):
         raise ValueError("휴대폰 연결에는 12자 이상의 접속 암호가 필요합니다.")
@@ -33,8 +33,10 @@ def make_server(store, port=0, password=None, bind_host="127.0.0.1", public_orig
         if (origin.scheme != 'https' or not origin.hostname or origin.username or origin.password
                 or origin.path or origin.query or origin.fragment or origin.port not in (None,443)):
             raise ValueError('배포 접속 주소는 경로 없는 HTTPS 주소여야 합니다.')
-        if not address.is_loopback or (not supabase_auth and (not password or len(password) < 16)):
+        if (not address.is_loopback and hosted is None) or (not supabase_auth and (not password or len(password) < 16)):
             raise ValueError('HTTPS 배포는 내부 서버와 16자 이상의 접속 암호가 필요합니다.')
+    if hosted is not None and (not public_origin or not supabase_auth or password):
+        raise ValueError('Hosted runtime requires HTTPS and Supabase login')
     cookie_security = '; Secure' if public_origin else ''
     from ...cloud.supabase_auth import AccessDenied, AuthUnavailable
     if supabase_auth and password:
@@ -44,7 +46,7 @@ def make_server(store, port=0, password=None, bind_host="127.0.0.1", public_orig
     auth_lock=threading.Lock()
     production_lock=threading.Lock()
     from .onedrive import OneDrive
-    cloud=OneDrive(store)
+    cloud=hosted.cloud if hosted is not None else OneDrive(store)
     failures=[]
     class Handler(BaseHTTPRequestHandler):
         def log_message(self, *args):
@@ -64,20 +66,28 @@ def make_server(store, port=0, password=None, bind_host="127.0.0.1", public_orig
             self.wfile.write(data)
 
         def route(self):
+            if hosted is not None and self.command == 'GET' and self.path == '/healthz':
+                return self.reply(200, {'ready': True})
             host = f'{bind_host}:{self.server.server_port}'
             expected_host = urlsplit(public_origin).netloc if public_origin else host
             if not public_origin and bind_host=='127.0.0.1' and self.headers.get('Host')==f'localhost:{self.server.server_port}':
                 expected_host=f'localhost:{self.server.server_port}'
             expected_origin = public_origin or 'http://' + expected_host
             if (self.headers.get('Host') != expected_host or self.headers.get('Origin', expected_origin) != expected_origin
-                    or public_origin and (not ipaddress.ip_address(self.client_address[0]).is_loopback
+                    or public_origin and ((hosted is None and not ipaddress.ip_address(self.client_address[0]).is_loopback)
                                           or self.headers.get('X-Forwarded-Proto') != 'https')):
                 return self.reply(403, {'error':'허용된 접속 주소만 이용할 수 있습니다.'})
+            if hosted is not None and self.command != 'GET' and self.headers.get('Origin') != expected_origin:
+                return self.reply(403, {'error':'접속 주소를 확인하세요.'})
             parsed = urlsplit(self.path)
             if self.command == 'GET' and parsed.path in ('/', '/index.html'):
                 html=(UI / 'index.html').read_text()
                 for marker,version in {'__ENGINE_VERSION__':BUILD_VERSION,'__SUNDAY_VERSION__':UI_SUNDAY_VERSION,'__FRIDAY_VERSION__':UI_FRIDAY_VERSION,'__BULLETIN_VERSION__':UI_BULLETIN_VERSION}.items():html=html.replace(marker,version)
+                if hosted is not None:
+                    html=html.replace('</body>', '<script src="/cloud-runtime.js"></script></body>')
                 return self.reply(200, html.encode(), 'text/html; charset=utf-8')
+            if hosted is not None and self.command == 'GET' and parsed.path == '/cloud-runtime.js':
+                return self.reply(200, Path(hosted.script).read_bytes(), 'text/javascript; charset=utf-8')
             if self.command == 'GET' and parsed.path == '/onedrive.js':
                 return self.reply(200,(UI/'onedrive.js').read_bytes(),'text/javascript; charset=utf-8')
             if self.command == 'GET' and parsed.path == '/bulletin-number.js':
@@ -99,11 +109,17 @@ def make_server(store, port=0, password=None, bind_host="127.0.0.1", public_orig
                     access_tokens.pop(expired,None)
                 authenticated=(not password and not supabase_auth) or token in sessions
                 access_token=access_tokens.get(token)
+            if hosted is not None:
+                try:
+                    access_token=hosted.sessions.read(token)
+                except AuthUnavailable:
+                    return self.reply(503, {'error':'로그인 상태를 확인하지 못했습니다.'})
+            member=None
             if supabase_auth:
                 authenticated=False
                 if access_token:
                     try:
-                        supabase_auth.authenticate("Bearer " + access_token)
+                        member=supabase_auth.authenticate("Bearer " + access_token)
                         authenticated=True
                     except AccessDenied:
                         with auth_lock:
@@ -113,7 +129,7 @@ def make_server(store, port=0, password=None, bind_host="127.0.0.1", public_orig
                         if parsed.path != "/api/logout":
                             return self.reply(503,{"error":"로그인 서버에 연결하지 못했습니다. 잠시 후 다시 시도하세요."})
             if self.command == 'GET' and parsed.path == '/api/mode':
-                return self.reply(200, {'shared':True, 'local_only':address.is_loopback,'password_required':bool(password or supabase_auth),'auth_provider':'supabase' if supabase_auth else 'local','authenticated':authenticated})
+                return self.reply(200, {'hosted':hosted is not None, 'shared':True, 'local_only':address.is_loopback,'password_required':bool(password or supabase_auth),'auth_provider':'supabase' if supabase_auth else 'local','authenticated':authenticated})
             if self.command=='POST' and parsed.path=='/api/login':
                 try:
                     if self.headers.get('Content-Type')!='application/json':
@@ -137,7 +153,15 @@ def make_server(store, port=0, password=None, bind_host="127.0.0.1", public_orig
                             return self.reply(401,{'error':'이메일·비밀번호 또는 미디어팀 승인 상태를 확인하세요.'})
                         except AuthUnavailable:
                             return self.reply(503,{'error':'로그인 서버에 연결하지 못했습니다.'})
-                        new_token=secrets.token_urlsafe(32)
+                        if hosted is not None:
+                            try:
+                                member=supabase_auth.authenticate('Bearer ' + access_token)
+                                new_token=hosted.sessions.create(access_token, member)
+                                hosted.sessions.delete(token)
+                            except (AccessDenied, AuthUnavailable):
+                                return self.reply(503, {'error':'로그인 상태 저장에 실패했습니다.'})
+                        else:
+                            new_token=secrets.token_urlsafe(32)
                         with auth_lock:
                             sessions.pop(token,None)
                             access_tokens.pop(token,None)
@@ -159,11 +183,20 @@ def make_server(store, port=0, password=None, bind_host="127.0.0.1", public_orig
                 except (ValueError,TypeError,AttributeError):
                     return self.reply(400,{'error':'접속 요청을 확인하세요.'})
             if self.command=='POST' and parsed.path=='/api/logout':
+                if hosted is not None:
+                    try:
+                        hosted.sessions.delete(token)
+                    except AuthUnavailable:
+                        return self.reply(503, {'error':'로그아웃 결과를 확인하지 못했습니다.'})
                 with auth_lock:
                     sessions.pop(token,None)
                     access_tokens.pop(token,None)
                 self.session_cookie='media_session=; HttpOnly; SameSite=Strict; Path=/; Max-Age=0'+cookie_security
                 return self.reply(200,{'authenticated':False})
+            if hosted is not None:
+                if not authenticated:
+                    return self.reply(401, {'error':'로그인 후 이용하세요.'})
+                return hosted.handle(self, parsed, access_token, member)
             from .onedrive_http import handle as handle_cloud
             def cloud_session_valid(session_token):
                 with auth_lock:
