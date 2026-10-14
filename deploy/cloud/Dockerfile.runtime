@@ -1,12 +1,10 @@
-FROM python:3.13-slim-bookworm
+# Reuse the already verified Korean/font/Office runtime by immutable digest.
+FROM asia-northeast3-docker.pkg.dev/church-media-511519/church-media/runtime-cloud@sha256:8a94553f9259a798debc1c5bdb7aacd22cd4a8f3f7e8491cb9dcbaf2f2a325d4
+USER root
 ENV PYTHONDONTWRITEBYTECODE=1 PYTHONUNBUFFERED=1 HOME=/tmp
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    libreoffice-impress libreoffice-writer poppler-utils ffmpeg \
-    fontconfig fonts-noto-cjk fonts-nanum \
-    && rm -rf /var/lib/apt/lists/*
 WORKDIR /app
 COPY pyproject.toml ./
 COPY src ./src
-RUN pip install --no-cache-dir ".[cloud]" && useradd --uid 10001 --create-home media
+RUN python -m pip install --no-deps --no-cache-dir .
 USER 10001
 ENTRYPOINT ["python", "-m", "media_automation.cloud.server"]

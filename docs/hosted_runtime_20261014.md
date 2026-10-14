@@ -66,3 +66,5 @@
 이 설정이 무료를 보장하지 않는다. 기존 1,000원 예산은 알림이다. 대형 Registry 이미지 저장·Secret Manager 버전·실제 실행·외부 전송을 배포 후 확인해야 한다.
 
 기준 문서: [Google Job 실행](https://docs.cloud.google.com/run/docs/execute/jobs), [Job 실행 권한](https://docs.cloud.google.com/iam/docs/roles-permissions/run), [서비스 URL](https://docs.cloud.google.com/run/docs/triggering/https-request), [최소 인스턴스](https://docs.cloud.google.com/run/docs/configuring/min-instances), [Microsoft 분할 업로드](https://learn.microsoft.com/en-us/graph/api/driveitem-createuploadsession?view=graph-rest-1.0).
+
+2026-10-14 실제 적용 시작: SQL 007, 추가 주보 매핑 SQL 적용 및 008 rollback 검증 성공 화면을 확인했다. 기존 검증 런타임 이미지 digest 접근도 확인해 큰 Office/한글/SDK 계층을 다시 만들지 않고 그 이미지에 새 코드만 설치하도록 production Dockerfile을 변경했다. 실제 production 빌드는 아직이다.
