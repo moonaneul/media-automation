@@ -2,6 +2,16 @@
 
 코드 검토: https://github.com/moonaneul/media-automation/pull/14
 
+## 실제 적용 결과
+
+SQL 007, 주보 공통자료 추가 매핑을 적용했고 SQL 008의 전체 rollback 검증이 성공했다. 저장 입력 13개·곡 44개는 유지되며 파일 69개·공통자료 경로 28개다. 웹과 제작 Job을 asia-northeast3에 비공개 배포했다. 최신 코드 이미지의 digest는 `sha256:31cd19c5894929d75c79e52f29462a6e3ba36677fc05f5a0e4a442f4d4a4decf`, 웹 revision은 `media-automation-00002-jck`이다. 기존 Office/한글/SDK 이미지 계층을 재사용했다.
+
+실제 저장 입력으로 수요 PPT 36장과 주보 A4 가로 PDF 2면을 각각 생성했다. 전체 렌더링, OneDrive 새 결과 보관, 재다운로드 SHA256 검증이 성공했다. 수요 실행은 1분 26초였다. 로컬 서버를 재시작하거나 원본·DB·인증 파일을 변경하지 않았다.
+
+렌더링 화면 검수에서 수요 시험 입력의 악보 3개 미연결, 다른 곡 첨부 1개, 두 자리 절 번호의 줄바꿈을 발견했다. 주보는 4|1·2|3 접지 배치와 여백을 확인했으며 미입력 인도자 1개를 검수 항목으로 남겼다. 과거 시험 입력을 임의 수정하지 않았고 두 결과 모두 예배용 완료 처리는 하지 않았다.
+
+실제 웹에서 비로그인 자료 조회·제작 요청은 401, 다른 Origin 제작 요청은 403으로 차단했다. 서비스 IAM에 외부 공개 권한은 없다. Supabase 사용자 로그인부터 웹 dispatch·다운로드까지의 브라우저 통합, 다른 기기·Mac-off 사용, 금요 미디어 재생은 미검증이다. `/healthz`는 외부 Google 응답에서 404를 반환했으므로 외부 health 판정에 사용하지 않는다. `/api/mode`와 Cloud Run revision ready는 확인했다.
+
 ## 이번 변경
 
 기존 화면을 유지하면서 별도 Cloud Run HTTP/제작 entrypoint를 추가했다. 로컬 서버는 기존 경로를 사용하고, hosted 경로는 Supabase 장애 때 SQLite로 대체 저장하지 않는다.
@@ -24,18 +34,18 @@
 - original-regular.ttf
 - original-bold.ttf
 
-새 파일 3개만 다운로드 SHA256을 검증했다. 이전에 검증한 원본 전체는 다시 해시하지 않았다. 추가 매핑 SQL은 프로젝트 작업 폴더의 `output/cloud-bulletin-runtime-20261014/register_bulletin_runtime.sql`에 보관한다. 실제 자산·파일 ID 매핑·DB·인증파일은 GitHub에 올리지 않는다. 이 추가 매핑의 Supabase 적용은 아직이다.
+새 파일 3개만 다운로드 SHA256을 검증했다. 이전에 검증한 원본 전체는 다시 해시하지 않았다. 추가 매핑 SQL은 프로젝트 작업 폴더의 `output/cloud-bulletin-runtime-20261014/register_bulletin_runtime.sql`에 보관하며 Supabase 적용을 완료했다. 실제 자산·파일 ID 매핑·DB·인증파일은 GitHub에 올리지 않는다.
 
 ## 검증과 한계
 
 - 준비 코드 관련 테스트 112개 확인.
 - 전체 회귀 실행: 812개 통과, 1개 skip, 1개는 작업 복사본에 의도적으로 제외한 주보 표지 이미지가 없어 실패했다. 표지를 시험 폴더에만 복사한 후 해당 테스트 통과. 공개 코드에는 포함하지 않았다.
 - 마지막 담당자·클라우드 화면·제작 흐름 변경의 관련 테스트 93개 통과.
-- 새 SQL 007과 rollback 시험 SQL 008: PostgreSQL SQL 및 PL/pgSQL 파서 문법 검사 통과. 실제 DB에서 실행한 결과가 아니다.
+- 새 SQL 007과 rollback 시험 SQL 008: PostgreSQL SQL 및 PL/pgSQL 파서 문법 검사와 실제 DB rollback 시험 통과.
 - Python/JavaScript 문법과 diff 공백 검사 통과.
-- 테스트의 worker 전송·클라우드 인증·큐 호출은 모의 환경이다. 실제 예배 PPT/PDF의 클라우드 생성·시각 검수·PowerPoint 정상 열림·금요 미디어 재생·Mac-off 운영은 확인하지 않았다.
+- 단위 테스트는 모의 환경을 사용한다. 별도로 실제 PPT/PDF 클라우드 생성·렌더링·보관·화면 검수를 수행했다. PowerPoint 정상 열림·금요 미디어 재생·Mac-off 운영은 확인하지 않았다.
 - 웹의 기존 OneDrive 조회·원본 선택·자동 연결·보관 자료 다운로드는 연결했다. hosted 운영의 Microsoft 재연결/앱 인증 설정/선택 폴더 변경 화면은 제한한다. 기존 연결의 실제 갱신/유지 검증을 먼저 하고 관리자 재연결 운영 절차를 보완해야 한다.
-- 웹/API 컨테이너와 SQL은 실제 클라우드에서 통합 검증 전이므로 PR은 초안으로 유지한다.
+- 로그인부터 실제 웹 제작 요청까지의 통합 검증이 남아 있어 PR은 초안으로 유지한다.
 
 ## 실제 적용 순서
 
@@ -67,6 +77,4 @@
 
 기준 문서: [Google Job 실행](https://docs.cloud.google.com/run/docs/execute/jobs), [Job 실행 권한](https://docs.cloud.google.com/iam/docs/roles-permissions/run), [서비스 URL](https://docs.cloud.google.com/run/docs/triggering/https-request), [최소 인스턴스](https://docs.cloud.google.com/run/docs/configuring/min-instances), [Microsoft 분할 업로드](https://learn.microsoft.com/en-us/graph/api/driveitem-createuploadsession?view=graph-rest-1.0).
 
-2026-10-14 실제 적용 시작: SQL 007, 추가 주보 매핑 SQL 적용 및 008 rollback 검증 성공 화면을 확인했다. 기존 검증 런타임 이미지 digest 접근도 확인해 큰 Office/한글/SDK 계층을 다시 만들지 않고 그 이미지에 새 코드만 설치하도록 production Dockerfile을 변경했다. 실제 production 빌드는 아직이다.
-
-2026-10-14 비공개 배포: production Job과 web service를 runtime-hosted r2 digest로 생성했다. Cloud Run의 큰 HTTP 응답 제한에 대응해 hosted 다운로드를 명시적인 HTTP/1.1 chunked 전송으로 추가했고 정확한 바이트 전송/실패 처리 관련 테스트 21개가 통과했다. 이후 빌드는 Registry/Cloud Run과 같은 asia-northeast3 지역을 사용한다. 기존 입력 2026-10-07 수요예배로 실제 제작 시험을 진행하며 이번 주 값을 이전 주 값으로 대체하지 않는다.
+Cloud Run의 큰 HTTP 응답 제한에 대응해 hosted 다운로드를 명시적인 HTTP/1.1 chunked 전송으로 추가했고 정확한 바이트 전송/실패 처리 관련 테스트 21개가 통과했다. 최신 빌드는 Registry/Cloud Run과 같은 asia-northeast3 지역에서 수행했다. 저장된 과거 입력은 제작 시험에만 사용하고 이번 주 값을 대체하지 않는다.
