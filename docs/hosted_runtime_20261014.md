@@ -10,7 +10,7 @@ SQL 007, 주보 공통자료 추가 매핑을 적용했고 SQL 008의 전체 rol
 
 렌더링 화면 검수에서 수요 시험 입력의 악보 3개 미연결, 다른 곡 첨부 1개, 두 자리 절 번호의 줄바꿈을 발견했다. 주보는 4|1·2|3 접지 배치와 여백을 확인했으며 미입력 인도자 1개를 검수 항목으로 남겼다. 과거 시험 입력을 임의 수정하지 않았고 두 결과 모두 예배용 완료 처리는 하지 않았다.
 
-실제 웹에서 비로그인 자료 조회·제작 요청은 401, 다른 Origin 제작 요청은 403으로 차단했다. 2026-10-15 사용자 진행 승인 후 웹 서비스에만 외부 접속을 허용했다. 공개 로그인 화면 200 및 비로그인 자료 조회 401을 확인했으며 제작 Job 권한은 변경하지 않았다. Supabase 사용자 로그인부터 웹 dispatch·다운로드까지의 브라우저 통합, 다른 기기·Mac-off 사용, 금요 미디어 재생은 미검증이다. `/healthz`는 외부 Google 응답에서 404를 반환했으므로 외부 health 판정에 사용하지 않는다. `/api/mode`와 Cloud Run revision ready는 확인했다.
+실제 웹에서 비로그인 자료 조회·제작 요청은 401, 다른 Origin 제작 요청은 403으로 차단했다. 2026-10-15 사용자 진행 승인 후 웹 서비스에만 외부 접속을 허용했다. 공개 로그인 화면 200 및 비로그인 자료 조회 401을 확인했으며 제작 Job 권한은 변경하지 않았다. Supabase 실제 사용자 로그인·입력 불러오기·웹 dispatch·결과 저장·미리보기·다운로드까지 확인했다. 다른 기기·Mac-off 사용, 금요 미디어 재생은 미검증이다. `/healthz`는 외부 Google 응답에서 404를 반환했으므로 외부 health 판정에 사용하지 않는다. `/api/mode`와 Cloud Run revision ready는 확인했다.
 
 ## 이번 변경
 
@@ -45,7 +45,7 @@ SQL 007, 주보 공통자료 추가 매핑을 적용했고 SQL 008의 전체 rol
 - Python/JavaScript 문법과 diff 공백 검사 통과.
 - 단위 테스트는 모의 환경을 사용한다. 별도로 실제 PPT/PDF 클라우드 생성·렌더링·보관·화면 검수를 수행했다. PowerPoint 정상 열림·금요 미디어 재생·Mac-off 운영은 확인하지 않았다.
 - 웹의 기존 OneDrive 조회·원본 선택·자동 연결·보관 자료 다운로드는 연결했다. hosted 운영의 Microsoft 재연결/앱 인증 설정/선택 폴더 변경 화면은 제한한다. 기존 연결의 실제 갱신/유지 검증을 먼저 하고 관리자 재연결 운영 절차를 보완해야 한다.
-- 로그인부터 실제 웹 제작 요청까지의 통합 검증이 남아 있어 PR은 초안으로 유지한다.
+- 브라우저 통합 검증을 완료했다. 금요 미디어·PowerPoint 및 실제 운영 전환 검수가 남아 PR은 초안으로 유지한다.
 
 ## 실제 적용 순서
 
@@ -78,3 +78,11 @@ SQL 007, 주보 공통자료 추가 매핑을 적용했고 SQL 008의 전체 rol
 기준 문서: [Google Job 실행](https://docs.cloud.google.com/run/docs/execute/jobs), [Job 실행 권한](https://docs.cloud.google.com/iam/docs/roles-permissions/run), [서비스 URL](https://docs.cloud.google.com/run/docs/triggering/https-request), [최소 인스턴스](https://docs.cloud.google.com/run/docs/configuring/min-instances), [Microsoft 분할 업로드](https://learn.microsoft.com/en-us/graph/api/driveitem-createuploadsession?view=graph-rest-1.0).
 
 Cloud Run의 큰 HTTP 응답 제한에 대응해 hosted 다운로드를 명시적인 HTTP/1.1 chunked 전송으로 추가했고 정확한 바이트 전송/실패 처리 관련 테스트 21개가 통과했다. 최신 빌드는 Registry/Cloud Run과 같은 asia-northeast3 지역에서 수행했다. 저장된 과거 입력은 제작 시험에만 사용하고 이번 주 값을 대체하지 않는다.
+
+## 2026-10-15 브라우저 통합 검증
+
+승인 계정 로그인 후 공동 입력을 불러오고 기존 결과를 다운로드해 SHA256 일치를 확인했다. 웹에서 요청한 새 PPT 36장 제작이 성공했고, 제작 요청 202·공동 결과 저장 200·보고서와 미리보기 200을 실제 서버 기록에서 확인했다.
+
+이 과정에서 이전 로컬 파일 ID가 미리보기에 남는 문제와 자동 새로고침 중 제작 요청이 보류되는 문제를 수정했다. 완료 검수된 기존 결과는 유지하고 입력이 일치하는 클라우드 결과를 복원하며, 제작 전에는 진행 중인 입력 새로고침을 기다린다. 관련 검사 79개가 통과했다.
+
+웹 revision `media-automation-00003-4s8`, 코드 `82812db`, 이미지 `sha256:da68818b0075f27d77df6789f8a296a9addb8425781ac1c9e10189d039811b4c`를 배포했다. worker 이미지는 이전 검증판을 유지했다. CPU·메모리·인스턴스 제한·새로고침 주기는 변경하지 않았다. 현재 로그인은 만료됐으므로 다시 사용하려면 재로그인이 필요하다.
