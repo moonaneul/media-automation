@@ -374,7 +374,9 @@ class Hosted:
     @staticmethod
     def with_results(client, day, service, current):
         current=deepcopy(current)
-        for job in client.list(day,service):
+        jobs=client.list(day,service)
+        cloud_files={job['result']['file_id'] for job in jobs if job['status']=='succeeded'}
+        for job in jobs:
             if job['status']!='succeeded':continue
             original=job['input']
             if (original.get('fields')!=current['data'].get('fields')
@@ -383,7 +385,7 @@ class Hosted:
             outputs=current['data'].setdefault('outputs',{})
             # Keep an explicitly saved newer output or its completed review state.
             existing=outputs.get(kind,{})
-            if existing.get('fileId') and (existing.get('complete') or not existing.get('changed')):continue
+            if existing.get('complete') or existing.get('fileId') in cloud_files:continue
             outputs[kind]={'generated':True,'complete':False,'changed':False,
                 'fileId':result['file_id'],'filename':result['filename'],'unresolved':result['unresolved'],
                 'format':'pdf' if kind=='pdf' else 'pptx','engineVersion':result.get('engine_version'),
