@@ -21,9 +21,9 @@ for secret in church-media-supabase church-media-onedrive-key; do
 done
 # Existing worker retains its verified secret permissions. No bootstrap version-adder added.
 gcloud run jobs deploy media-production --project="$project" --region="$region" \
-  --image="$image" --service-account="$worker_account" --container=worker \
-  --command=python --args=-m,media_automation.cloud.worker \
-  --tasks=1 --parallelism=1 --max-retries=0 --task-timeout=840s --cpu=1 --memory=4Gi \
+  --service-account="$worker_account" --tasks=1 --parallelism=1 --max-retries=0 --task-timeout=840s \
+  --container=worker --image="$image" --command=python --args=-m,media_automation.cloud.worker \
+  --cpu=1 --memory=4Gi \
   --set-env-vars=MEDIA_GCP_PROJECT="$project",MEDIA_SUPABASE_URL=https://rzqvhldujuaeqnckxezw.supabase.co
 # Resource-level execution permission only. The API accepts no user-selected command/image/env.
 gcloud run jobs add-iam-policy-binding media-production --project="$project" --region="$region" \
