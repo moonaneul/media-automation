@@ -62,3 +62,22 @@ def test_cloud_source_search_tags_non_song_roles_read_only():
         "bulletin", "score", "prayer_audio",
     ]
     cloud.list_selected.assert_called_once_with("source", None, "찬양")
+
+
+def test_resume_upload_cannot_finalize_stale_non_song_registration():
+    import json
+
+    hosted = object.__new__(Hosted)
+    hosted.cloud = Mock()
+    hosted.sessions = Mock()
+    hosted.sessions.cipher.decrypt.return_value = json.dumps({
+        'purpose': 'media-source-upload-v1',
+        'expires': 9999999999,
+        'user_id': 'media-member',
+        'operation': 'song_asset',
+        'mutation': {'filename': 'cover.pptx', 'song_id': 'song-1'},
+    }).encode()
+    with pytest.raises(ValueError, match='찬양 외'):
+        hosted.upload_finish(None, SimpleNamespace(user_id='media-member'),
+                             {'sealed': 'opaque-seal', 'item_id': 'item-1'})
+    hosted.cloud.item.assert_not_called()
