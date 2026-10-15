@@ -39,5 +39,6 @@ def test_ui_never_imports_entire_onedrive_during_worship_build():
     assert "CloudMedia.autoConnect()" not in html
     assert "원본 미삽입" in html
     assert "현재 방식에서 미삽입" in html
-    assert "원본은 서버에 저장됐습니다" in html
+    assert "서버 저장 완료 · OneDrive 원본 업로드도 확인됐습니다" in html
+    assert "OneDrive 업로드 미확인" in html
     assert "이 서버에서 제작된 파일을 찾지 못했습니다" in html
