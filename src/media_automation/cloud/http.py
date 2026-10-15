@@ -142,6 +142,9 @@ class Hosted:
                             raise ValueError('페이지 번호를 확인하세요.')
                         scale = 1200 / max(doc[page - 1].rect.width, doc[page - 1].rect.height)
                         return reply(200, doc[page - 1].get_pixmap(matrix=pymupdf.Matrix(scale, scale), alpha=False).tobytes('png'), 'image/png')
+            if path == '/api/catalog-audit' and method == 'GET':
+                from .catalog_audit import inspect_catalog
+                return reply(200, inspect_catalog(self.catalog(client)))
             if path == '/api/songs':
                 snapshot = self.catalog(client)
                 if method == 'GET':
