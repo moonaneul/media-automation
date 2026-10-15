@@ -357,14 +357,15 @@ class OneDrive:
         raise CloudError('다운로드 주소가 너무 많이 변경됐습니다.')
 
     def import_song(self, identifier, song_id):
+        from .original_roles import song_candidate
         folder = self.selected('source')
         if song_id not in {s['id'] for s in self.store.songs()}:
             raise CloudError('연결할 등록 곡을 선택하세요.')
         item = self.item(identifier)
         if not self.within(item, folder):
             raise CloudError('찬양 원본 폴더 안의 파일만 불러올 수 있습니다.')
-        if Path(item.get('name','')).suffix.lower() not in ('.ppt','.pptx','.mp4','.mp3','.wav','.pdf'):
-            raise CloudError('악보 PPT·영상·음원·PDF 파일을 선택하세요.')
+        if not song_candidate(item.get('name','')):
+            raise CloudError('찬양 원본이 아닙니다. 주보·템플릿·기도 자료는 별도 자료로 관리하세요.')
         content = self._download(item)
         result = self.store.attach_song_asset(song_id, item['name'], content)
         with self.store.connect() as db:
@@ -421,6 +422,7 @@ class OneDrive:
         return candidates[0] if len(candidates)==1 else None
 
     def auto_connect(self):
+        from .original_roles import original_role, song_candidate, can_auto_register_hymn
         folder = self.selected('source')
         pending = [folder['id']]; seen=set();files=[]
         while pending:
@@ -430,7 +432,7 @@ class OneDrive:
             if len(seen)>200:raise CloudError('원본 폴더가 너무 많습니다. 폴더 구성을 확인하세요.')
             for item in self.children(identifier):
                 if 'folder' in item:pending.append(item['id'])
-                elif 'file' in item and Path(item.get('name','')).suffix.lower() in ('.ppt','.pptx','.mp4','.mp3','.wav','.pdf'):
+                elif 'file' in item and song_candidate(item.get('name','')):
                     files.append(item)
             if len(files)>4000:raise CloudError('원본이 너무 많습니다. 검색 범위를 줄여 주세요.')
         songs=self.store.songs(); groups={}; undecided=[]
@@ -438,8 +440,8 @@ class OneDrive:
             song=self.filename_song(item['name'],songs)
             if not song:
                 metadata=self.filename_metadata(item['name'])
-                if metadata:
-                    # Do not create another song when its number or title conflicts.
+                if can_auto_register_hymn(metadata, item['name']):
+                    # Only named hymn scores create songs; other files require selection.
                     conflict=any((metadata['edition'] and v.get('edition')==metadata['edition'] and v.get('number')==metadata['number']) or v['title']==metadata['title'] for v in songs)
                     if not conflict:
                         song=self.store.register_song(metadata);songs.append(song)
