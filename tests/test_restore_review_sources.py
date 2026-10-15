@@ -120,3 +120,20 @@ def test_missing_asset_status_is_visible_in_review_ui():
     assert "자료 미연결 · 원본 파일 없음" in html
     assert "원본 파일 없음 · 현재 미삽입" in html
     assert "원본 파일 없음 · 자료 화면에서 확인하세요." in html
+
+
+def test_catalog_metadata_does_not_claim_missing_bytes_are_present(tmp_path):
+    db = tmp_path / "review/work.db"
+    db.parent.mkdir()
+    store = WorkStore(db)
+    song = store.register_song({"title": "검증 찬양", "aliases": []})
+    asset = store.attach_song_asset(song["id"], "1.pptx", b"reference-bytes")
+    store.review_asset(song["id"], asset["digest"],
+                       {"technical": True, "church": True, "permission": "allowed"})
+    # Only the review DB survives the move, not its content-addressed original.
+    (db.with_suffix(".files") / asset["digest"]).unlink()
+    catalog_asset = store.songs()[0]["assets"][0]
+    assert catalog_asset["eligible"] is True  # prior review metadata preserved
+    assert catalog_asset["local_file_present"] is False
+    ui = Path(__file__).resolve().parents[1] / "src/media_automation/web/original/ui/index.html"
+    assert "서버 원본 파일 없음 · 현재 미삽입" in ui.read_text()
