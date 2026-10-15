@@ -413,12 +413,12 @@ class Hosted:
             return handler.reply(200,self.cloud.status('https://'+handler.headers['Host']))
         if action=='files' and handler.command=='GET':
             purpose=query.get('purpose',['source'])[0]
-            if purpose not in ('source','archive'):raise ValueError('자료 종류를 확인하세요.')
+            if purpose not in ('source','source_video','archive'):raise ValueError('자료 종류를 확인하세요.')
             terms=query.get('q',[''])[0]
-            if purpose=='source' and not terms.strip():
+            if purpose in ('source','source_video') and not terms.strip():
                 raise ValueError('원본을 찾을 곡명 또는 찬송가 번호를 입력하세요.')
             items=self.cloud.list_selected(purpose,query.get('id',[None])[0],terms)
-            if purpose=='source':
+            if purpose in ('source','source_video'):
                 from ..web.original.original_roles import original_role
                 items=[{**item,'source_role':original_role(item.get('name',''))}
                        if 'file' in item else item for item in items]
@@ -530,8 +530,8 @@ class Hosted:
                 or not compatible_original(filename, service, mode, slot)
                 or not is_background and not song_candidate(filename)):
             raise ValueError('현재 예배 방식에 맞는 찬양 원본만 선택하세요.')
-        if not self.cloud.within(item, self.cloud.selected('source')):
-            raise ValueError('찬양 원본 폴더의 파일만 가져올 수 있습니다.')
+        if not self.cloud.within(item, self.cloud.selected('source_video' if service=='friday' and mode=='zoom' else 'source')):
+            raise ValueError('예배 방식에 맞는 원본 폴더의 파일만 가져올 수 있습니다.')
         if not 0 < item.get('size', 0) <= 128 * 1024 * 1024:
             raise ValueError('지원하는 원본 크기는 128MB 이하입니다.')
         content = self.cloud._download(item)
