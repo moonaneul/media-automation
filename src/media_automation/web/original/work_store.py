@@ -29,7 +29,14 @@ class WorkStore:
         with self.connect() as db:
             rows=list(db.execute('SELECT slot,filename,digest FROM attachments WHERE day=? AND service=?', (day,service)))
         from .ppt_conversion import conversion_status
-        return [{'slot':r[0], 'filename':r[1], 'digest':r[2], 'archive_status':'pending_connection',**conversion_status(Path(self.path).with_suffix('.files')/r[2],r[1])} for r in rows]
+        def status(digest, filename):
+            source = Path(self.path).with_suffix('.files') / digest
+            if not source.is_file():
+                return {'conversion_status': 'missing',
+                        'conversion_message': '등록 정보만 있고 실제 원본 파일이 없습니다. 검수용 .files 저장소를 확인하세요.'}
+            return conversion_status(source, filename)
+        return [{'slot':r[0], 'filename':r[1], 'digest':r[2], 'archive_status':'pending_connection',
+                 **status(r[2],r[1])} for r in rows]
 
     def attach(self, day, service, slot, filename, content, song_id=None):
         self.validate(day, service)
