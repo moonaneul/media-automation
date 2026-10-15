@@ -42,20 +42,20 @@ const CloudMedia=(()=>{
    const result=await api('auto-connect',{});await refreshSongs();
    const root=el('cloud-library-list');root.replaceChildren();
    root.append(text('p','자동 연결 '+result.linked+'개 · 기존 연결 '+result.unchanged+'개 · 확인 필요 '+result.choices.length+'개'+(result.pending?' · 다음 확인에서 연결 '+result.pending+'개':''),'hint'));
-   for(const item of [...result.choices,...result.errors])root.append(text('p',item.name+' · '+item.reason,'hint'));
+   const issues=[...result.choices,...result.errors];if(issues.length){const details=text('details');details.append(text('summary','확인할 자료 '+issues.length+'개 · 펼치기'));for(const item of issues.slice(0,30))details.append(text('p',item.name+' · '+item.reason,'hint'));if(issues.length>30)details.append(text('p','그 밖의 '+(issues.length-30)+'개는 생략했습니다. 필요한 곡명으로 검색하세요.','hint'));root.append(details);}
    root.append(text('p','새 원본은 확인 상태에서 내용·사용 허락을 검수한 뒤 제작에 사용합니다.','hint'));
    searchState('searched',{result});return result;
   })();try{return await autoBusy;}catch(error){searchState('error',{message:error.message});throw error;}finally{autoBusy=null;}
  }
  async function sources(){
-  const serial=++requestSerial,root=el('cloud-library-list');root.replaceChildren(text('p','OneDrive에서 검색 중…','hint'));
-  try{const items=(await api('files?purpose=source&q='+encodeURIComponent(el('library-search').value.trim()))).items;if(serial!==requestSerial)return;
-   root.replaceChildren();const files=items.filter(f=>f.file&&/\.(pptx?|mp4|mp3|wav|pdf)$/i.test(f.name));
+   const serial=++requestSerial,root=el('cloud-library-list');const query=el('library-search').value.trim();if(!query){root.replaceChildren(text('p','먼저 검색할 찬양 곡명이나 번호를 입력하세요.','hint'));return;}root.replaceChildren(text('p','OneDrive에서 검색 중…','hint'));
+   try{const items=(await api('files?purpose=source&q='+encodeURIComponent(query))).items;if(serial!==requestSerial)return;
+    root.replaceChildren();const mode=el('library-kind').value;const files=items.filter(f=>{if(!f.file)return false;const name=f.name||'',role=f.source_role;if(role&&!['score','song_video','audio_candidate'].includes(role))return false;if(!role&&/^(cover(?:[-_.]|$)|bulletin(?:[-_.]|$)|community[-_]prayer|worship[-_]template|주보|표지)/i.test(name))return false;return mode==='score'?/\.pptx?$/i.test(name):mode==='media'?/\.mp4$/i.test(name):/\.(pptx?|mp4)$/i.test(name);});
    for(const item of files){const row=text('div',undefined,'asset-row'),info=text('div');info.append(text('h3',item.name),text('p','OneDrive 원본 · '+Math.round(item.size/1024)+' KB','hint'));
     const select=document.createElement('select');select.setAttribute('aria-label',item.name+' 연결할 곡');select.add(new Option('연결할 등록 곡 선택',''));for(const song of app.songCatalog)select.add(new Option(songCaption(song),song.id));
     info.append(select,button('이 곡의 원본으로 연결',async()=>{if(!select.value)throw Error('등록 곡을 선택하세요. 목록에 없으면 먼저 곡 정보를 등록하세요.');const result=await api('import',{id:item.id,song_id:select.value});await refreshSongs();if(app.tab==='assets')assets();msg(result.duplicate?'이미 저장된 동일 원본을 연결했습니다.':'OneDrive 원본을 연결했습니다. 확인 상태에서 내용과 사용 허락을 확인하세요.');}));row.append(info);root.append(row);
    }
-   if(!files.length)root.append(text('p','일치하는 원본 파일이 없습니다. 폴더 안에 악보 PPT·영상·음원·PDF를 올려 두세요.','empty'));
+   if(!files.length)root.append(text('p','선택한 종류에서 일치하는 악보 PPT 또는 찬양 영상이 없습니다. 곡명·자료 종류를 확인하세요.','empty'));
    if(!el('library-search').value.trim()&&items.some(i=>i.folder))root.append(text('p','하위 폴더의 원본은 곡명 또는 번호를 입력해 검색하세요.','hint'));
   }catch(e){if(serial===requestSerial)root.replaceChildren(text('p',e.message,'empty'));}
  }
@@ -74,12 +74,12 @@ const CloudMedia=(()=>{
   el('cloud-disconnect').onclick=async()=>{if(!confirm('이 서버의 OneDrive 연결을 해제할까요? OneDrive 파일은 삭제하지 않습니다.'))return;await api('disconnect',{});await refresh();msg('서버의 연결 정보를 해제했습니다. Microsoft 계정의 앱 권한 취소는 Microsoft 계정 설정에서 할 수 있습니다.');};
   for(const purpose of ['source','archive'])el('cloud-pick-'+purpose).onclick=()=>chooseFolder(purpose).catch(e=>msg(e.message));
   el('cloud-folder-select').onclick=async()=>{try{await api('folders',{purpose:folderPurpose,id:folderStack.at(-1).id});el('cloud-folder-dialog').close();await refresh();msg('OneDrive 폴더를 저장했습니다.');}catch(e){msg(e.message);}};
-  el('cloud-auto-connect').onclick=()=>autoConnect().catch(e=>msg(e.message));
+  el('cloud-auto-connect').onclick=()=>{if(confirm('OneDrive 전체 원본을 검색하고 정확히 일치하는 자료는 자동으로 연결합니다. 검수와 사용 허락은 별도이며, OneDrive 파일은 삭제하지 않습니다. 계속할까요?'))autoConnect().catch(e=>msg(e.message));};
   el('cloud-library-search').onclick=sources;el('cloud-archive-refresh').onclick=()=>archives();el('cloud-archive-current').onclick=()=>archiveCurrent().catch(e=>msg('완료 표시는 유지됩니다. '+e.message));
-  el('library-search').addEventListener('input',()=>{if(!state?.connected||!state.folders.source||!el('cloud-library-list').children.length)return;clearTimeout(searchTimer);searchTimer=setTimeout(sources,450);});
+  el('library-search').addEventListener('input',()=>{if(!el('cloud-library-tools').open||!state?.connected||!state.folders.source)return;clearTimeout(searchTimer);searchTimer=setTimeout(sources,600);});
   window.addEventListener('focus',refresh);
-  document.querySelectorAll('[data-page]').forEach(b=>b.addEventListener('click',()=>{if(b.dataset.page==='settings')refresh();if(b.dataset.page==='library')autoConnect().catch(e=>msg(e.message));if(b.dataset.page==='archive')archives();}));
-  el('mobile-page').addEventListener('change',e=>{if(e.target.value==='archive')archives();else if(e.target.value==='library')autoConnect().catch(e=>msg(e.message));else refresh();});
+  document.querySelectorAll('[data-page]').forEach(b=>b.addEventListener('click',()=>{if(b.dataset.page==='settings')refresh();if(b.dataset.page==='library')refresh();if(b.dataset.page==='archive')archives();}));
+  el('mobile-page').addEventListener('change',e=>{if(e.target.value==='archive')archives();else if(e.target.value==='library')refresh();else refresh();});
   if(['connected','setup'].includes(new URLSearchParams(location.search).get('onedrive'))){history.replaceState(null,'','/');page('settings');msg('OneDrive 설정에서 연결 상태를 확인하고 원본·완료본 폴더를 선택하세요.');}
   refresh();
  }
