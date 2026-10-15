@@ -35,6 +35,9 @@ class WorkStore:
         self.validate(day, service)
         if not slot or len(slot)>200:raise ValueError('예배 항목을 확인하세요.')
         if song_id:
+            from .original_roles import song_candidate
+            if not song_candidate(filename):
+                raise ValueError('찬양 원본이 아닌 자료는 찬양으로 등록하지 않습니다.')
             with self.connect() as db:
                 if not db.execute('SELECT 1 FROM songs WHERE id=?',(song_id,)).fetchone():raise ValueError('등록 곡을 확인하세요.')
         digest, existed, target = self._store_file(filename, content)
@@ -65,6 +68,9 @@ class WorkStore:
         return digest, existed, target
 
     def attach_song_asset(self, song_id, filename, content, replace_digest=None):
+        from .original_roles import song_candidate
+        if not song_candidate(filename):
+            raise ValueError('주보·템플릿·표지 등 찬양 외 자료는 찬양 자료로 등록할 수 없습니다.')
         with self.connect() as db:
             if not db.execute('SELECT 1 FROM songs WHERE id=?',(song_id,)).fetchone():raise ValueError('등록 곡을 확인하세요.')
         digest, existed, target = self._store_file(filename, content)
