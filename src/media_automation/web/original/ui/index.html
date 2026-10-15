@@ -323,6 +323,13 @@ function originalStatus(asset,label,field){
  if(asset.conversion_status==='failed')return '자료 미연결 · 자동 변환 실패';
  return field?.state==='VALUE'?'원본 첨부됨 · 제작 후 확인':'원본 보관됨 · 곡 입력 필요';
 }
+function openOneDriveSongSearch(title){
+ page('library');
+ $('library-search').value=title||'';
+ $('library-kind').value=service==='friday'&&fridayMode()==='zoom'?'media':'score';
+ renderLibrary();
+ if(typeof CloudMedia!=='undefined')CloudMedia.sources().catch(error=>msg(error.message||'OneDrive 검색에 실패했습니다.'));
+}
 function cloudAssetHint(info,field){
  const scan=window.MediaCloudSearch||{status:'before'};let message,action;
  if(!field?.value){info.append(node('span','미입력','asset-unset'));return;}
@@ -337,7 +344,7 @@ function cloudAssetHint(info,field){
  else if(scan.result?.choices?.length){message='선택 필요 · 곡명과 원본을 확인하세요';action='library';}
  else {message='자료 없음 · 원본을 첨부하세요';}
  info.append(node('span',message,'status '+(!field?.value||scan.status==='before'||scan.status==='searching'?'neutral':'warning')));
- if(action){const actions=node('div',undefined,'actions');const button=node('button',action==='content'?'곡 입력으로 이동':action==='settings'?'OneDrive 설정':action==='library'?'원본 찾아 선택':'OneDrive 다시 확인');button.onclick=()=>{if(action==='content')setTab('content');else if(action==='search')CloudMedia.autoConnect().catch(e=>msg(e.message));else page(action);};actions.append(button);info.append(actions);}
+ if(action){const actions=node('div',undefined,'actions');const button=node('button',action==='content'?'곡 입력으로 이동':action==='settings'?'OneDrive 설정':action==='library'?'원본 찾아 선택':'OneDrive 다시 확인');button.onclick=()=>{if(action==='content')setTab('content');else if(action==='search'||action==='library')openOneDriveSongSearch(field.value);else page(action);};actions.append(button);info.append(actions);}
 }
 window.addEventListener('media-cloud-search',()=>{if(tab==='assets')assets();});
 function assets(){const root=$('asset-list');root.replaceChildren();const songs=fieldNames().filter(f=>/찬양|찬송|특송/.test(f)&&!(/관련|기도|인도자|목록/.test(f)&&f!=='기도 후 찬양'));if(service==='friday'&&fridayMode()==='zoom')songs.push('배경음악 예배 준비','배경음악 첫 기도','배경음악 말씀 기도','배경음악 공동체 기도');const missingSongs=songs.filter(label=>!label.startsWith('배경음악')&&record().fields[label]?.state!=='NONE'&&!record().fields[label]?.value);const musicGroup=node('details',undefined,'asset-music-optional');musicGroup.append(node('summary','금요 기도 배경음악 · 기본 음원 사용, 필요하면 별도 교체'));if(missingSongs.length){const notice=node('div',undefined,'asset-input-notice');const copy=node('div');copy.append(node('strong','곡 '+missingSongs.length+'개가 아직 미입력입니다.'),node('p','내용 입력에서 곡을 지정하면 원본 연결 상태를 확인할 수 있습니다.','hint'));const edit=node('button','곡 입력하기');edit.onclick=()=>setTab('content');notice.append(copy,edit);root.append(notice);}for(const label of songs){const f=record().fields[label];if(f?.state==='NONE')continue;const attachmentKey=service+'|'+iso(day({wednesday:2,friday:4,sunday:6}[service]))+'|'+label;const row=node('div',undefined,'asset-row');const info=node('div');info.append(node('h3',fieldCaption(label)));if(f?.value)info.append(node('div',f.value,'hint'));const matched=SongSearch.search(f?.value||'',songCatalog,record().songEditions?.[label]);const selectedSong=matched.status==='exact'?matched.candidates[0]:matched.candidates.find(song=>song.id===record().songChoices?.[label]);if(!savedAttachments.has(attachmentKey)&&!selectedSong){if(label.startsWith('배경음악'))info.append(node('p','별도 MP3 미지정 · 검수된 기본 음원이 설정되어 있으면 자동 삽입됩니다.','hint'));else if(matched.status==='edition'||matched.status==='choose'||matched.status==='suggest'){info.append(node('span',matched.status==='edition'?'새찬송가·구찬송가 구분 필요':'곡 선택 필요','status warning'));const edit=node('button','곡 확인으로 이동');edit.onclick=()=>setTab('content');info.append(edit);}else cloudAssetHint(info,f);} let currentCatalogAsset=null;if(selectedSong){if(songCaption(selectedSong)!==f?.value)info.append(node('p','자료실 곡: '+songCaption(selectedSong),'hint'));const compatible=selectedSong.assets.filter(asset=>originalCompatible(asset.filename,label));const eligible=compatible.filter(asset=>asset.eligible);const choice=record().assetChoices?.[label],currentOriginal=savedAttachments.get(attachmentKey);const autoAsset=choice==='NONE'?null:compatible.find(asset=>asset.digest===choice)||(choice?null:eligible.length===1?eligible[0]:null);currentCatalogAsset=currentOriginal?null:autoAsset;
