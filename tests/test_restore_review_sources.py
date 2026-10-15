@@ -1,5 +1,6 @@
 """Missing score originals can only be restored to an isolated review store."""
 import hashlib
+import shutil
 from pathlib import Path
 
 import pytest
@@ -68,7 +69,7 @@ def test_restore_rejects_symlink_into_original(tmp_path):
     real.mkdir()
     (real / digest).write_bytes(content)
     files = db.with_suffix(".files")
-    files.rmdir()
+    shutil.rmtree(files)  # remove only synthetic test fixtures
     files.symlink_to(real, target_is_directory=True)
     with pytest.raises(ValueError, match="심볼릭 링크"):
         recover(db, review, [source], restore=True)
