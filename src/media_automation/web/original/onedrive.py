@@ -606,7 +606,8 @@ class OneDrive:
         path = Path(self.store.path).with_suffix('.generated')/(identifier+'.'+extension)
         if not path.is_file() or not 0 < path.stat().st_size <= MAX_ARCHIVE_FILE:
             raise CloudError('완료 파일을 찾지 못했거나 512MB를 초과합니다.')
-        folder = self.archive_destination(service, kind, current['data'].get('fridayMode'))
+        folder = (self.archive_destination(service, kind, current['data'].get('fridayMode', 'zoom'))
+                  if service == 'friday' else self.archive_destination(service, kind))
         name = f'{day}_{service}_{kind}_{identifier}.{extension}'
         item = self.upload_file(folder['id'],name,path.read_bytes())
         latest = self.store.get(day,service)
