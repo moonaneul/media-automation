@@ -10,6 +10,7 @@ import re
 import secrets
 import threading
 import time
+import unicodedata
 from pathlib import Path
 from urllib.parse import quote, urlsplit
 import requests
@@ -228,8 +229,12 @@ class OneDrive:
                 return items
         raise CloudError('검색 결과가 너무 많습니다. 하위 폴더나 더 구체적인 검색어를 사용하세요.')
 
+    SOURCE_PURPOSES = frozenset({'source', 'source_video'})
+    ARCHIVE_PURPOSES = frozenset({'archive', 'archive_wednesday', 'archive_friday_zoom', 'archive_friday_in_person', 'archive_sunday_ppt', 'archive_sunday_pdf'})
+    FOLDER_PURPOSES = SOURCE_PURPOSES | ARCHIVE_PURPOSES
+
     def select_folder(self, purpose, identifier):
-        if purpose not in ('source', 'archive') or identifier == 'root':
+        if purpose not in self.FOLDER_PURPOSES or identifier == 'root':
             raise CloudError('원본·완료본용 하위 폴더를 선택하세요.')
         item = self.item(identifier)
         if 'folder' not in item or item.get('remoteItem'):
@@ -237,14 +242,20 @@ class OneDrive:
         with self.lock:
             data = self._read()
             folders = data.setdefault('folders', {})
-            other = folders.get('archive' if purpose == 'source' else 'source')
-            if other and (self.within(item,other) or self.within(self.item(other['id']),item)):
-                raise CloudError('원본과 완료본은 서로 포함되지 않는 별도 폴더를 선택하세요.')
+            for other_purpose, other in folders.items():
+                if other_purpose == purpose or other_purpose not in self.FOLDER_PURPOSES or not other:
+                    continue
+                if purpose in self.ARCHIVE_PURPOSES and other_purpose in self.ARCHIVE_PURPOSES:
+                    continue
+                if self.within(item, other) or self.within(self.item(other['id']), item):
+                    raise CloudError('악보·Zoom 원본 폴더와 완료본 폴더는 서로 겹치지 않도록 지정하세요.')
             folders[purpose] = public_item(item)
             self._write(data)
         return folders
 
     def selected(self, purpose):
+        if purpose not in self.FOLDER_PURPOSES:
+            raise CloudError('폴더 종류를 확인하세요.')
         with self.lock:
             folder = self._read().get('folders', {}).get(purpose)
         if not folder:
@@ -288,11 +299,11 @@ class OneDrive:
         raise CloudError('OneDrive 업로드 완료를 확인하지 못했습니다.')
 
     def upload_song(self, song_id, digest):
-        folder = self.selected('source')
         with self.store.connect() as db:
             row = db.execute('SELECT filename FROM song_assets WHERE song_id=? AND digest=?',(song_id,digest)).fetchone()
         if not row or not re.fullmatch('[a-f0-9]{64}',digest or ''):
             raise CloudError('등록된 원본을 확인하세요.')
+        folder = self.selected('source_video' if Path(row[0]).suffix.lower() in ('.mp4','.mp3','.wav') else 'source')
         path = Path(self.store.path).with_suffix('.files')/digest
         if not path.is_file() or not 0 < path.stat().st_size <= MAX_FILE:
             raise CloudError('원본 파일을 찾지 못했거나 128MB를 초과합니다.')
@@ -398,10 +409,10 @@ class OneDrive:
         mode = current.get('fridayMode', 'zoom')
         if is_background and (service != 'friday' or mode != 'zoom'):
             raise CloudError('배경음악은 금요 Zoom에서만 선택할 수 있습니다.')
-        folder = self.selected('source')
+        folder = self.selected('source_video' if service == 'friday' and mode == 'zoom' else 'source')
         item = self.item(identifier)
         if not self.within(item, folder):
-            raise CloudError('선택한 OneDrive 찬양 원본 폴더의 파일만 가져올 수 있습니다.')
+            raise CloudError('해당 예배 방식의 지정 원본 폴더에 있는 파일만 연결할 수 있습니다.')
         filename = item.get('name', '')
         if (not compatible_original(filename, service, mode, slot)
                 or not isinstance(filename, str) or not filename):
@@ -516,8 +527,16 @@ class OneDrive:
             except CloudError as error:result['errors'].append({'name':item['name'],'reason':str(error)})
         return result
 
-    def archive_destination(self, service, kind):
-        """Reuse or create the agreed subfolders under the chosen archive root."""
+    def archive_destination(self, service, kind, mode=None):
+        """Use an explicit worship folder when chosen, otherwise existing hierarchy."""
+        purpose = ('archive_wednesday' if service == 'wednesday' else
+                   ('archive_friday_in_person' if mode == 'in_person' else 'archive_friday_zoom')
+                   if service == 'friday' else
+                   ('archive_sunday_pdf' if kind == 'pdf' else 'archive_sunday_ppt'))
+        with self.lock:
+            assigned = self._read().get('folders', {}).get(purpose)
+        if assigned:
+            return assigned
         names = {'wednesday':['수요 예배'], 'friday':['금요 기도회'],
                  'sunday':['주일 예배', '주보' if kind == 'pdf' else '예배 PPT']}[service]
         folder = self.selected('archive')
@@ -539,7 +558,6 @@ class OneDrive:
         self.store.validate(day,service)
         if kind not in ('ppt','pdf'):
             raise CloudError('파일 종류를 확인하세요.')
-        folder = self.selected('archive')
         current = self.store.get(day,service)
         output = current['data'].get('outputs',{}).get(kind,{})
         identifier = output.get('fileId','')
@@ -549,7 +567,7 @@ class OneDrive:
         path = Path(self.store.path).with_suffix('.generated')/(identifier+'.'+extension)
         if not path.is_file() or not 0 < path.stat().st_size <= MAX_ARCHIVE_FILE:
             raise CloudError('완료 파일을 찾지 못했거나 512MB를 초과합니다.')
-        folder = self.archive_destination(service, kind)
+        folder = self.archive_destination(service, kind, current['data'].get('fridayMode'))
         name = f'{day}_{service}_{kind}_{identifier}.{extension}'
         item = self.upload_file(folder['id'],name,path.read_bytes())
         latest = self.store.get(day,service)
