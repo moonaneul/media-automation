@@ -279,7 +279,12 @@ def make_server(store, port=0, password=None, bind_host="127.0.0.1", public_orig
                     path, filename=store.original(digest)
                     from .ppt_conversion import convert_original
                     from media_automation.web.pptx_preview import convert_pptx
-                    if Path(filename).suffix.lower()=='.ppt': path=convert_original(path)
+                    if Path(filename).suffix.lower()=='.ppt':
+                        try:
+                            path=convert_original(path)
+                        except RuntimeError as error:
+                            # Conversion messages are controlled by our converter and safe to show.
+                            return self.reply(422, {'error':'구형 악보 변환 실패: '+str(error)})
                     if Path(filename).suffix.lower() not in ('.ppt','.pptx'): raise ValueError('PPT 원본을 선택하세요.')
                     cache=Path(store.path).with_suffix('.previews');cache.mkdir(exist_ok=True)
                     output=cache/(digest+'.pdf')
