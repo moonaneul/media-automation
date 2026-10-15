@@ -147,3 +147,41 @@ def test_other_service_song_slot_is_not_modified(tmp_path, monkeypatch):
     cloud.import_for_service("ONE_SELECTED_ITEM", DAY, "wednesday", "시작 찬양 1")
     assert not store.attachments(DAY, "sunday")
     assert store.get(DAY, "sunday")["data"]["fields"]["시작 찬양 1"]["value"] == "다른 주일곡"
+
+
+def test_hosted_one_selected_one_drive_file_mutates_one_attachment_only(tmp_path):
+    """Cloud mode must not fall back to the legacy song-only import API."""
+    from types import SimpleNamespace
+    from unittest.mock import Mock
+    from media_automation.cloud.http import Hosted
+    hosted = object.__new__(Hosted)
+    data = score_file()
+    digest = __import__("hashlib").sha256(data).hexdigest()
+    cloud = Mock()
+    cloud.item.return_value = {
+        "id": "chosen-item", "name": "380장-악보.pptx",
+        "size": len(data), "file": {},
+        "parentReference": {"driveId": "drive-1", "id": "source"}
+    }
+    cloud.selected.return_value = {"id": "source"}
+    cloud.within.return_value = True
+    cloud._download.return_value = data
+    hosted.cloud = cloud
+    hosted.backend = Mock()
+    hosted.catalog = lambda client, day, service: {
+        "work": {"data": {"fridayMode": "in_person", "fields": {
+            "시작 찬양 1": {"state": "VALUE", "value": "380장"},
+        }}},
+        "tables": {"files": []},
+    }
+    hosted.edit = Mock()
+    result = hosted.import_for_slot(object(), {
+        "id": "chosen-item", "date": DAY,
+        "service": "wednesday", "slot": "시작 찬양 1"
+    })
+    assert result["digest"] == digest
+    assert result["imported"] is True
+    assert hosted.edit.call_args.args[2] == "attachment"
+    assert hosted.edit.call_args.args[3]["slot"] == "시작 찬양 1"
+    hosted.backend.call.assert_called_once()
+    cloud._download.assert_called_once()
