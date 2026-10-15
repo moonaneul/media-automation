@@ -100,3 +100,23 @@ def test_existing_wrong_target_is_not_overwritten(tmp_path):
     result = recover(db, review, [source], restore=True)
     assert result["copied"] == 0
     assert path.read_bytes() == b"corrupt"
+
+
+@pytest.mark.parametrize("filename", ["1.ppt", "1.pptx"])
+def test_missing_attachment_is_not_misreported_as_connected(tmp_path, filename):
+    review, source, db, digest, content = store_with_missing_source(
+        tmp_path, filename=filename)
+    # WorkStore exposes a precise missing-file status to the UI.
+    store = WorkStore(db)
+    attachment = store.attachments("2026-10-14", "wednesday")[0]
+    assert attachment["conversion_status"] == "missing"
+    assert "원본 파일" in attachment["conversion_message"]
+    assert not (db.with_suffix(".files") / digest).exists()
+
+
+def test_missing_asset_status_is_visible_in_review_ui():
+    ui = Path(__file__).resolve().parents[1] / "src/media_automation/web/original/ui/index.html"
+    html = ui.read_text()
+    assert "자료 미연결 · 원본 파일 없음" in html
+    assert "원본 파일 없음 · 현재 미삽입" in html
+    assert "원본 파일 없음 · 자료 화면에서 확인하세요." in html
