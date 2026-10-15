@@ -327,11 +327,49 @@ class OneDrive:
             item = self.item(parent_id)
         return False
 
+    @staticmethod
+    def _source_match(filename, query):
+        """Normalize Korean names and numbered hymns without guessing song titles."""
+        normalize = lambda value: re.sub(r'[^\\w]+', '', unicodedata.normalize('NFKC', value).casefold())
+        name, term = normalize(filename), normalize(query)
+        if not term:
+            return False
+        if term in name:
+            return True
+        number = re.fullmatch(r'(?:새찬송가|구찬송가|찬송가)?(\\d{1,3})(?:장)?', term)
+        return bool(number and re.search(r'(?<!\\d)' + re.escape(number[1]) + r'(?!\\d)', name))
+
     def list_selected(self, purpose, identifier=None, query=''):
         folder = self.selected(purpose)
         if identifier and identifier != folder['id'] and not self.within(self.item(identifier), folder):
             raise CloudError('지정한 자료 폴더 안에서만 조회할 수 있습니다.')
-        return self.children(identifier or folder['id'], query)
+        root = identifier or folder['id']
+        if not query.strip() or purpose not in self.SOURCE_PURPOSES:
+            return self.children(root, query)
+        indexed = self.children(root, query)
+        if indexed:
+            return indexed
+        # Graph's indexed search may not yet know newly uploaded Korean-named
+        # files. Scan ONLY the chosen original folder and its descendants.
+        found, pending, visited, total = [], [root], set(), 0
+        while pending:
+            current = pending.pop()
+            if current in visited:
+                continue
+            visited.add(current)
+            if len(visited) > 120:
+                raise CloudError('원본 하위 폴더가 너무 많습니다. 검색할 폴더를 좁혀 주세요.')
+            for item in self.children(current):
+                total += 1
+                if total > 3000:
+                    raise CloudError('원본 파일이 너무 많습니다. 검색할 폴더를 좁혀 주세요.')
+                if 'folder' in item:
+                    pending.append(item['id'])
+                elif 'file' in item and self._source_match(item.get('name', ''), query):
+                    found.append(item)
+                    if len(found) == 100:
+                        return found
+        return found
 
     def _download(self, item):
         if not 0 < item.get('size', 0) <= MAX_FILE or 'file' not in item:
