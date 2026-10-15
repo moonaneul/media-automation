@@ -408,7 +408,15 @@ class Hosted:
         if action=='files' and handler.command=='GET':
             purpose=query.get('purpose',['source'])[0]
             if purpose not in ('source','archive'):raise ValueError('자료 종류를 확인하세요.')
-            return handler.reply(200,{'items':self.cloud.list_selected(purpose,query.get('id',[None])[0],query.get('q',[''])[0])})
+            terms=query.get('q',[''])[0]
+            if purpose=='source' and not terms.strip():
+                raise ValueError('원본을 찾을 곡명 또는 찬송가 번호를 입력하세요.')
+            items=self.cloud.list_selected(purpose,query.get('id',[None])[0],terms)
+            if purpose=='source':
+                from ..web.original.original_roles import original_role
+                items=[{**item,'source_role':original_role(item.get('name',''))}
+                       if 'file' in item else item for item in items]
+            return handler.reply(200,{'items':items})
         if action=='folders' and handler.command=='GET':
             return handler.reply(200,{'items':[i for i in self.cloud.children(query.get('id',['root'])[0]) if 'folder' in i]})
         if action=='download' and handler.command=='GET':
