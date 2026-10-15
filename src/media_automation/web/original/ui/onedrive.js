@@ -72,7 +72,7 @@ const CloudMedia=(()=>{
    if(!item.file)return false;
    const name=item.name||'',role=item.source_role;
    if(role&&!['score','song_video','audio_candidate'].includes(role))return false;
-   return mode==='score'?/\\.pptx?$/i.test(name):mode==='video'?/\\.mp4$/i.test(name):mode==='audio'?/\\.mp3$/i.test(name):false;
+   return mode==='score'?/\.pptx?$/i.test(name):mode==='video'?/\.mp4$/i.test(name):mode==='audio'?/\.mp3$/i.test(name):false;
   });
   return {status:'ok',items:matches,folder:state.folders[purpose].name};
  }
