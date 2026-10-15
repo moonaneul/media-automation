@@ -66,7 +66,7 @@ const CloudMedia=(()=>{
   }catch(e){root.replaceChildren(text('p',e.message,'empty'));}
  }
  async function archiveCurrent(k=key(),kind=app.output){await refresh();if(!state.connected||!state.folders.archive)return msg('제작 완료 표시는 저장됐습니다. OneDrive 연결·완료본 폴더 선택 후 보관할 수 있습니다.');const [currentService,currentDate]=k.split(':');const result=await api('archive',{date:currentDate,service:currentService,kind});const st=syncState(k);if(st.dirty||st.busy){if(!st.busy)st.revision=result.work.revision;persistDraft(k);msg('OneDrive에 이전 완료본을 보관했습니다. 화면의 새 입력은 유지됩니다.');return;}app.records[k]=result.work.data;st.revision=result.work.revision;render();msg('완료본을 OneDrive에 보관했습니다. 보관 자료에서 확인할 수 있습니다.');}
- async function syncOriginal(songId,digest){await refresh();if(!state.connected||!state.folders.source)return;await api('upload-source',{song_id:songId,digest});}
+ async function syncOriginal(songId,digest){await refresh();if(!state?.connected||!state.folders.source)return {uploaded:false};const result=await api('upload-source',{song_id:songId,digest});return {uploaded:!!result?.item?.id,item:result?.item||null};}
  function init(){
   el('cloud-copy-redirect').onclick=async()=>{try{await navigator.clipboard.writeText(el('cloud-redirect').textContent);msg('반환 주소를 복사했습니다. Microsoft 앱의 Web 반환 주소에 붙여 넣으세요.');}catch{msg('표시된 반환 주소를 직접 복사하세요.');}};
   el('cloud-save-config').onclick=async()=>{const b=el('cloud-save-config');b.disabled=true;try{await api('configure',{client_id:el('cloud-client-id').value.trim(),secret:el('cloud-secret').value});el('cloud-secret').value='';await refresh();msg('연결 설정을 서버에 저장했습니다. OneDrive 연결을 눌러 로그인하세요.');}catch(e){msg(e.message);}finally{b.disabled=false;}};
