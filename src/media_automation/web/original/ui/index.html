@@ -635,7 +635,7 @@ function restoreCloudSong(state){
 window.MediaApp={key,msg,syncState,render,persistDraft,refreshSongs,songCaption,assets,page,restoreCloudSong,get records(){return records;},get songCatalog(){return songCatalog;},get output(){return output;},get tab(){return tab;}};
 })();
 </script>
-<dialog id="cloud-folder-dialog"><div class="dialog-head"><h2 id="cloud-folder-title">OneDrive 폴더 선택</h2><button type="button" onclick="document.getElementById('cloud-folder-dialog').close()">닫기</button></div><p id="cloud-folder-location" class="hint"></p><p class="hint">OneDrive에 원본·완료본 폴더를 미리 만들어 두고 선택하세요. 내 OneDrive 전체를 선택하지 않습니다.</p><div id="cloud-folder-list"></div><div class="actions"><button id="cloud-folder-select" class="primary" disabled>현재 폴더 선택</button></div></dialog><script src="/onedrive.js"></script>
+<dialog id="cloud-folder-dialog"><div class="dialog-head"><h2 id="cloud-folder-title">OneDrive 폴더 선택</h2><button type="button" onclick="document.getElementById('cloud-folder-dialog').close()">닫기</button></div><p id="cloud-folder-location" class="hint"></p><p class="hint">OneDrive에 원본·완료본 폴더를 미리 만들어 두고 선택하세요. 내 OneDrive 전체를 선택하지 않습니다.</p><div id="cloud-folder-list"></div><p id="cloud-folder-error" role="alert" class="status warning" hidden></p><div class="actions"><button id="cloud-folder-select" class="primary" disabled>현재 폴더 선택</button></div></dialog><script src="/onedrive.js"></script>
 <script>
 (()=>{'use strict';
 const selections=document.querySelectorAll('[data-page],[data-service],[data-tab],[data-output]');
