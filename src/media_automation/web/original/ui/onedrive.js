@@ -59,6 +59,25 @@ const CloudMedia=(()=>{
    if(!el('library-search').value.trim()&&items.some(i=>i.folder))root.append(text('p','하위 폴더의 원본은 곡명 또는 번호를 입력해 검색하세요.','hint'));
   }catch(e){if(serial===requestSerial)root.replaceChildren(text('p',e.message,'empty'));}
  }
+ async function searchWorshipSource(query, mode){
+  await refresh(true);
+  if(!state?.connected)return {status:'disconnected',configured:!!state?.configured};
+  if(!state.folders?.source)return {status:'folder-required'};
+  const textQuery=String(query||'').trim();
+  if(!textQuery)return {status:'query-required'};
+  const items=(await api('files?purpose=source&q='+encodeURIComponent(textQuery))).items;
+  const matches=items.filter(item=>{
+   if(!item.file)return false;
+   const name=item.name||'',role=item.source_role;
+   if(role&&!['score','song_video','audio_candidate'].includes(role))return false;
+   return mode==='score'?/\\.pptx?$/i.test(name):mode==='video'?/\\.mp4$/i.test(name):mode==='audio'?/\\.mp3$/i.test(name):false;
+  });
+  return {status:'ok',items:matches,folder:state.folders.source.name};
+ }
+ async function importWorshipSource(itemId,day,service,slot){
+  const result=await api('import-to-slot',{id:itemId,date:day,service,slot});
+  return result;
+ }
  async function archives(id){const root=el('cloud-archive-list');root.replaceChildren(text('p','보관 자료 불러오는 중…','hint'));
   try{const items=(await api('files?purpose=archive'+(id?'&id='+encodeURIComponent(id):''))).items;root.replaceChildren();if(id)root.append(button('완료본 폴더로',()=>archives()));
    for(const item of items){const row=text('div',undefined,'asset-row');row.append(text('strong',item.name));if(item.folder)row.append(button('폴더 열기',()=>archives(item.id)));else if(/\.(pptx?|pdf)$/i.test(item.name)){const link=text('a','다운로드','cloud-download');link.href='/api/onedrive/download?id='+encodeURIComponent(item.id);link.download=item.name;row.append(link);}root.append(row);}
@@ -84,5 +103,5 @@ const CloudMedia=(()=>{
   refresh();
  }
  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init);else init();
- return {refresh,sources,archives,archiveCurrent,syncOriginal,autoConnect};
+ return {refresh,sources,archives,archiveCurrent,syncOriginal,autoConnect,searchWorshipSource,importWorshipSource};
 })();
