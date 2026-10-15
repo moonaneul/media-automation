@@ -24,16 +24,57 @@ const CloudMedia=(()=>{
   el('cloud-library-search').disabled=!state.connected||!state.folders.source;
   const storage=el('storage-status');if(storage)storage.textContent=state.connected?'OneDrive 연결됨 · 검수 후 제작 완료 표시하면 완료본 보관을 시도합니다.':'OneDrive 연결 전 · 완료본은 서버에 보존됩니다.';
  }
+ function folderError(message){
+  const target=el('cloud-folder-error');
+  target.textContent=message||'';
+  target.hidden=!message;
+ }
+ async function saveFolder(identifier,displayName){
+  const selectedName=displayName||folderStack.at(-1)?.name||'선택한 폴더';
+  folderError('');
+  el('cloud-folder-select').disabled=true;
+  try{
+   await api('folders',{purpose:folderPurpose,id:identifier});
+   await refresh(true);
+   el('cloud-folder-dialog').close();
+   msg('OneDrive 폴더 지정 완료 · '+selectedName);
+  }catch(e){
+   folderError('폴더를 지정하지 못했습니다 · '+e.message+' 다른 원본·완료본 폴더와 겹치지 않는지도 확인하세요.');
+  }finally{
+   el('cloud-folder-select').disabled=folderStack.at(-1)?.id==='root';
+  }
+ }
  async function browseFolders(id='root'){
-  const items=(await api('folders?id='+encodeURIComponent(id))).items;
-  const root=el('cloud-folder-list');root.replaceChildren();
-  root.append(button('상위 폴더',async()=>{if(folderStack.length>1){folderStack.pop();await browseFolders(folderStack.at(-1).id);}}));
+  folderError('');
+  const root=el('cloud-folder-list');
+  root.replaceChildren(text('p','OneDrive 폴더 불러오는 중…','hint'));
   el('cloud-folder-location').textContent=folderStack.map(f=>f.name).join(' / ');
   el('cloud-folder-select').disabled=id==='root';
-  for(const item of items){const row=text('div',undefined,'asset-row');row.append(text('strong',item.name),button('폴더 열기',async()=>{folderStack.push({id:item.id,name:item.name});await browseFolders(item.id);}));root.append(row);}
-  if(!items.length)root.append(text('p','하위 폴더가 없습니다. 현재 폴더를 선택할 수 있습니다.','hint'));
+  try{
+   const items=(await api('folders?id='+encodeURIComponent(id))).items;
+   root.replaceChildren();
+   if(folderStack.length>1)root.append(button('← 상위 폴더',async()=>{folderStack.pop();await browseFolders(folderStack.at(-1).id);}));
+   for(const item of items){
+    const row=text('div',undefined,'asset-row');
+    const details=text('div');details.append(text('strong',item.name));
+    row.append(details,button('이 폴더 선택',()=>saveFolder(item.id,item.name)),
+                 button('하위 폴더 보기',async()=>{folderStack.push({id:item.id,name:item.name});await browseFolders(item.id);}));
+    root.append(row);
+   }
+   if(!items.length)root.append(text('p',id==='root'?'OneDrive에서 선택할 하위 폴더를 찾지 못했습니다.':'이 폴더 아래에 다른 폴더가 없습니다. 아래 현재 폴더 선택을 누르세요.','hint'));
+  }catch(e){
+   folderError('OneDrive 폴더 목록을 불러오지 못했습니다 · '+e.message);
+   root.replaceChildren(text('p','폴더 목록을 확인하지 못했습니다. 연결 상태 또는 접근 권한을 확인하세요.','hint'));
+  }
  }
- async function chooseFolder(purpose){folderPurpose=purpose;folderStack=[{id:'root',name:'내 OneDrive'}];const names={source:'대면예배 악보 PPT 폴더',source_video:'금요 Zoom 영상·음원 폴더',archive:'예배 완료본 최상위 폴더',archive_wednesday:'수요예배 PPT 저장 폴더',archive_friday_zoom:'금요 Zoom PPT 저장 폴더',archive_friday_in_person:'금요 대면 PPT 저장 폴더',archive_sunday_ppt:'주일예배 PPT 저장 폴더',archive_sunday_pdf:'주일 주보 PDF 저장 폴더'};el('cloud-folder-title').textContent=names[purpose]||'OneDrive 폴더 선택';el('cloud-folder-dialog').showModal();await browseFolders();}
+ async function chooseFolder(purpose){
+  folderPurpose=purpose;folderStack=[{id:'root',name:'내 OneDrive'}];
+  const names={source:'대면예배 악보 PPT 폴더',source_video:'금요 Zoom 영상·음원 폴더',archive:'예배 완료본 최상위 폴더',archive_wednesday:'수요예배 PPT 저장 폴더',archive_friday_zoom:'금요 Zoom PPT 저장 폴더',archive_friday_in_person:'금요 대면 PPT 저장 폴더',archive_sunday_ppt:'주일예배 PPT 저장 폴더',archive_sunday_pdf:'주일 주보 PDF 저장 폴더'};
+  el('cloud-folder-title').textContent=names[purpose]||'OneDrive 폴더 선택';
+  folderError('');
+  el('cloud-folder-dialog').showModal();
+  await browseFolders();
+ }
  let autoBusy=null;
  function searchState(status,extra={}){window.MediaCloudSearch={status,...extra};window.dispatchEvent(new Event('media-cloud-search'));}
 
@@ -71,7 +112,7 @@ const CloudMedia=(()=>{
   const matches=items.filter(item=>{
    if(!item.file)return false;
    const name=item.name||'',role=item.source_role;
-   if(role&&!['score','song_video','audio_candidate'].includes(role))return false;
+   if(role&&!['score','song_video','audio_candidate',...(mode==='audio'?['prayer_audio']:[])].includes(role))return false;
    return mode==='score'?/\.pptx?$/i.test(name):mode==='video'?/\.mp4$/i.test(name):mode==='audio'?/\.mp3$/i.test(name):false;
   });
   return {status:'ok',items:matches,folder:state.folders[purpose].name};
@@ -94,7 +135,7 @@ const CloudMedia=(()=>{
   el('cloud-connect').onclick=async()=>{const b=el('cloud-connect');b.disabled=true;try{if(state?.local_url&&location.origin!==new URL(state.local_url).origin){window.location.assign(state.local_url+'/?onedrive=setup');return;}const result=await api('connect',{});window.location.assign(result.url);}catch(e){msg(e.message);b.disabled=false;}};
   el('cloud-disconnect').onclick=async()=>{if(!confirm('이 서버의 OneDrive 연결을 해제할까요? OneDrive 파일은 삭제하지 않습니다.'))return;await api('disconnect',{});await refresh();msg('서버의 연결 정보를 해제했습니다. Microsoft 계정의 앱 권한 취소는 Microsoft 계정 설정에서 할 수 있습니다.');};
   for(const purpose of ['source','archive',...otherFolders])el('cloud-pick-'+purpose).onclick=()=>chooseFolder(purpose).catch(e=>msg(e.message));
-  el('cloud-folder-select').onclick=async()=>{try{await api('folders',{purpose:folderPurpose,id:folderStack.at(-1).id});el('cloud-folder-dialog').close();await refresh();msg('OneDrive 폴더를 저장했습니다.');}catch(e){msg(e.message);}};
+  el('cloud-folder-select').onclick=()=>saveFolder(folderStack.at(-1).id,folderStack.at(-1).name);
   el('cloud-auto-connect').onclick=()=>{if(confirm('OneDrive 전체 원본을 검색하고 정확히 일치하는 자료는 자동으로 연결합니다. 검수와 사용 허락은 별도이며, OneDrive 파일은 삭제하지 않습니다. 계속할까요?'))autoConnect().catch(e=>msg(e.message));};
   el('cloud-library-search').onclick=sources;el('cloud-archive-refresh').onclick=()=>archives();el('cloud-archive-current').onclick=()=>archiveCurrent().catch(e=>msg('완료 표시는 유지됩니다. '+e.message));
   el('library-search').addEventListener('input',()=>{if(!el('cloud-library-tools').open||!state?.connected||!state.folders.source)return;clearTimeout(searchTimer);searchTimer=setTimeout(sources,600);});
