@@ -394,6 +394,7 @@ class Hosted:
 
     def onedrive(self, handler, client, parsed):
         from ..web.original.onedrive import OneDrive
+        from ..web.original.original_roles import song_candidate
         action=parsed.path.removeprefix('/api/onedrive/')
         query=parse_qs(parsed.query)
         if action=='status' and handler.command=='GET':
@@ -457,7 +458,7 @@ class Hosted:
                             result['choices'].append({'name':item['name'],'reason':'원본 변경 여부를 직접 확인하세요.'})
                         else:result['unchanged']+=1
                         continue
-                    if Path(item.get('name','')).suffix.lower() not in ('.ppt','.pptx','.mp3','.mp4','.wav','.pdf'):continue
+                    if not song_candidate(item.get('name','')):continue
                     song=OneDrive.filename_song(item['name'],songs)
                     if song:groups.setdefault(song['id'],[]).append(item)
                     else:result['choices'].append({'name':item['name'],'reason':'곡명·찬송가 종류를 직접 선택하세요.'})
@@ -477,6 +478,8 @@ class Hosted:
         snapshot=self.catalog(client)
         if not any(r['id']==song_id for r in snapshot['tables']['songs']):raise ValueError('등록 곡을 확인하세요.')
         item=self.cloud.item(item_id)
+        from ..web.original.original_roles import song_candidate
+        if not song_candidate(item.get('name','')):raise ValueError('찬양 원본이 아닌 자료는 등록할 수 없습니다.')
         if ('file' not in item or not self.cloud.within(item,self.cloud.selected('source'))
                 or not 0<item.get('size',0)<=128*1024*1024):raise ValueError('원본 폴더의 지원 파일을 선택하세요.')
         content=self.cloud._download(item)
