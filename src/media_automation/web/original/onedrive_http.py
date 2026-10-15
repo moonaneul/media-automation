@@ -68,7 +68,12 @@ def handle(cloud, handler, parsed, origin, authenticated, session_token, session
             purpose=argument('purpose','source')
             if purpose not in ('source','archive'):
                 raise CloudError('자료 종류를 확인하세요.')
-            handler.reply(200,{'items':cloud.list_selected(purpose,argument('id') or None,argument('q'))})
+            items=cloud.list_selected(purpose,argument('id') or None,argument('q'))
+            if purpose=='source':
+                from .original_roles import original_role
+                items=[{**item,'source_role':original_role(item.get('name',''))}
+                       if 'file' in item else item for item in items]
+            handler.reply(200,{'items':items})
         elif action=='auto-connect' and handler.command=='POST':
             handler.reply(200,cloud.auto_connect())
         elif action=='import' and handler.command=='POST':
