@@ -17,7 +17,7 @@ def prepare_legacy(tmp_path):
     digest = "a" * 64
     with store.connect() as db:
         db.execute("INSERT INTO song_assets VALUES (?,?,?)",
-                   (song['id'], digest, "cover_abc123.pptx"))
+                   (song['id'], digest, "cover_" + "a" * 64 + ".pptx"))
         db.execute("CREATE TABLE cloud_auto_sources (item_id TEXT PRIMARY KEY, song_id TEXT, stamp TEXT, digest TEXT)")
         db.execute("INSERT INTO cloud_auto_sources VALUES (?,?,?,?)",
                    ("drive-item", song['id'], "test:1", digest))
