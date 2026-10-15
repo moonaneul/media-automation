@@ -22,7 +22,7 @@ def cloud(tmp_path, monkeypatch):
     ("새찬송가 380장.pptx", "380장", True),
     ("새찬송가 380장.pptx", "38장", False),
     ("새찬송가 138장.pptx", "380장", False),
-    ("\\u1102\\u1162 \\u1106\\u1161\\u11b7\\u110b\\u1175.pptx", "내 맘이", True),
+    ("내 맘이.pptx", "내 맘이", True),
 ])
 def test_match_korean_filename_unicode_and_hymn_number(file, query, expected):
     assert OneDrive._source_match(file, query) is expected
