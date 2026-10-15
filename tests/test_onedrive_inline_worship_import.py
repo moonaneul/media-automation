@@ -125,3 +125,25 @@ def test_weekly_inline_picker_and_library_navigation():
     assert "function searchWorshipSource(" in js
     assert "function importWorshipSource(" in js
     assert "CloudMedia.autoConnect()" not in html
+
+
+def test_friday_zoom_one_selected_video_can_be_imported_without_other_sources(tmp_path, monkeypatch):
+    store = make_store(tmp_path, "friday", mode="zoom")
+    cloud = fake_cloud(store, monkeypatch, name="찬양영상.mp4", content=b"test-video")
+    result = cloud.import_for_service("ONE_SELECTED_ITEM", DAY, "friday", "시작 찬양 1")
+    assert result["source"] == "onedrive" and result["imported"]
+    assets = store.attachments(DAY, "friday")
+    assert len(assets) == 1
+    assert assets[0]["slot"] == "시작 찬양 1"
+    assert assets[0]["filename"] == "찬양영상.mp4"
+
+
+def test_other_service_song_slot_is_not_modified(tmp_path, monkeypatch):
+    store = make_store(tmp_path)
+    store.save(DAY, "sunday", 0, {"fields": {
+        "시작 찬양 1": {"state": "VALUE", "value": "다른 주일곡"}
+    }})
+    cloud = fake_cloud(store, monkeypatch)
+    cloud.import_for_service("ONE_SELECTED_ITEM", DAY, "wednesday", "시작 찬양 1")
+    assert not store.attachments(DAY, "sunday")
+    assert store.get(DAY, "sunday")["data"]["fields"]["시작 찬양 1"]["value"] == "다른 주일곡"
