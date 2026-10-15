@@ -19,6 +19,7 @@ def test_score_probe_converts_disposable_copy_without_touching_original(tmp_path
     digest=attachment['digest']
     stored=tmp_path/'work.files'/digest
     before=hashlib.sha256(stored.read_bytes()).hexdigest()
+    files_before={str(path.relative_to(tmp_path/'work.files')):path.stat().st_mtime_ns for path in (tmp_path/'work.files').rglob('*') if path.is_file()}
     listed,reports=read_rows(tmp_path/'work.db',['1.ppt'])
     assert listed==[('1.ppt',digest,'2026-10-14/wednesday/시작 찬양 1')]
     assert reports==[]
@@ -27,7 +28,8 @@ def test_score_probe_converts_disposable_copy_without_touching_original(tmp_path
     assert '변환/읽기: 성공' in text
     assert '1장' in text
     assert hashlib.sha256(stored.read_bytes()).hexdigest()==before
-    assert not (tmp_path/'work.files'/'converted').exists()
+    files_after={str(path.relative_to(tmp_path/'work.files')):path.stat().st_mtime_ns for path in (tmp_path/'work.files').rglob('*') if path.is_file()}
+    assert files_after==files_before
 
 
 def test_report_shows_stale_generated_records(tmp_path,capsys):
