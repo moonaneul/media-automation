@@ -373,6 +373,49 @@ class OneDrive:
             db.execute('INSERT OR REPLACE INTO cloud_song_sources VALUES (?,?,?)',(song_id,result['digest'],item['id']))
         return result
 
+    def import_for_service(self, identifier, day, service, slot):
+        """Import ONE explicitly selected OneDrive source into ONE worship slot.
+
+        No broad auto-linking and no change to the original OneDrive file.
+        This preserves the existing field value; the user must rebuild and
+        inspect the PPT before the score can be called inserted.
+        """
+        from .original_roles import song_candidate
+        from .generation import compatible_original
+
+        self.store.validate(day, service)
+        if not isinstance(slot, str) or len(slot) > 200:
+            raise CloudError('예배 찬양 항목을 확인하세요.')
+        is_song = any(word in slot for word in ('찬양', '찬송', '특송'))
+        is_background = slot.startswith('배경음악 ')
+        if not is_song and not is_background:
+            raise CloudError('찬양·찬송·특송 원본만 이 기능으로 연결할 수 있습니다.')
+        current = self.store.get(day, service)['data']
+        field = current.get('fields', {}).get(slot)
+        if not is_background and (not isinstance(field, dict) or field.get('state') != 'VALUE'
+                                  or not field.get('value', '').strip()):
+            raise CloudError('이번 주 예배에 해당 찬양의 곡명을 먼저 입력하세요.')
+        mode = current.get('fridayMode', 'zoom')
+        if is_background and (service != 'friday' or mode != 'zoom'):
+            raise CloudError('배경음악은 금요 Zoom에서만 선택할 수 있습니다.')
+        folder = self.selected('source')
+        item = self.item(identifier)
+        if not self.within(item, folder):
+            raise CloudError('선택한 OneDrive 찬양 원본 폴더의 파일만 가져올 수 있습니다.')
+        filename = item.get('name', '')
+        if (not compatible_original(filename, service, mode, slot)
+                or not isinstance(filename, str) or not filename):
+            raise CloudError('현재 예배 방식과 맞지 않는 원본입니다. 대면은 악보 PPT, Zoom 찬양은 MP4입니다.')
+        if not is_background and not song_candidate(filename):
+            raise CloudError('주보·표지·템플릿 등 찬양 이외의 원본은 연결할 수 없습니다.')
+        content = self._download(item)
+        # WorkStore stores the bytes under SHA-256 and updates only this one
+        # attachment; no song-catalog review or copyright permission is inferred.
+        result = self.store.attach(day, service, slot, filename, content)
+        if result['conversion_status'] == 'failed':
+            return dict(result, source='onedrive', imported=True, ready_for_ppt=False)
+        return dict(result, source='onedrive', imported=True, ready_for_ppt=True)
+
     @staticmethod
     def filename_metadata(filename):
         import unicodedata
