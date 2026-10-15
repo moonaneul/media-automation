@@ -27,4 +27,16 @@ jobs:
         env:
           PYTHONDONTWRITEBYTECODE: '1'
         run: |
-          python -m pytest -q --tb=short             tests/test_cloud_source_classification.py             tests/test_cloud_catalog_audit.py             tests/test_one_drive_lookup_ui.py             tests/test_original_roles.py             tests/test_onedrive.py             tests/test_reclassify_non_song_catalog.py             tests/test_audit_song_dependencies.py
+          python -m pytest -q --tb=short \
+            tests/test_cloud_source_classification.py \
+            tests/test_cloud_catalog_audit.py \
+            tests/test_one_drive_lookup_ui.py \
+            tests/test_original_roles.py \
+            tests/test_onedrive.py \
+            tests/test_reclassify_non_song_catalog.py \
+            tests/test_audit_song_dependencies.py
+      - name: Run entire repository suite (asset availability independently reported)
+        timeout-minutes: 12
+        env:
+          PYTHONDONTWRITEBYTECODE: '1'
+        run: python -m pytest -q --tb=short
