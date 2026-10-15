@@ -23,18 +23,28 @@ def convert_original(source):
     with _LOCK:
         if valid(target):return target
         binary=(str(Path('/Applications/LibreOffice.app/Contents/MacOS/soffice')) if Path('/Applications/LibreOffice.app/Contents/MacOS/soffice').is_file() else None) or shutil.which('soffice') or shutil.which('libreoffice') or (str(BUNDLED) if BUNDLED.is_file() else None)
-        if not binary:raise RuntimeError('무료 PPT 변환 도구를 사용할 수 없습니다.')
+        if not binary:raise RuntimeError('LibreOffice 미설치 · 구형 .ppt 자동 변환에는 LibreOffice가 필요합니다. Mac에는 /Applications/LibreOffice.app 설치 후 검수 서버를 다시 실행하세요.')
         with tempfile.TemporaryDirectory(dir=directory) as temp:
             temp=Path(temp);original=temp/'original.ppt';shutil.copyfile(source,original)
-            subprocess.run([binary,'-env:UserInstallation='+(temp/'profile').as_uri(),'--headless','--convert-to','pptx:Impress MS PowerPoint 2007 XML','--outdir',str(temp),str(original)],capture_output=True,check=True,timeout=90)
+            command=[binary,'-env:UserInstallation='+(temp/'profile').as_uri(),
+                     '--headless','--convert-to','pptx:Impress MS PowerPoint 2007 XML',
+                     '--outdir',str(temp),str(original)]
+            try:
+                process=subprocess.run(command,capture_output=True,check=False,timeout=90)
+            except subprocess.TimeoutExpired as exc:
+                raise RuntimeError('LibreOffice 변환 시간 초과(90초) · 원본이 손상됐거나 변환 도구가 멈춘 상태입니다.') from exc
+            if process.returncode:
+                raise RuntimeError('LibreOffice가 .ppt 변환 작업을 실패했습니다. 파일을 PowerPoint 또는 LibreOffice에서 열고 PPTX로 다시 저장해 확인하세요.')
             result=temp/'original.pptx'
-            if not valid(result):raise RuntimeError('PPTX 변환 결과를 확인하지 못했습니다.')
+            if not valid(result):raise RuntimeError('LibreOffice 결과에 정상적인 PPTX가 없습니다. 원본 형식을 확인하거나 PPTX로 별도 저장해 주세요.')
             os.replace(result,target)
         return target
 
 def conversion_status(source, filename):
     if Path(filename).suffix.lower()!='.ppt':return {'conversion_status':'not_needed'}
     try:
-        file=convert_original(source)
+        convert_original(source)
         return {'conversion_status':'converted','converted_filename':Path(filename).stem+'.pptx'}
-    except Exception:return {'conversion_status':'failed','conversion_message':'자동 변환에 실패했습니다. 원본은 보존됐습니다. 다시 첨부하거나 제작을 다시 시도하세요.'}
+    except (RuntimeError, OSError, ValueError, zipfile.BadZipFile) as exc:
+        explanation=str(exc) if isinstance(exc, RuntimeError) else '원본을 읽거나 변환하지 못했습니다. 원본 파일을 확인하세요.'
+        return {'conversion_status':'failed','conversion_message':explanation+' 원본 파일은 그대로 보존됩니다.'}
