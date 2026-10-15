@@ -2,6 +2,7 @@
 const CloudMedia=(()=>{
  const app=window.MediaApp;const {key,msg,syncState,render,persistDraft,refreshSongs,songCaption,assets,page}=app;
  let state=null, folderPurpose='source', folderStack=[], requestSerial=0, searchTimer;
+ const otherFolders=['source_video','archive_wednesday','archive_friday_zoom','archive_friday_in_person','archive_sunday_ppt','archive_sunday_pdf'];
  const el=id=>document.getElementById(id);
  const text=(tag,value,cls)=>{const n=document.createElement(tag);if(value!==undefined)n.textContent=value;if(cls)n.className=cls;return n;};
  async function api(action,body){const r=await fetch('/api/onedrive/'+action,body===undefined?{}:{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});const data=await r.json();if(!r.ok)throw Error(data.error||'OneDrive 요청 실패');return data;}
@@ -15,8 +16,8 @@ const CloudMedia=(()=>{
   el('cloud-connect').disabled=!state.configured;
   el('cloud-connect').textContent=state.connected?'다시 로그인':'OneDrive 연결';
   el('cloud-disconnect').hidden=!state.connected;
-  for(const purpose of ['source','archive']){
-   el('cloud-'+purpose+'-folder').textContent=state.folders[purpose]?.name||'폴더 미지정';
+  for(const purpose of ['source','archive',...otherFolders]){
+   el('cloud-'+purpose+'-folder').textContent=state.folders[purpose]?.name||(purpose.startsWith('archive_')?'기본 경로 사용':'폴더 미지정');
    el('cloud-pick-'+purpose).disabled=!state.connected;
   }
   el('cloud-library-state').textContent=state.connected?(state.folders.source?'OneDrive · '+state.folders.source.name:'원본 폴더를 선택하세요.'):'OneDrive 연결 전 · 등록 곡은 서버에서 검색합니다.';
@@ -32,7 +33,7 @@ const CloudMedia=(()=>{
   for(const item of items){const row=text('div',undefined,'asset-row');row.append(text('strong',item.name),button('폴더 열기',async()=>{folderStack.push({id:item.id,name:item.name});await browseFolders(item.id);}));root.append(row);}
   if(!items.length)root.append(text('p','하위 폴더가 없습니다. 현재 폴더를 선택할 수 있습니다.','hint'));
  }
- async function chooseFolder(purpose){folderPurpose=purpose;folderStack=[{id:'root',name:'내 OneDrive'}];el('cloud-folder-title').textContent=purpose==='source'?'찬양 원본 폴더 선택':'완료본 최상위 폴더 선택 · 예배 완료본';el('cloud-folder-dialog').showModal();await browseFolders();}
+ async function chooseFolder(purpose){folderPurpose=purpose;folderStack=[{id:'root',name:'내 OneDrive'}];const names={source:'대면예배 악보 PPT 폴더',source_video:'금요 Zoom 영상·음원 폴더',archive:'예배 완료본 최상위 폴더',archive_wednesday:'수요예배 PPT 저장 폴더',archive_friday_zoom:'금요 Zoom PPT 저장 폴더',archive_friday_in_person:'금요 대면 PPT 저장 폴더',archive_sunday_ppt:'주일예배 PPT 저장 폴더',archive_sunday_pdf:'주일 주보 PDF 저장 폴더'};el('cloud-folder-title').textContent=names[purpose]||'OneDrive 폴더 선택';el('cloud-folder-dialog').showModal();await browseFolders();}
  let autoBusy=null;
  function searchState(status,extra={}){window.MediaCloudSearch={status,...extra};window.dispatchEvent(new Event('media-cloud-search'));}
 
@@ -62,17 +63,18 @@ const CloudMedia=(()=>{
  async function searchWorshipSource(query, mode){
   await refresh(true);
   if(!state?.connected)return {status:'disconnected',configured:!!state?.configured};
-  if(!state.folders?.source)return {status:'folder-required'};
+  const purpose=mode==='score'?'source':'source_video';
+  if(!state.folders?.[purpose])return {status:'folder-required',purpose};
   const textQuery=String(query||'').trim();
   if(!textQuery)return {status:'query-required'};
-  const items=(await api('files?purpose=source&q='+encodeURIComponent(textQuery))).items;
+  const items=(await api('files?purpose='+purpose+'&q='+encodeURIComponent(textQuery))).items;
   const matches=items.filter(item=>{
    if(!item.file)return false;
    const name=item.name||'',role=item.source_role;
    if(role&&!['score','song_video','audio_candidate'].includes(role))return false;
    return mode==='score'?/\\.pptx?$/i.test(name):mode==='video'?/\\.mp4$/i.test(name):mode==='audio'?/\\.mp3$/i.test(name):false;
   });
-  return {status:'ok',items:matches,folder:state.folders.source.name};
+  return {status:'ok',items:matches,folder:state.folders[purpose].name};
  }
  async function importWorshipSource(itemId,day,service,slot){
   const result=await api('import-to-slot',{id:itemId,date:day,service,slot});
@@ -84,14 +86,14 @@ const CloudMedia=(()=>{
    if(!items.length)root.append(text('p','아직 보관한 완료본이 없습니다. 결과를 검수하고 제작 완료 표시한 뒤 보관하세요.','empty'));
   }catch(e){root.replaceChildren(text('p',e.message,'empty'));}
  }
- async function archiveCurrent(k=key(),kind=app.output){await refresh();if(!state.connected||!state.folders.archive)return msg('제작 완료 표시는 저장됐습니다. OneDrive 연결·완료본 폴더 선택 후 보관할 수 있습니다.');const [currentService,currentDate]=k.split(':');const result=await api('archive',{date:currentDate,service:currentService,kind});const st=syncState(k);if(st.dirty||st.busy){if(!st.busy)st.revision=result.work.revision;persistDraft(k);msg('OneDrive에 이전 완료본을 보관했습니다. 화면의 새 입력은 유지됩니다.');return;}app.records[k]=result.work.data;st.revision=result.work.revision;render();msg('완료본을 OneDrive에 보관했습니다. 보관 자료에서 확인할 수 있습니다.');}
+ async function archiveCurrent(k=key(),kind=app.output){await refresh();const [svc]=k.split(':');const mode=app.records[k]?.fridayMode||'zoom';const keyName=svc==='wednesday'?'archive_wednesday':svc==='friday'?(mode==='in_person'?'archive_friday_in_person':'archive_friday_zoom'):(kind==='pdf'?'archive_sunday_pdf':'archive_sunday_ppt');if(!state?.connected||!(state.folders.archive||state.folders[keyName]))return msg('OneDrive 연결 및 해당 예배 완료본 폴더를 설정하세요.');const [currentService,currentDate]=k.split(':');const result=await api('archive',{date:currentDate,service:currentService,kind});const st=syncState(k);if(st.dirty||st.busy){if(!st.busy)st.revision=result.work.revision;persistDraft(k);msg('OneDrive에 이전 완료본을 보관했습니다. 화면의 새 입력은 유지됩니다.');return;}app.records[k]=result.work.data;st.revision=result.work.revision;render();msg('완료본을 OneDrive에 보관했습니다. 보관 자료에서 확인할 수 있습니다.');}
  async function syncOriginal(songId,digest){await refresh();if(!state?.connected||!state.folders.source)return {uploaded:false};const result=await api('upload-source',{song_id:songId,digest});return {uploaded:!!result?.item?.id,item:result?.item||null};}
  function init(){
   el('cloud-copy-redirect').onclick=async()=>{try{await navigator.clipboard.writeText(el('cloud-redirect').textContent);msg('반환 주소를 복사했습니다. Microsoft 앱의 Web 반환 주소에 붙여 넣으세요.');}catch{msg('표시된 반환 주소를 직접 복사하세요.');}};
   el('cloud-save-config').onclick=async()=>{const b=el('cloud-save-config');b.disabled=true;try{await api('configure',{client_id:el('cloud-client-id').value.trim(),secret:el('cloud-secret').value});el('cloud-secret').value='';await refresh();msg('연결 설정을 서버에 저장했습니다. OneDrive 연결을 눌러 로그인하세요.');}catch(e){msg(e.message);}finally{b.disabled=false;}};
   el('cloud-connect').onclick=async()=>{const b=el('cloud-connect');b.disabled=true;try{if(state?.local_url&&location.origin!==new URL(state.local_url).origin){window.location.assign(state.local_url+'/?onedrive=setup');return;}const result=await api('connect',{});window.location.assign(result.url);}catch(e){msg(e.message);b.disabled=false;}};
   el('cloud-disconnect').onclick=async()=>{if(!confirm('이 서버의 OneDrive 연결을 해제할까요? OneDrive 파일은 삭제하지 않습니다.'))return;await api('disconnect',{});await refresh();msg('서버의 연결 정보를 해제했습니다. Microsoft 계정의 앱 권한 취소는 Microsoft 계정 설정에서 할 수 있습니다.');};
-  for(const purpose of ['source','archive'])el('cloud-pick-'+purpose).onclick=()=>chooseFolder(purpose).catch(e=>msg(e.message));
+  for(const purpose of ['source','archive',...otherFolders])el('cloud-pick-'+purpose).onclick=()=>chooseFolder(purpose).catch(e=>msg(e.message));
   el('cloud-folder-select').onclick=async()=>{try{await api('folders',{purpose:folderPurpose,id:folderStack.at(-1).id});el('cloud-folder-dialog').close();await refresh();msg('OneDrive 폴더를 저장했습니다.');}catch(e){msg(e.message);}};
   el('cloud-auto-connect').onclick=()=>{if(confirm('OneDrive 전체 원본을 검색하고 정확히 일치하는 자료는 자동으로 연결합니다. 검수와 사용 허락은 별도이며, OneDrive 파일은 삭제하지 않습니다. 계속할까요?'))autoConnect().catch(e=>msg(e.message));};
   el('cloud-library-search').onclick=sources;el('cloud-archive-refresh').onclick=()=>archives();el('cloud-archive-current').onclick=()=>archiveCurrent().catch(e=>msg('완료 표시는 유지됩니다. '+e.message));
