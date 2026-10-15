@@ -22,6 +22,11 @@ def convert_original(source):
         except (OSError,zipfile.BadZipFile):return False
     with _LOCK:
         if valid(target):return target
+        # Some downloaded files have a legacy .ppt name but contain a valid PPTX package.
+        # Keep original bytes intact and expose a correctly named cached copy.
+        if valid(source):
+            shutil.copyfile(source, target)
+            return target
         binary=(str(Path('/Applications/LibreOffice.app/Contents/MacOS/soffice')) if Path('/Applications/LibreOffice.app/Contents/MacOS/soffice').is_file() else None) or shutil.which('soffice') or shutil.which('libreoffice') or (str(BUNDLED) if BUNDLED.is_file() else None)
         if not binary:raise RuntimeError('LibreOffice 미설치 · 구형 .ppt 자동 변환에는 LibreOffice가 필요합니다. Mac에는 /Applications/LibreOffice.app 설치 후 검수 서버를 다시 실행하세요.')
         with tempfile.TemporaryDirectory(dir=directory) as temp:
