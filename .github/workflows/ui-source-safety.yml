@@ -1,0 +1,30 @@
+name: UI and OneDrive Source Safety
+
+on:
+  push:
+    branches:
+      - fix/ui-workflow-20261015
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  source-safety:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+      - name: Install test dependencies
+        run: python -m pip install -e '.[dev]'
+      - name: Run regression tests without private church assets or credentials
+        env:
+          PYTHONDONTWRITEBYTECODE: '1'
+        run: |
+          python -m pytest -q --tb=short             tests/test_cloud_source_classification.py             tests/test_cloud_catalog_audit.py             tests/test_one_drive_lookup_ui.py             tests/test_original_roles.py             tests/test_onedrive.py             tests/test_reclassify_non_song_catalog.py             tests/test_audit_song_dependencies.py
