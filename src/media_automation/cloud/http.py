@@ -256,7 +256,10 @@ class Hosted:
             return reply(503, {'error': '처리 결과를 확인하지 못했습니다. 다시 불러와 확인하세요.'})
 
     def upload(self, client, path, query, content):
+        from ..web.original.original_roles import song_candidate
         filename = query['filename'][0]
+        if (path == '/api/song-assets' or query.get('song_id', [None])[0]) and not song_candidate(filename):
+            raise ValueError('찬양이 아닌 주보·기도·템플릿 자료는 찬양 원본으로 등록할 수 없습니다.')
         with tempfile.TemporaryDirectory(prefix='media-cloud-source-') as folder:
             store = WorkStore(Path(folder) / 'upload.db')
             digest, _, target = store._store_file(filename, content)
@@ -324,6 +327,9 @@ class Hosted:
         route, query = body['route'], body['query']
         if route not in ('/api/attachments','/api/song-assets') or not isinstance(query,dict):
             raise ValueError('업로드 위치를 확인하세요.')
+        from ..web.original.original_roles import song_candidate
+        if (route == '/api/song-assets' or query.get('song_id')) and not song_candidate(filename):
+            raise ValueError('찬양이 아닌 주보·기도·템플릿 자료는 찬양 원본으로 등록할 수 없습니다.')
         if route == '/api/attachments':
             day, service, slot = query['date'], query['service'], query['slot']
             if not isinstance(slot,str) or not 0<len(slot)<=200:
