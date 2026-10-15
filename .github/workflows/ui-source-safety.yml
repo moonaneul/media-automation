@@ -35,7 +35,8 @@ jobs:
             tests/test_onedrive.py \
             tests/test_reclassify_non_song_catalog.py \
             tests/test_audit_song_dependencies.py \
-            tests/test_cloud_worker_archive_paths.py
+            tests/test_cloud_worker_archive_paths.py \
+            tests/test_user_reported_media_regressions.py
       - name: Run entire repository suite (asset availability independently reported)
         timeout-minutes: 12
         env:
