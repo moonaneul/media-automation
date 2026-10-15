@@ -66,7 +66,7 @@ def handle(cloud, handler, parsed, origin, authenticated, session_token, session
             handler.reply(200,{'folders':cloud.select_folder(body.get('purpose'),body.get('id'))})
         elif action=='files' and handler.command=='GET':
             purpose=argument('purpose','source')
-            if purpose not in ('source','archive'):
+            if purpose not in ('source','source_video','archive'):
                 raise CloudError('자료 종류를 확인하세요.')
             items=cloud.list_selected(purpose,argument('id') or None,argument('q'))
             if purpose=='source':
