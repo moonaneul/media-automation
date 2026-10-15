@@ -451,6 +451,8 @@ class Hosted:
             return handler.reply(200,{'work':current,'item':job['result']['artifact'],'already_archived':True})
         if action=='import':
             return handler.reply(201,self.import_original(client,body['id'],body['song_id']))
+        if action=='import-to-slot':
+            return handler.reply(201,self.import_for_slot(client,body))
         if action=='auto-connect':
             snapshot=self.catalog(client)
             songs=self.songs(snapshot)
@@ -493,6 +495,67 @@ class Hosted:
                 except Exception:result['errors'].append({'name':items[0]['name'],'reason':'원본 연결을 완료하지 못했습니다.'})
             return handler.reply(200,result)
         return handler.reply(409,{'error':'연결·폴더 변경은 관리자 배포 설정에서 진행하세요.'})
+
+    def import_for_slot(self, client, body):
+        """One user-selected OneDrive source -> one explicit worship attachment.
+
+        The server validates the requested service, slot and format. Unlike
+        auto-connect this never guesses a song or copies last week's values.
+        The source file stays in OneDrive; the cloud catalog references its ID.
+        """
+        import hashlib
+        from ..web.original.original_roles import song_candidate
+        from ..web.original.generation import compatible_original
+
+        day, service, slot, item_id = (body[k] for k in ('date', 'service', 'slot', 'id'))
+        WorkStore.validate(day, service)
+        if not isinstance(slot, str) or len(slot) > 200:
+            raise ValueError('찬양 항목을 확인하세요.')
+        is_background = slot.startswith('배경음악 ')
+        is_song = any(text in slot for text in ('찬양', '찬송', '특송'))
+        if not is_background and not is_song:
+            raise ValueError('찬양·찬송·특송 항목만 연결할 수 있습니다.')
+        snapshot = self.catalog(client, day, service)
+        data = snapshot['work']['data']
+        field = data.get('fields', {}).get(slot)
+        if not is_background and (not isinstance(field, dict) or field.get('state') != 'VALUE'
+                                  or not field.get('value', '').strip()):
+            raise ValueError('이번 주 예배에 이 곡을 먼저 입력하세요.')
+        mode = data.get('fridayMode', 'zoom')
+        if is_background and (service != 'friday' or mode != 'zoom'):
+            raise ValueError('금요 Zoom 배경음악만 연결할 수 있습니다.')
+        item = self.cloud.item(item_id)
+        filename = item.get('name', '')
+        if ('file' not in item or not isinstance(filename, str)
+                or not compatible_original(filename, service, mode, slot)
+                or not is_background and not song_candidate(filename)):
+            raise ValueError('현재 예배 방식에 맞는 찬양 원본만 선택하세요.')
+        if not self.cloud.within(item, self.cloud.selected('source')):
+            raise ValueError('찬양 원본 폴더의 파일만 가져올 수 있습니다.')
+        if not 0 < item.get('size', 0) <= 128 * 1024 * 1024:
+            raise ValueError('지원하는 원본 크기는 128MB 이하입니다.')
+        content = self.cloud._download(item)
+        if len(content) != item['size']:
+            raise ValueError('OneDrive 다운로드 크기가 원본 정보와 일치하지 않습니다.')
+        with tempfile.TemporaryDirectory(prefix='media-inline-source-check-') as folder:
+            digest, _, _ = WorkStore(Path(folder)/'validation.db')._store_file(filename, content)
+        exists = next((entry for entry in snapshot['tables']['files']
+                       if entry['digest'] == digest), None)
+        if exists is None:
+            self.backend.call('media_register_file', {'p_record': {
+                'digest': digest, 'filename': filename, 'size': item['size'],
+                'item_id': item['id'], 'drive_id': item['parentReference']['driveId']
+            }})
+        self.edit(client, snapshot, 'attachment', {
+            'day': day, 'service': service, 'slot': slot,
+            'song_id': None, 'filename': filename, 'digest': digest
+        })
+        return {'slot': slot, 'filename': filename, 'digest': digest,
+                'source': 'onedrive', 'imported': True, 'ready_for_ppt': True,
+                'conversion_status': 'not_needed' if filename.lower().endswith('.pptx')
+                                     or filename.lower().endswith('.mp4')
+                                     or filename.lower().endswith('.mp3') else 'pending',
+                'archive_status': 'uploaded'}
 
     def import_original(self,client,item_id,song_id):
         snapshot=self.catalog(client)
