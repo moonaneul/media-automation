@@ -196,6 +196,26 @@ button+button{margin-inline-start:10px}
 #asset-list .asset-music-optional>summary{cursor:pointer;font-weight:600}
 #asset-list .asset-music-optional>.asset-row{padding:14px 8px}
 @media(max-width:640px){.topbar #account-logout{margin-left:auto}.week-date{min-width:0}}
+
+/* Search first; media and ambiguous originals remain available in an opt-in view. */
+.library-type-label{font-size:13px;display:flex;align-items:center;gap:9px;white-space:nowrap}
+.library-type-label select{font-size:13px;min-height:38px;max-width:240px;width:auto}
+.library-guide{padding:12px 24px;margin:0;border-bottom:1px solid var(--line)}
+.library-advanced>summary{cursor:pointer;font-weight:650;padding:17px 24px}
+.library-advanced>summary .hint{display:inline;margin-left:12px}
+.library-song-body{width:100%;min-width:0}
+.library-song-head{display:flex;gap:12px;flex-wrap:wrap;justify-content:space-between;align-items:center}
+.library-song-head h3{overflow-wrap:anywhere}
+.library-song-head .hint{margin:0}
+.library-manage{margin-top:10px;width:100%;max-width:100%;border:1px solid var(--line);border-radius:9px;padding:0 14px}
+.library-manage>summary{cursor:pointer;padding:11px 0;font-weight:600}
+.library-file{border-top:1px solid var(--line);padding:12px 0;overflow-wrap:anywhere}
+.library-file .hint{margin:0 0 6px}
+.library-file .actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px}
+.library-file .actions button{margin:0}
+.library-management{border-top:1px solid var(--line);margin-top:12px;padding-top:10px}
+.library-management>summary{cursor:pointer;font-size:13px;color:var(--muted)}
+@media(max-width:640px){.library-guide{padding:12px 18px}.library-type-label{flex-wrap:wrap}.library-advanced>summary{padding:12px 18px}}
 </style>
 </head>
 <body>
@@ -208,7 +228,7 @@ button+button{margin-inline-start:10px}
 
 <p class="preview-only">입력 · 자료 연결 · 제작 · 검수</p>
 </aside>
-<div class="main"><header class="topbar"><strong>교회 미디어팀</strong><div class="mobile-menu"><select id="mobile-page" aria-label="공통 메뉴"><option value="work">이번 주 예배</option><option value="library">찬양 자료실</option><option value="archive">보관 자료</option><option value="settings">설정</option></select></div><span>공용 작업 공간 <span class="tag"></span></span><button id="account-logout" class="logout-link" hidden title="로그아웃" aria-label="로그아웃"><span aria-hidden="true">↪</span> Log out</button></header>
+<div class="main"><header class="topbar"><strong>교회 미디어팀</strong><div class="mobile-menu"><select id="mobile-page" aria-label="공통 메뉴"><option value="work">이번 주 예배</option><option value="library">찬양 자료실</option><option value="archive">보관 자료</option><option value="settings">설정</option></select></div><span>공용 작업 공간 <span class="tag"></span></span><span id="local-auth-indicator" class="hint" hidden>로컬 검수 · 로그인 없음</span><button id="account-logout" class="logout-link" hidden title="로그아웃" aria-label="로그아웃"><span aria-hidden="true">↪</span> Log out</button></header>
 <main class="workspace" id="main-content" tabindex="-1">
 <section id="work-page">
 <div class="weekbar"><div class="week-date"><span class="week-date-caption">선택한 주간</span><strong id="week-label"></strong></div><button data-week="-1">← 이전 주</button><button data-week="0">이번 주</button><button data-week="1">다음 주 →</button></div>
@@ -224,7 +244,24 @@ button+button{margin-inline-start:10px}
 <div id="assets-tab" hidden><div class="section-label"><h2>이번 주 찬양 자료</h2><span class="hint">입력한 곡 기준</span></div><p class="hint" style="margin:0 0 18px">OneDrive를 먼저 확인합니다. 검수된 원본은 자동 연결하며, 여러 원본은 직접 선택합니다. 자료가 없거나 별도 파일을 사용할 때는 원본을 첨부하세요.</p><div id="asset-list" class="panel"></div><p class="hint">자료가 없으면 임의 대체하지 않습니다. 악보 부족은 확인 후 빈 상태로 제작·완료할 수 있습니다.</p><div class="next-step"><div><strong>자료 연결 상태를 확인하세요</strong><p class="hint">원본이 없는 곡은 임의로 대체하지 않습니다. 제작 후 누락과 실제 화면을 검수하세요.</p></div><div class="actions"><button data-workflow-target="content">← 내용 수정</button><button class="primary" data-workflow-target="result">제작 · 검수로 이동 →</button></div></div></div>
 <div id="result-tab" hidden><div id="output-switch" class="output-switch" hidden><button data-output="ppt" class="active">예배 PPT</button><button data-output="pdf">주보 PDF</button></div><div class="result-top"><div><h2 id="result-title">예배 PPT</h2><p id="file-status" class="hint">아직 제작된 파일이 없습니다.</p></div><button class="primary" id="build">제작 전 확인</button></div><div class="result-canvas"><div id="ppt-preview" class="slide"><span class="result-empty-icon" aria-hidden="true">▤</span><h2>아직 제작한 파일이 없습니다</h2><p class="hint">위의 만들기 버튼으로 제작한 뒤 여기서 결과를 확인하세요.</p></div><div id="pdf-preview" class="sheet" hidden><section><h2>4쪽 · 교회 소식</h2><p>광고 · 일정 · 모임 안내</p><p class="hint">기존 주보 디자인 유지</p></section><section><h2>1쪽 · 표지</h2><p>날짜 · 호수 · 표어 · 교회 정보</p><p class="hint">인쇄 배치 예시</p></section></div><div id="pager" class="pager">미리보기 위치 예시</div></div><div class="actions"><button id="print" class="primary" hidden>출력하기</button><button id="download">PPT 다운로드</button><button id="complete">검수 후 완료 표시</button></div><p id="print-help" class="hint" hidden>A4 가로 · 실제 크기 100% · 양면 · 짧은 쪽 넘김 · 한 면당 PDF 1페이지<br>소책자·모아 찍기 적용 안 함</p><details class="panel result-storage" style="margin-top:24px"><summary>완료본 보관 · OneDrive</summary><div class="panel-body"><h3>완료본과 보관</h3><div class="actions"><button id="cloud-archive-current">완료본 OneDrive 보관 · 다시 시도</button></div><p id="storage-status" class="hint">OneDrive 연결 전 · 실제 업로드는 실행하지 않습니다.</p><p class="hint">서버의 원본과 결과 파일은 유지됩니다. OneDrive 보관 성공 여부를 별도로 표시합니다.</p><div id="previous-file" class="hint" hidden>수정 전 완료본 유지 · 새 파일 완료 전까지 교체하지 않음</div></div></details></div>
 </section>
-<section id="library-page" hidden><h1>찬양 자료실</h1><p class="hint">제작에 사용할 악보 PPT·영상·음원을 찾아 이번 주 찬양에 연결합니다. 등록 곡을 검색하거나 OneDrive 원본을 찾아 등록 곡에 연결합니다.</p><div class="search-row"><input id="library-search" placeholder="곡명 또는 찬송가 번호" aria-label="곡 검색"><button class="primary" id="register-asset">곡 정보 등록</button></div><div class="panel"><div class="panel-head"><h2>악보 · 영상 · 음원</h2><span class="hint">등록 곡과 연결된 원본</span></div><div class="panel-body" style="border-bottom:1px solid var(--line)"><h3>OneDrive 원본 찾기</h3><p id="cloud-library-state" class="hint">연결 상태 확인 중</p><div class="actions button-group" aria-label="OneDrive 원본 작업"><button id="cloud-library-search" disabled>OneDrive 원본 검색</button><button id="cloud-auto-connect">자동 연결 확인</button></div><div id="cloud-library-list"></div></div><div class="panel-body"><h3>등록된 곡 · 찬송가 번호와 곡명 순</h3><p class="hint">아래는 서버에 등록된 곡입니다. 위 검색창은 등록 곡을 검색하며, OneDrive 원본 검색 버튼으로 공용 폴더도 검색할 수 있습니다.</p></div><div id="library-list"><p class="empty">등록된 곡이 없습니다.</p></div></div></section>
+<section id="library-page" hidden>
+<h1>찬양 자료실</h1>
+<p class="hint">원본은 OneDrive에서 찾아 이번 예배에 연결합니다. 이 화면은 필요한 곡을 검색하거나 등록 상태를 점검할 때 사용하세요.</p>
+<div class="search-row"><input id="library-search" placeholder="찬송가 번호 또는 곡명을 입력하세요" aria-label="등록된 찬양 검색" autocomplete="off"><button id="register-asset">곡 정보 등록</button></div>
+<div class="panel">
+ <div class="panel-head"><h2>등록된 찬양 검색</h2><label class="library-type-label" for="library-kind">자료 종류 <select id="library-kind" aria-label="자료 종류"><option value="score">악보 PPT</option><option value="media">금요 영상·기도 음원</option><option value="all">전체 자료 · 정리용</option></select></label></div>
+ <p class="hint library-guide">검색 전에는 전체 자료를 펼치지 않습니다. 자료 검수는 사용 허락과 내용 확인을 기록하는 기능이며, 파일을 OneDrive로 이동하거나 목록에서 삭제하지 않습니다.</p>
+ <div id="library-list"><p class="empty">원하는 찬송가 번호 또는 곡명을 검색하세요.</p></div>
+</div>
+<details class="panel library-advanced" id="cloud-library-tools">
+ <summary>OneDrive 원본 검색 · 미연결 자료 확인 <span class="hint">필요할 때만 열기</span></summary>
+ <div class="panel-body"><p id="cloud-library-state" class="hint">연결 상태 확인 중</p>
+  <div class="actions button-group" aria-label="OneDrive 원본 작업"><button id="cloud-library-search" disabled>OneDrive에서 검색</button><button id="cloud-auto-connect">미연결 원본 확인</button></div>
+  <p class="hint">한 번에 모두 연결하지 않습니다. 곡명을 확인할 수 없는 파일은 잘못 연결되지 않도록 보류합니다.</p>
+  <div id="cloud-library-list"></div>
+ </div>
+</details>
+</section>
 <section id="archive-page" hidden><h1>보관 자료</h1><p class="hint">주차별로 제작이 끝난 PPT·주보 PDF를 찾는 공간입니다. 찬양 원본은 찬양 자료실에서 관리합니다.</p><div class="panel" style="margin-top:24px"><div class="panel-body"><button id="cloud-archive-refresh">OneDrive 보관 자료 새로고침</button><div id="cloud-archive-list"><p class="empty">설정에서 OneDrive 연결과 완료본 폴더를 지정하세요. 서버의 제작 파일은 이번 주 예배 → 결과에서도 확인할 수 있습니다.</p></div></div></div></section>
 <section id="settings-page" hidden>
 <h1>설정</h1><p class="hint">매주 입력하는 내용과 별도로, 계속 사용할 기본값을 관리합니다.</p>
@@ -347,7 +384,7 @@ function syncLabel(k,text,color){if(k===key()){$('save-status').textContent=text
 function syncBanner(k){const st=syncState(k);let box=$('sync-banner');if(!box){box=node('div',undefined,'toast');box.id='sync-banner';$('form-groups').before(box);}box.replaceChildren();box.hidden=!st.conflict;if(st.conflict){box.append(node('p','다른 기기에서 변경되었습니다. 내 입력은 덮어쓰지 않고 이 화면에 유지했습니다.'));const exportButton=node('button','내 입력 복사');exportButton.onclick=async()=>{try{await navigator.clipboard.writeText(JSON.stringify(records[k],null,2));msg('내 입력을 복사했습니다.');}catch{msg('복사를 사용할 수 없습니다. 입력 내용을 직접 보존해 주세요.');}};const latest=node('button','서버 내용 확인');latest.onclick=()=>{if(!confirm('현재 화면의 입력을 서버 내용으로 바꿉니다. 필요한 입력은 먼저 복사했나요?'))return;records[k]=st.conflict.data;st.revision=st.conflict.revision;st.conflict=null;st.dirty=false;clearDraft(k);render();syncBanner(k);syncLabel(k,'공동 저장됨','info');};box.append(exportButton,latest);}}
 async function loadShared(k){const st=syncState(k);if(st.busy||st.dirty||st.conflict)return;st.busy=true;try{const response=await fetch(endpoint(k));if(!response.ok)throw Error();const result=await response.json();if(!st.loaded){const draft=readDraft(k);if(draft){records[k]=draft.data;st.revision=draft.revision;st.loaded=true;if(JSON.stringify(draft.data)===JSON.stringify(result.data)){st.revision=result.revision;clearDraft(k);if(k===key())render();}else{st.dirty=true;if(draft.revision!==result.revision)st.conflict=result;if(k===key()){render();if(st.conflict)syncBanner(k);}syncLabel(k,st.conflict?'다른 화면 변경 · 확인 필요':'저장 전 입력 복구됨','warning');return;}}}if(st.loaded&&(st.dirty||k===key()&&document.activeElement?.matches('input,textarea,select')))return;if(!st.loaded||result.revision!==st.revision){records[k]=Object.keys(result.data).length?result.data:{fields:{},source:'',sourceValues:{},person:'',outputs:{ppt:{generated:false,complete:false},pdf:{generated:false,complete:false}}};st.revision=result.revision;st.loaded=true;if(k===key())render();}if(k===key())saveOk=true;syncLabel(k,'공동 저장됨','info');}catch{syncLabel(k,'서버 연결 실패','warning');}finally{st.busy=false;for(const resolve of st.waiters??[])resolve();st.waiters=[];}}
 async function flushShared(k){const st=syncState(k);if(st.busy)await new Promise(resolve=>(st.waiters??=[]).push(resolve));if(!st.loaded||st.busy||st.conflict)return;if(!st.dirty)return;st.busy=true;st.dirty=false;const snapshot=JSON.parse(JSON.stringify(records[k]));syncLabel(k,'저장 중','neutral');try{const response=await fetch(endpoint(k),{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({revision:st.revision,data:snapshot})});const result=await response.json();if(response.status===409){st.conflict=result.current;st.dirty=true;syncLabel(k,'다른 기기 변경 · 확인 필요','warning');if(k===key())syncBanner(k);return;}if(!response.ok)throw Error();st.revision=result.revision;if(st.dirty)persistDraft(k);else clearDraft(k);if(k===key())saveOk=!st.dirty;syncLabel(k,st.dirty?'저장 대기':'공동 저장됨',st.dirty?'neutral':'info');}catch{st.dirty=true;syncLabel(k,'저장 실패 · 입력 유지','warning');msg('입력을 이 화면에 유지했습니다. 연결이 복구되면 다시 저장합니다.');}finally{st.busy=false;for(const resolve of st.waiters??[])resolve();st.waiters=[];if(st.dirty)persistDraft(k);}}
-async function startShared(){if(location.protocol==='file:')return;try{const response=await fetch('/api/mode');if(!response.ok)return;const mode=await response.json();if(!mode.shared)return;if(mode.auth_provider==='supabase'){$('access-description').textContent='승인된 미디어팀 계정으로 로그인하세요.';$('access-email-row').hidden=false;$('access-email').required=true;$('access-password-label').textContent='비밀번호';}$('account-logout').hidden=!mode.password_required||!mode.authenticated;if(mode.password_required&&!mode.authenticated){$('access-dialog').showModal();saveOk=false;return;}shared=true;saveOk=false;records={};await refreshSongs();document.querySelectorAll('p').forEach(n=>{if(n.textContent.includes('입력 내용은'))n.textContent='입력은 연결된 서버에 저장됩니다. 다른 화면의 변경은 약 2초 간격으로 확인하며 입력 중에는 화면을 교체하지 않습니다.';});await loadShared(key());sharedReady=true;saveOk=syncState(key()).loaded&&!syncState(key()).dirty&&!syncState(key()).conflict;msg(mode.local_only?'입력과 자료는 이 서버에 저장됩니다. 현재 서버는 이 컴퓨터에서만 접속할 수 있습니다. PPT·주보 PDF 제작과 다운로드가 연결됐으며 OneDrive 연결 상태는 설정에서 확인할 수 있습니다.':'같은 와이파이에서 접속 중입니다. PPT·주보 제작과 다운로드를 사용할 수 있습니다. OneDrive 연결 상태는 설정에서 확인할 수 있습니다.');setInterval(()=>{for(const [k,st]of syncStates)if(st.dirty&&!st.conflict)flushShared(k);const st=syncState(key());if(!st.dirty&&!st.conflict&&!document.activeElement?.matches('input,textarea,select'))loadShared(key());},2000);}catch{}}
+async function startShared(){if(location.protocol==='file:')return;try{const response=await fetch('/api/mode');if(!response.ok)return;const mode=await response.json();if(!mode.shared)return;if(mode.auth_provider==='supabase'){$('access-description').textContent='승인된 미디어팀 계정으로 로그인하세요.';$('access-email-row').hidden=false;$('access-email').required=true;$('access-password-label').textContent='비밀번호';}$('account-logout').hidden=!mode.password_required||!mode.authenticated;const accessIndicator=document.getElementById('local-auth-indicator');if(accessIndicator)accessIndicator.hidden=!!mode.password_required;if(mode.password_required&&!mode.authenticated){$('access-dialog').showModal();saveOk=false;return;}shared=true;saveOk=false;records={};await refreshSongs();document.querySelectorAll('p').forEach(n=>{if(n.textContent.includes('입력 내용은'))n.textContent='입력은 연결된 서버에 저장됩니다. 다른 화면의 변경은 약 2초 간격으로 확인하며 입력 중에는 화면을 교체하지 않습니다.';});await loadShared(key());sharedReady=true;saveOk=syncState(key()).loaded&&!syncState(key()).dirty&&!syncState(key()).conflict;msg(mode.local_only?'입력과 자료는 이 서버에 저장됩니다. 현재 서버는 이 컴퓨터에서만 접속할 수 있습니다. PPT·주보 PDF 제작과 다운로드가 연결됐으며 OneDrive 연결 상태는 설정에서 확인할 수 있습니다.':'같은 와이파이에서 접속 중입니다. PPT·주보 제작과 다운로드를 사용할 수 있습니다. OneDrive 연결 상태는 설정에서 확인할 수 있습니다.');setInterval(()=>{for(const [k,st]of syncStates)if(st.dirty&&!st.conflict)flushShared(k);const st=syncState(key());if(!st.dirty&&!st.conflict&&!document.activeElement?.matches('input,textarea,select'))loadShared(key());},2000);}catch{}}
 async function refreshAttachments(k){const [svc,date]=k.split(':');try{const response=await fetch('/api/attachments?service='+encodeURIComponent(svc)+'&date='+encodeURIComponent(date));if(!response.ok)throw Error();const data=await response.json();const prefix=svc+'|'+date+'|';for(const old of [...savedAttachments.keys()])if(old.startsWith(prefix))savedAttachments.delete(old);for(const attachment of data.attachments)savedAttachments.set(prefix+attachment.slot,attachment);}catch{msg('첨부 목록을 불러오지 못했습니다. 다시 자료 탭을 열어 주세요.');}}
 async function previewOriginal(asset){$('asset-preview-title').textContent=asset.filename;const body=$('asset-preview-body');body.replaceChildren();$('asset-preview-dialog').showModal();const ext=asset.filename.split('.').pop().toLowerCase();const url='/api/original?digest='+encodeURIComponent(asset.digest);if(ext==='pdf'){const frame=node('iframe');frame.src=url;frame.title=asset.filename;frame.style.cssText='width:100%;height:420px;border:0;margin-top:16px';body.append(frame);}else if(['mp4','mp3','wav'].includes(ext)){const media=node(ext==='mp4'?'video':'audio');media.controls=true;media.setAttribute('controlsList','nodownload');media.src=url;media.style.cssText='width:100%;margin-top:16px';body.append(media);}else if(['ppt','pptx'].includes(ext)){const loading=node('p','악보 전체 화면을 준비하고 있습니다.');body.append(loading);const endpoint='/api/asset-preview?digest='+encodeURIComponent(asset.digest);try{const response=await fetch(endpoint+'&info=1');let info;const type=(response.headers.get('content-type')||'').toLowerCase();if(!type.includes('json')){const raw=(await response.text()).slice(0,200);if(response.status===429||/rate exceeded|too many requests/i.test(raw))throw Error('미리보기 요청이 일시적으로 제한됐습니다. 잠시 후 다시 시도하세요.');throw Error('미리보기 서버 응답을 확인하지 못했습니다. (HTTP '+response.status+')');}try{info=await response.json();}catch{throw Error('미리보기 응답을 읽지 못했습니다. 잠시 후 다시 시도하세요.');}if(!response.ok)throw Error(info.error||'원본 미리보기 실패 (HTTP '+response.status+')');if(!loading.isConnected)return;body.replaceChildren();for(let page=1;page<=info.page_count;page++){body.append(node('p',page+' / '+info.page_count));const img=node('img');img.src=endpoint+'&page='+page;img.alt=asset.filename+' '+page+'쪽';img.loading='lazy';img.style='width:100%;height:auto;border:1px solid #ddd';body.append(img);}}catch(error){if(loading.isConnected)loading.textContent=error.message||'원본 미리보기 실패';}}else body.append(node('p','지원하지 않는 미리보기 형식입니다.'));}
 
@@ -355,15 +392,82 @@ $('asset-preview-dialog').addEventListener('close',()=>{$('asset-preview-body').
 function songCaption(song){return (song.edition?(song.edition==='new'?'새찬송가':'구찬송가')+' '+song.number+'장 · ':'')+song.title;}
 async function removeOriginal(body){const response=await fetch('/api/remove-original',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});const result=await response.json();if(!response.ok)throw Error(result.error);}
 function libraryOriginalActions(song,asset){
- const remove=node('button','삭제');remove.onclick=async()=>{if(!confirm('자료실에서 이 원본을 삭제할까요? 다른 예배 첨부와 OneDrive 파일은 유지됩니다.'))return;remove.disabled=true;try{await removeOriginal({song_id:song.id,digest:asset.digest});await refreshSongs();msg('자료실 원본을 삭제했습니다.');}catch(e){msg(e.message);}finally{remove.disabled=false;}};
- const replace=node('button','교체');replace.onclick=()=>{const input=node('input');input.type='file';input.accept='.ppt,.pptx,.mp4,.mp3,.wav,.pdf';input.onchange=async()=>{const file=input.files[0];if(!file)return;replace.disabled=true;try{const response=await fetch('/api/song-assets?song_id='+encodeURIComponent(song.id)+'&replace_digest='+encodeURIComponent(asset.digest)+'&filename='+encodeURIComponent(file.name),{method:'POST',headers:{'Content-Type':'application/octet-stream'},body:file});const result=await response.json();if(!response.ok)throw Error(result.error);await refreshSongs();msg('새 원본으로 교체했습니다. 새 파일의 확인 상태를 다시 검수하세요.');try{await CloudMedia.syncOriginal(song.id,result.digest);}catch(e){msg('교체 완료 · OneDrive 저장 실패: '+e.message);}}catch(e){msg(e.message);}finally{replace.disabled=false;}};input.click();};
+ const remove=node('button','등록 해제');remove.onclick=async()=>{if(!confirm('이 원본의 자료실 등록만 해제합니다. 이번 예배 첨부와 OneDrive 원본 파일은 삭제하지 않습니다. 계속할까요?'))return;remove.disabled=true;try{await removeOriginal({song_id:song.id,digest:asset.digest});await refreshSongs();msg('자료실 원본을 삭제했습니다.');}catch(e){msg(e.message);}finally{remove.disabled=false;}};
+ const replace=node('button','교체');replace.onclick=()=>{const input=node('input');input.type='file';input.accept='.ppt,.pptx,.mp4,.mp3,.wav,.pdf';input.onchange=async()=>{const file=input.files[0];if(!file)return;replace.disabled=true;try{const response=await fetch('/api/song-assets?song_id='+encodeURIComponent(song.id)+'&replace_digest='+encodeURIComponent(asset.digest)+'&filename='+encodeURIComponent(file.name),{method:'POST',headers:{'Content-Type':'application/octet-stream'},body:file});const result=await response.json();if(!response.ok)throw Error(result.error);await refreshSongs();msg('자료실 등록 파일을 교체했습니다. 새 파일의 검수는 별도입니다. OneDrive 기존 파일은 자동으로 삭제되지 않습니다.');try{const sync=await CloudMedia.syncOriginal(song.id,result.digest);if(!sync?.synced)msg('자료실 교체 완료 · OneDrive 저장 여부는 연결 상태에서 확인하세요.');}catch(e){msg('자료실 교체 완료 · OneDrive 저장 확인 실패: '+e.message);}}catch(e){msg(e.message);}finally{replace.disabled=false;}};input.click();};
  return [replace,remove];
 }
-function renderLibrary(){const list=$('library-list');list.replaceChildren();const query=$('library-search').value.trim();let songs=[...songCatalog].sort((a,b)=>{if(a.edition&&b.edition)return a.edition.localeCompare(b.edition)||(a.number-b.number);if(a.edition)return -1;if(b.edition)return 1;return a.title.localeCompare(b.title,'ko');});if(query){const found=SongSearch.search(query,songCatalog);songs=found.status==='edition'?songCatalog.filter(s=>s.number===found.number):found.candidates;}if(!songs.length){list.append(node('p',query?'등록된 곡을 찾지 못했습니다.':'등록된 곡이 없습니다. 곡 정보를 등록하면 입력창에서 검색할 수 있습니다.','empty'));return;}for(const song of songs){const row=node('div',undefined,'asset-row');const details=node('div');details.append(node('h3',songCaption(song)),node('p',song.aliases.length?'검색용 다른 이름: '+song.aliases.join(', '):'','hint'),node('span',song.assets.length?'원본 '+song.assets.length+'개 · 자동 연결 가능 '+song.assets.filter(a=>a.eligible).length+'개':'곡 정보 등록됨 · 원본 미연결','status '+(song.assets.some(a=>a.eligible)?'info':'warning')));const upload=node('button',song.assets.length?'다른 원본 추가':'원본 등록');upload.onclick=()=>{const input=node('input');input.type='file';input.accept='.ppt,.pptx,.mp4,.mp3,.wav,.pdf';input.onchange=async()=>{const file=input.files[0];if(!file)return;upload.disabled=true;try{const response=await fetch('/api/song-assets?song_id='+encodeURIComponent(song.id)+'&filename='+encodeURIComponent(file.name),{method:'POST',headers:{'Content-Type':'application/octet-stream'},body:file});const result=await response.json();if(!response.ok)throw Error(result.error);await refreshSongs();try{await CloudMedia.syncOriginal(song.id,result.digest);msg('원본을 자료실에 저장했습니다. OneDrive가 연결되어 있으면 원본 폴더에도 보관합니다.');}catch(e){msg('서버 원본은 저장됐습니다. OneDrive 저장 실패: '+e.message);}}catch(error){msg(error.message||'원본 저장 실패');}finally{upload.disabled=false;}};input.click();};details.append(upload);for(const asset of song.assets){const button=node('button','원본 확인 · '+asset.filename);button.onclick=()=>previewOriginal(asset);const review=node('button','확인 상태');review.onclick=()=>openAssetReview(song,asset);const assetActions=node('div',undefined,'actions library-asset-actions');assetActions.append(button,review,...libraryOriginalActions(song,asset));details.append(assetActions,node('span',asset.eligible?'자동 연결 가능':'검수·사용 허락 확인 필요',asset.eligible?'status info':'status warning'));}row.append(details);list.append(row);}}
+function libraryType(song){
+ const title=(song.title||'').toLowerCase();
+ if(/^(?:bulletin[-_]|cover(?:$|[-_])|community[-_ ]prayer(?:$|[-_]))/.test(title))return 'other';
+ const score=(song.assets||[]).some(a=>/\\.pptx?$/i.test(a.filename||''));
+ const media=(song.assets||[]).some(a=>/\\.(mp4|mp3|wav)$/i.test(a.filename||''));
+ const miscellaneous=(song.assets||[]).some(a=>/\\.(pdf|jpe?g|png)$/i.test(a.filename||''));
+ if(score)return 'score';
+ if(media)return 'media';
+ if(miscellaneous)return 'other';
+ return 'unlinked';
+}
+function renderLibrary(){
+ const list=$('library-list');list.replaceChildren();
+ const query=$('library-search').value.trim();
+ if(!query){list.append(node('p','검색할 곡명이나 번호를 입력하세요. 원본 전체 목록은 표시하지 않습니다.','empty'));return;}
+ const mode=$('library-kind').value;
+ let songs=[...songCatalog].sort((a,b)=>{if(a.edition&&b.edition)return a.edition.localeCompare(b.edition)||(a.number-b.number);if(a.edition)return -1;if(b.edition)return 1;return a.title.localeCompare(b.title,'ko');});
+ const found=SongSearch.search(query,songCatalog);
+ songs=found.status==='edition'?songCatalog.filter(s=>s.number===found.number):found.candidates;
+ songs=songs.filter(song=>mode==='all'||(mode==='score'&&['score','unlinked'].includes(libraryType(song)))||(mode==='media'&&libraryType(song)==='media'));
+ if(!songs.length){list.append(node('p',mode==='score'?'등록된 악보를 찾지 못했습니다. 영상·기도 음원이나 다른 파일은 자료 종류를 변경하여 확인하세요.':'선택한 종류에서 일치하는 자료가 없습니다.','empty'));return;}
+ list.append(node('p','검색 결과 '+songs.length+'곡 · 자동 연결되는 원본은 직접 선택하지 않아도 됩니다.','hint library-guide'));
+ for(const song of songs){
+  const row=node('div',undefined,'asset-row'), details=node('div',undefined,'library-song-body');
+  const head=node('div',undefined,'library-song-head');head.append(node('h3',songCaption(song)));
+  const count=song.assets.length,usable=song.assets.filter(a=>a.eligible).length;
+  const label=count?'원본 '+count+'개 · 자동 연결 가능 '+usable+'개':'등록된 곡 · 원본 미연결';
+  head.append(node('span',label,'status '+(usable?'info':'warning')));
+  details.append(head);
+  if(song.aliases?.length)details.append(node('p','다른 검색명: '+song.aliases.join(', '),'hint'));
+  const manage=node('details',undefined,'library-manage');
+  manage.append(node('summary','원본 확인·관리 '+(count?'('+count+')':'· 아직 없음')));
+  const explanation=node('p','검수는 확인 기록만 저장합니다. OneDrive 업로드나 자동 연결 완료를 보장하지 않습니다. 교체해도 OneDrive의 예전 파일은 자동 삭제되지 않습니다.','hint');
+  manage.append(explanation);
+  for(const asset of song.assets){
+   const entry=node('div',undefined,'library-file');
+   entry.append(node('p',asset.filename,'hint'));
+   entry.append(node('span',asset.eligible?'검수됨 · 자동 연결 가능':'검수·사용 허락 확인 필요','status '+(asset.eligible?'info':'warning')));
+   if(asset.conversion_status==='failed')entry.append(node('p',asset.conversion_message||'구형 PPT 변환 실패 · 원본은 그대로 보존됩니다.','status warning'));
+   const actions=node('div',undefined,'actions');
+   const preview=node('button','원본 확인');preview.onclick=()=>previewOriginal(asset);
+   const review=node('button','검수 기록');review.onclick=()=>openAssetReview(song,asset);
+   actions.append(preview,review);
+   const advanced=node('details',undefined,'library-management');advanced.append(node('summary','교체·등록 해제 (관리자용)'));
+   advanced.append(node('p','이 자료실의 등록 상태만 바꿉니다. OneDrive 원본은 별도로 확인해야 합니다.','hint'));
+   const controls=node('div',undefined,'actions');
+   controls.append(...libraryOriginalActions(song,asset));
+   advanced.append(controls);
+   entry.append(actions,advanced);
+   manage.append(entry);
+  }
+  const upload=node('button','이 곡에 원본 추가');
+  upload.onclick=()=>{const input=node('input');input.type='file';input.accept='.ppt,.pptx,.mp4,.mp3,.wav';input.onchange=async()=>{
+   const file=input.files[0];if(!file)return;upload.disabled=true;
+   try{
+    const response=await fetch('/api/song-assets?song_id='+encodeURIComponent(song.id)+'&filename='+encodeURIComponent(file.name),{method:'POST',headers:{'Content-Type':'application/octet-stream'},body:file});
+    const result=await response.json();if(!response.ok)throw Error(result.error||'원본 등록 실패');
+    await refreshSongs();
+    let feedback='자료실에 원본을 등록했습니다. 원본 검수는 별도입니다.';
+    try{const sync=await CloudMedia.syncOriginal(song.id,result.digest);feedback+=sync?.synced?' OneDrive 등록도 확인했습니다.':' OneDrive 저장 여부는 설정에서 별도 확인하세요.';}catch(e){feedback+=' OneDrive 동기화 확인 실패: '+e.message;}
+    msg(feedback);
+   }catch(error){msg(error.message||'원본 등록에 실패했습니다.');}
+   finally{upload.disabled=false;}
+  };input.click();};
+  manage.append(upload);
+  details.append(manage);row.append(details);list.append(row);
+ }
+}
 async function refreshSongs(){const list=$('library-list');list.setAttribute('aria-busy','true');if(!catalogReady)list.replaceChildren(node('p','찬양 자료를 불러오는 중입니다.','empty'));try{const response=await fetch('/api/songs');if(!response.ok)throw Error();const data=await response.json();songCatalog=data.songs;catalogReady=true;renderLibrary();}catch{catalogReady=false;const notice=node('div',undefined,'empty');notice.setAttribute('role','alert');notice.append(node('p','찬양 자료를 불러오지 못했습니다. 연결을 확인하고 다시 시도하세요.'));const retry=node('button','다시 불러오기');retry.onclick=refreshSongs;notice.append(retry);list.replaceChildren(notice);}finally{list.setAttribute('aria-busy','false');}}
 $('register-asset').onclick=()=>{$('song-dialog').showModal();};
 $('song-register-form').onsubmit=async event=>{event.preventDefault();const edition=$('song-edition').value;const data={title:$('song-title').value,aliases:$('song-aliases').value.split(',').map(s=>s.trim()).filter(Boolean),edition:edition||null,number:edition?Number($('song-number').value):null};$('song-register-error').textContent='';if(!shared){$('song-register-error').textContent='공동 저장 서버 화면에서 곡 정보를 등록할 수 있습니다.';return;}$('song-submit').disabled=true;try{const response=await fetch('/api/songs',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(data)});const result=await response.json();if(!response.ok)throw Error(result.error||'등록에 실패했습니다.');await refreshSongs();$('song-dialog').close();event.target.reset();form();msg('곡 정보를 등록했습니다. 실제 찬양 파일은 아직 연결되지 않았습니다.');}catch(error){$('song-register-error').textContent=error.message;}finally{$('song-submit').disabled=false;}};
-$('library-search').oninput=renderLibrary;
+$('library-search').oninput=renderLibrary;$('library-kind').onchange=renderLibrary;
 let reviewingAsset=null;
 function openAssetReview(song,asset){reviewingAsset={song,asset};const review=asset.review||{technical:false,church:false,permission:'unknown',note:''};$('review-title').textContent=songCaption(song)+' · '+asset.filename;$('review-technical').checked=review.technical;$('review-church').checked=review.church;$('review-permission').value=review.permission;$('review-note').value=review.note;$('review-error').textContent='';$('review-dialog').showModal();}
 $('review-form').onsubmit=async event=>{event.preventDefault();$('review-submit').disabled=true;try{const data={song_id:reviewingAsset.song.id,digest:reviewingAsset.asset.digest,review:{technical:$('review-technical').checked,church:$('review-church').checked,permission:$('review-permission').value,note:$('review-note').value}};const response=await fetch('/api/asset-review',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(data)});const result=await response.json();if(!response.ok)throw Error(result.error||'저장 실패');await refreshSongs();$('review-dialog').close();if(tab==='assets')assets();form();msg('자료 확인 상태를 저장했습니다. 서비스가 자동으로 검수했다는 의미는 아닙니다.');}catch(error){$('review-error').textContent=error.message;}finally{$('review-submit').disabled=false;}};
