@@ -185,3 +185,16 @@ def test_hosted_one_selected_one_drive_file_mutates_one_attachment_only(tmp_path
     assert hosted.edit.call_args.args[3]["slot"] == "시작 찬양 1"
     hosted.backend.call.assert_called_once()
     cloud._download.assert_called_once()
+
+
+def test_oauth_return_and_microsoft_preview_do_not_replace_worship_page():
+    root = Path(__file__).resolve().parents[1] / "src/media_automation/web/original/ui"
+    html = (root / "index.html").read_text()
+    js = (root / "onedrive.js").read_text()
+    assert "restoreCloudSong" in html
+    assert "media-onedrive-return" in html
+    assert "connectionReturn==='connected'" in js
+    assert "app.restoreCloudSong(back)" in js
+    assert "OneDrive에서 원본 보기 · 새 탭" in html
+    assert "link.target='_blank'" in html
+    assert "OneDrive에서 선택한 원본을 이 찬양 항목에 저장했습니다." in html
