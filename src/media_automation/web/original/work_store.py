@@ -114,6 +114,7 @@ class WorkStore:
                     row=db.execute('SELECT payload FROM asset_reviews WHERE song_id=? AND digest=?',(song['id'],asset['digest'])).fetchone()
                     asset['review']=json.loads(row[0]) if row else {'technical':False,'church':False,'permission':'unknown','note':''}
                     asset['eligible']=asset['review']['technical'] and asset['review']['church'] and asset['review']['permission']=='allowed'
+                    asset['local_file_present']=(Path(self.path).with_suffix('.files')/asset['digest']).is_file()
             return songs
 
     def review_asset(self, song_id, digest, data):
