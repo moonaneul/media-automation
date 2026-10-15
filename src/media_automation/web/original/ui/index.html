@@ -246,20 +246,21 @@ button+button{margin-inline-start:10px}
 </section>
 <section id="library-page" hidden>
 <h1>OneDrive 원본 찾기</h1>
-<p class="hint">이번 주 찬양의 악보 PPT 또는 금요 Zoom 영상을 찾는 화면입니다. 원본 파일 자체는 OneDrive에 보관하며, 곡명과 연결 기록만 제작에 활용합니다.</p>
-<div class="search-row"><input id="library-search" placeholder="찬송가 번호 또는 곡명을 입력하세요" aria-label="등록된 찬양 검색" autocomplete="off"><button id="register-asset">곡 정보 등록</button></div>
+<p class="hint">곡명을 입력하여 OneDrive에서 악보 PPT 또는 금요 Zoom 찬양 영상을 찾습니다. 원본 파일은 OneDrive에 두고, 이번 예배에서 필요한 자료만 연결합니다.</p>
+<div class="search-row"><input id="library-search" placeholder="찬송가 번호 또는 곡명을 입력하세요" aria-label="찬양 원본 검색" autocomplete="off"><button class="primary" id="cloud-library-search" disabled>OneDrive 검색</button></div>
 <div class="panel">
- <div class="panel-head"><h2>연결된 곡 찾기</h2><label class="library-type-label" for="library-kind">자료 종류 <select id="library-kind" aria-label="자료 종류"><option value="score">악보 PPT</option><option value="media">금요 영상·기도 음원</option><option value="all">전체 자료 · 정리용</option></select></label></div>
- <p class="hint library-guide">검색 전에는 전체 목록을 표시하지 않습니다. 자료 확인 상태는 OneDrive 업로드·파일 삭제와 무관한 검수 기록입니다.</p>
- <div id="library-list"><p class="empty">원하는 찬송가 번호 또는 곡명을 검색하세요.</p></div>
+ <div class="panel-head"><h2>원본 검색 결과</h2><label class="library-type-label" for="library-kind">종류 <select id="library-kind" aria-label="자료 종류"><option value="score">악보 PPT</option><option value="media">금요 찬양 영상</option><option value="all">악보 + 영상</option></select></label></div>
+ <div class="panel-body"><p id="cloud-library-state" class="hint">OneDrive 연결 상태 확인 중</p><p class="hint">검색 결과가 없거나 동일한 곡의 원본이 여러 개라면 해당 곡에 사용할 파일을 직접 확인해 주세요.</p><div id="cloud-library-list"><p class="hint">위에 곡명을 입력하고 OneDrive 검색을 눌러 주세요.</p></div></div>
 </div>
+<details class="panel library-advanced" id="library-catalog-details">
+ <summary>연결된 곡 정보 확인·관리 <span class="hint">필요할 때만 열기</span></summary>
+ <div class="panel-body"><p class="hint">이 목록은 서버에 저장된 곡과 원본 연결 기록입니다. 파일 자체는 OneDrive에 있습니다. 검수 기록은 파일 업로드나 사용 허락을 자동으로 증명하지 않습니다.</p><button id="register-asset">곡 정보 등록</button><div id="library-list"><p class="empty">원하는 곡명을 검색하세요.</p></div></div>
+</details>
 <details class="panel library-advanced" id="cloud-library-tools">
- <summary>OneDrive에서 새 원본 찾기 <span class="hint">선택한 곡에 원본이 없을 때</span></summary>
- <div class="panel-body"><p id="cloud-library-state" class="hint">연결 상태 확인 중</p>
-  <div class="actions button-group" aria-label="OneDrive 원본 작업"><button id="cloud-library-search" disabled>OneDrive에서 검색</button><button id="cloud-auto-connect">미연결 원본 확인</button></div>
-  <p class="hint">검색할 곡명을 입력한 후 원본을 찾아 연결합니다. 전체 자동 연결은 명시적으로 요청할 때만 진행합니다.</p>
-  <div id="cloud-library-list"></div>
- </div>
+ <summary>전체 OneDrive 원본 연결 관리 <span class="hint">고급 기능 · 자동으로 실행하지 않음</span></summary>
+ <div class="panel-body"><p class="hint">원본 폴더 전체를 검사해 정확히 일치하는 곡의 연결을 추가합니다. 파일 분류가 불분명하면 자동으로 등록하지 않습니다.</p>
+ <div class="actions button-group" aria-label="OneDrive 원본 작업"><button id="cloud-auto-connect">전체 자동 연결 실행</button></div>
+ <p class="hint">기존 OneDrive 파일을 삭제하거나 이동하지 않습니다. 검수와 사용 허락 확인은 별도입니다.</p></div>
 </details>
 </section>
 <section id="archive-page" hidden><h1>보관 자료</h1><p class="hint">주차별로 제작이 끝난 PPT·주보 PDF를 찾는 공간입니다. 악보·영상 원본은 OneDrive 원본 찾기에서 검색합니다.</p><div class="panel" style="margin-top:24px"><div class="panel-body"><button id="cloud-archive-refresh">OneDrive 보관 자료 새로고침</button><div id="cloud-archive-list"><p class="empty">설정에서 OneDrive 연결과 완료본 폴더를 지정하세요. 서버의 제작 파일은 이번 주 예배 → 결과에서도 확인할 수 있습니다.</p></div></div></div></section>
