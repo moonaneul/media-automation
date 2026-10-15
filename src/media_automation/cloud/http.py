@@ -369,6 +369,9 @@ class Hosted:
         if (state.get('purpose')!='media-source-upload-v1' or state['expires']<time.time()
                 or state['user_id']!=member.user_id):
             raise ValueError('업로드 확인 시간이 만료됐습니다.')
+        from ..web.original.original_roles import song_candidate
+        if (state.get('operation') == 'song_asset' or state.get('mutation', {}).get('song_id')) and not song_candidate(state.get('mutation', {}).get('filename', '')):
+            raise ValueError('찬양 외 자료는 찬양 원본으로 등록할 수 없습니다.')
         item=self.cloud.item(body['item_id'])
         if item.get('name')!=state['name'] or item.get('parentReference',{}).get('id')!=state['folder_id']:
             raise ValueError('선택한 원본 위치를 확인하세요.')
