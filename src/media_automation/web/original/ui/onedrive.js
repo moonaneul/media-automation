@@ -99,11 +99,12 @@ const CloudMedia=(()=>{
   window.addEventListener('focus',refresh);
   document.querySelectorAll('[data-page]').forEach(b=>b.addEventListener('click',()=>{if(b.dataset.page==='settings')refresh();if(b.dataset.page==='library')refresh();if(b.dataset.page==='archive')archives();}));
   el('mobile-page').addEventListener('change',e=>{if(e.target.value==='archive')archives();else if(e.target.value==='library')refresh();else refresh();});
-  if(['connected','setup'].includes(new URLSearchParams(location.search).get('onedrive'))){
+  const connectionReturn=new URLSearchParams(location.search).get('onedrive');
+  if(['connected','setup'].includes(connectionReturn)){
    history.replaceState(null,'','/');
    let back=null;
    try{back=JSON.parse(sessionStorage.getItem('media-onedrive-return')||'null');sessionStorage.removeItem('media-onedrive-return');}catch{}
-   if(back&&new URLSearchParams(location.search).get('onedrive')!=='setup'){
+   if(back&&connectionReturn==='connected'){
     app.restoreCloudSong(back);
     msg('OneDrive 로그인에서 돌아왔습니다. 이 예배 찬양의 악보 찾기를 다시 확인하세요.');
    }else{
