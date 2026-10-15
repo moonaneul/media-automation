@@ -359,3 +359,42 @@ def test_large_completed_ppt_uses_archive_limit(cloud,monkeypatch):
     with path.open('wb') as f:f.truncate(MAX_ARCHIVE_FILE+1)
     with pytest.raises(CloudError,match='512MB'):cloud.archive('2026-10-09','friday','ppt')
     assert len(uploaded)==1
+
+
+def test_auto_connect_never_registers_non_song_files(cloud, monkeypatch):
+    prepare(cloud)
+    names = [
+        'bulletin-runtime-original-design.pdf',
+        'cover.pptx',
+        'community-prayer.mp3',
+        'worship-template.pptx',
+        '교회여 일어나라.mp4',
+    ]
+    files = []
+    for i, name in enumerate(names):
+        entry = item(str(i))
+        entry['name'] = name
+        files.append(entry)
+    monkeypatch.setattr(cloud, 'children', lambda _: files)
+    importer = Mock()
+    monkeypatch.setattr(cloud, 'import_song', importer)
+    result = cloud.auto_connect()
+    assert cloud.store.songs() == []
+    assert result['linked'] == 0
+    # The unregistered video is reported for a manual song selection,
+    # never silently registered with an unverified title.
+    assert [choice['name'] for choice in result['choices']] == ['교회여 일어나라.mp4']
+    importer.assert_not_called()
+
+
+def test_auto_connect_still_links_existing_song_score(cloud, monkeypatch):
+    prepare(cloud)
+    song = cloud.store.register_song({'title': '찬양 테스트'})
+    original = item('song')
+    original['name'] = '찬양 테스트.pptx'
+    monkeypatch.setattr(cloud, 'children', lambda _: [original])
+    importer = Mock(return_value={'digest': 'a' * 64})
+    monkeypatch.setattr(cloud, 'import_song', importer)
+    result = cloud.auto_connect()
+    assert result['linked'] == 1
+    importer.assert_called_once_with('song', song['id'])
