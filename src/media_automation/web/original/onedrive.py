@@ -330,14 +330,14 @@ class OneDrive:
     @staticmethod
     def _source_match(filename, query):
         """Normalize Korean names and numbered hymns without guessing song titles."""
-        normalize = lambda value: re.sub(r'[^\\w]+', '', unicodedata.normalize('NFKC', value).casefold())
+        normalize = lambda value: re.sub(r'[^\w]+', '', unicodedata.normalize('NFKC', value).casefold())
         name, term = normalize(filename), normalize(query)
         if not term:
             return False
         if term in name:
             return True
-        number = re.fullmatch(r'(?:새찬송가|구찬송가|찬송가)?(\\d{1,3})(?:장)?', term)
-        return bool(number and re.search(r'(?<!\\d)' + re.escape(number[1]) + r'(?!\\d)', name))
+        number = re.fullmatch(r'(?:새찬송가|구찬송가|찬송가)?(\d{1,3})(?:장)?', term)
+        return bool(number and re.search(r'(?<!\d)' + re.escape(number[1]) + r'(?!\d)', name))
 
     def list_selected(self, purpose, identifier=None, query=''):
         folder = self.selected(purpose)
@@ -347,8 +347,9 @@ class OneDrive:
         if not query.strip() or purpose not in self.SOURCE_PURPOSES:
             return self.children(root, query)
         indexed = self.children(root, query)
-        if indexed:
-            return indexed
+        indexed_files = [item for item in indexed if 'file' in item and self._source_match(item.get('name',''), query)]
+        if indexed_files:
+            return indexed_files
         # Graph's indexed search may not yet know newly uploaded Korean-named
         # files. Scan ONLY the chosen original folder and its descendants.
         found, pending, visited, total = [], [root], set(), 0
