@@ -259,7 +259,8 @@ class OneDrive:
         with self.lock:
             folder = self._read().get('folders', {}).get(purpose)
         if not folder:
-            raise CloudError('설정에서 ' + ('찬양 원본' if purpose == 'source' else '완료본') + ' 폴더를 선택하세요.')
+            meaning = {'source':'대면 악보 PPT 원본','source_video':'금요 Zoom 영상·음원 원본','archive':'완료본 최상위'}.get(purpose,'해당 예배 완료본')
+            raise CloudError('설정에서 ' + meaning + ' 폴더를 선택하세요.')
         return folder
 
     def upload_file(self, folder_id, name, content):
