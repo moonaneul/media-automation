@@ -32,3 +32,15 @@ def test_automatic_creation_requires_explicit_named_hymnal_score():
     assert can_auto_register_hymn(confirmed, "193장_성령의 봄바람 불어오니_새찬송가악보_PPT.ppt")
     for filename in ("cover.pptx", "bulletin-runtime-original-design.pdf", "community-prayer.mp3", "교회여 일어나라.mp4"):
         assert not can_auto_register_hymn(OneDrive.filename_metadata(filename), filename)
+
+
+def test_song_catalog_rejects_non_song_assets_before_writing(tmp_path):
+    import pytest
+    from media_automation.web.original.work_store import WorkStore
+
+    store = WorkStore(tmp_path / "work.db")
+    song = store.register_song({"title": "찬양 시험"})
+    for name in ("bulletin-runtime-original-design.pdf", "cover.pptx", "community-prayer.mp3"):
+        with pytest.raises(ValueError, match="찬양"):
+            store.attach_song_asset(song["id"], name, b"not-an-original")
+    assert store.songs()[0]["assets"] == []
