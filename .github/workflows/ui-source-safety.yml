@@ -38,7 +38,8 @@ jobs:
             tests/test_cloud_worker_archive_paths.py \
             tests/test_user_reported_media_regressions.py \
             tests/test_diagnose_score_sources.py \
-            tests/test_restore_review_sources.py
+            tests/test_restore_review_sources.py \
+            tests/test_onedrive_inline_worship_import.py
       - name: Run entire repository suite (asset availability independently reported)
         timeout-minutes: 12
         env:
