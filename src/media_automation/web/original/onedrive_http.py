@@ -73,6 +73,9 @@ def handle(cloud, handler, parsed, origin, authenticated, session_token, session
             handler.reply(200,cloud.auto_connect())
         elif action=='import' and handler.command=='POST':
             handler.reply(201,cloud.import_song(body.get('id'),body.get('song_id')))
+        elif action=='import-to-slot' and handler.command=='POST':
+            handler.reply(201,cloud.import_for_service(body.get('id'),body.get('date'),
+                                                        body.get('service'),body.get('slot')))
         elif action=='upload-source' and handler.command=='POST':
             handler.reply(201,cloud.upload_song(body.get('song_id'),body.get('digest')))
         elif action=='archive' and handler.command=='POST':
