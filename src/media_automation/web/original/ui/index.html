@@ -395,10 +395,11 @@ function inlineSourcePicker(info,label,field,attachmentKey){
   }
   if(!localCount)local.append(node('p','서버에 일치하는 원본이 없습니다.','hint'));
   if(current!==request||!search.isConnected)return;
-  results.replaceChildren(local,node('p','OneDrive 연결과 원본 폴더 확인 중…','hint'));
+  const waiting=node('p','OneDrive 연결과 원본 폴더 확인 중…','hint');results.replaceChildren(local,waiting);
   try{
    const remote=await CloudMedia.searchWorshipSource(query,kind);
    if(current!==request||!search.isConnected)return;
+   waiting.remove();
    const section=node('section',undefined,'inline-source-group');section.append(node('h4','OneDrive 검색'));
    if(remote.status==='disconnected'||remote.status==='folder-required'){
     const text=remote.status==='disconnected'?(remote.configured?'이 검수 서버에 OneDrive 로그인이 필요합니다.':'이 서버의 OneDrive 앱 연결 설정이 필요합니다.'):'OneDrive 찬양 원본 폴더를 선택해야 검색할 수 있습니다.';
@@ -438,7 +439,7 @@ function inlineSourcePicker(info,label,field,attachmentKey){
     if(!remote.items.length)section.append(node('p','선택한 원본 폴더에서 일치하는 파일이 없습니다. 검색어와 폴더를 확인하세요.','hint'));
    }
    results.append(section);
-  }catch(e){if(current!==request||!search.isConnected)return;results.append(node('p','OneDrive 검색 실패: '+(e.message||'연결을 확인하세요.'),'status warning'));}
+  }catch(e){if(current!==request||!search.isConnected)return;waiting.remove();results.append(node('p','OneDrive 검색 실패: '+(e.message||'연결을 확인하세요.'),'status warning'));}
  };
  trigger.onclick=lookup;input.onkeydown=e=>{if(e.key==='Enter'){e.preventDefault();lookup();}};
  search.addEventListener('toggle',()=>{if(search.open&&!results.childNodes.length)lookup();});
