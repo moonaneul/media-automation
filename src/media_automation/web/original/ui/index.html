@@ -601,10 +601,19 @@ $('simulate-build').onclick=async()=>{if(!shared)return msg('파일 주소에서
 async function downloadOutput(){
  const kind=output,o=record().outputs[kind];if(!o.fileId)return msg(kind==='pdf'?'먼저 주보 PDF를 제작하세요.':'먼저 실제 PPT를 제작하세요.');
  const format=kind==='pdf'?'pdf':'pptx',filename=o.filename||('예배 자료.'+format),button=$('download');button.disabled=true;
- try{const response=await fetch('/api/generated?id='+encodeURIComponent(o.fileId)+'&format='+format);
-  if(!response.ok){let error;try{error=(await response.json()).error;}catch{}if(response.status===404)throw Error('이 서버에서 제작된 파일을 찾지 못했습니다. 이전 DB에서 가져온 기록만 남아 있을 수 있습니다. 검수용 서버에서 다시 제작해 주세요.');throw Error(error||('다운로드 실패 · HTTP '+response.status));}
-  const blob=await response.blob();if(!blob.size)throw Error('생성 파일이 비어 있습니다. 다시 제작하세요.');
-  const url=URL.createObjectURL(blob),a=node('a');a.href=url;a.download=filename;document.body.append(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),60000);msg('파일을 전달했습니다. 브라우저 다운로드 목록을 확인하세요.');
+ const url='/api/generated?id='+encodeURIComponent(o.fileId)+'&format='+format;
+ try{
+  // Inspect only the headers. Loading a Zoom PPTX with embedded videos into
+  // a Blob first can exhaust browser memory before the save dialog appears.
+  const response=await fetch(url,{method:'HEAD',cache:'no-store'});
+  if(!response.ok){
+   if(response.status===404)throw Error('이 서버에서 제작된 파일을 찾지 못했습니다. 이전 DB의 기록만 남아 있을 수 있습니다. 검수 서버에서 다시 제작해 주세요.');
+   throw Error('파일 확인 실패 · HTTP '+response.status);
+  }
+  const bytes=Number(response.headers.get('Content-Length')||0);
+  if(!Number.isFinite(bytes)||bytes<=0)throw Error('생성 파일이 비어 있거나 크기를 확인할 수 없습니다. 다시 제작하세요.');
+  const a=node('a');a.href=url;a.download=filename;document.body.append(a);a.click();a.remove();
+  msg('브라우저 다운로드를 시작했습니다. 완료 여부는 다운로드 목록에서 확인하세요.');
  }catch(error){msg((kind==='pdf'?'주보 PDF':'PPT')+' 다운로드 실패: '+(error.message||'서버 연결을 확인하세요.'));}
  finally{button.disabled=false;}
 }
@@ -615,10 +624,14 @@ const completePdf=$('complete').onclick;
 $('complete').onclick=async()=>{
  if(output==='pdf')return completePdf();
  const o=record().outputs.ppt;if(!o.fileId||o.changed)return msg('최신 입력으로 제작한 PPT를 먼저 확인하세요.');
- if(o.unresolved?.length)return msg('누락·미연결 항목을 해결한 뒤 완료로 표시할 수 있습니다.');
- if(!confirm('PPT 전체 화면과 본문·찬양·담당자를 확인했나요? 영상·음원이 있으면 실제 재생도 확인해야 합니다.'))return;
+ const unresolved=o.unresolved||[];
+ const acknowledged=unresolved.filter(item=>item.endsWith(':score_asset')||item.endsWith(':audio_asset'));
+ const blocked=unresolved.filter(item=>!acknowledged.includes(item));
+ if(blocked.length)return msg('필수 검수 또는 입력 미완료: '+blocked.join(', ')+' · 수정한 뒤 다시 제작하세요.');
+ const warning=acknowledged.length?'\\n\\n연결하지 못한 악보·음원: '+acknowledged.join(', ')+'\\n이 항목은 빈 상태로 남는 것을 확인하고 완료 처리합니다.':'';
+ if(!confirm('PPT 전체 화면·성경 본문·찬양·담당자를 확인했나요? 영상·음원이 있으면 실제 재생까지 확인해야 합니다.'+warning))return;
  const k=key(),selectedService=service,selectedDate=k.split(':')[1],fileId=o.fileId;await flushShared(k);const st=syncState(k);if(st.dirty||st.busy||st.conflict)return msg('저장 상태를 확인하세요.');
- try{const response=await fetch('/api/complete',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({date:selectedDate,service:selectedService,revision:st.revision,file_id:fileId,reviewed:true})});const result=await response.json();if(!response.ok)throw Error(result.error);if(st.dirty||st.busy){if(!st.busy)st.revision=result.revision;persistDraft(k);return msg('완료 확인 중 입력이 바뀌었습니다. 저장 후 다시 제작하세요.');}records[k]=result.data;st.revision=result.revision;render();try{await CloudMedia.archiveCurrent(k,'ppt');}catch(e){msg('제작 완료 표시는 저장됐습니다. OneDrive 보관 실패: '+e.message);}}catch(error){msg(error.message||'검수 확인 저장 실패');}
+ try{const response=await fetch('/api/complete',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({date:selectedDate,service:selectedService,revision:st.revision,file_id:fileId,reviewed:true,acknowledged_unresolved:acknowledged})});const result=await response.json();if(!response.ok)throw Error(result.error);if(st.dirty||st.busy){if(!st.busy)st.revision=result.revision;persistDraft(k);return msg('완료 확인 중 입력이 바뀌었습니다. 저장 후 다시 제작하세요.');}records[k]=result.data;st.revision=result.revision;render();try{await CloudMedia.archiveCurrent(k,'ppt');}catch(e){msg('제작 완료 표시는 저장됐습니다. OneDrive 보관 실패: '+e.message);}}catch(error){msg(error.message||'검수 확인 저장 실패');}
 };
 document.querySelectorAll('[data-workflow-target]').forEach(button=>button.onclick=()=>{setTab(button.dataset.workflowTarget);$('workflow-guide').focus();});
 $('form-groups').addEventListener('click',event=>{if(event.target.closest('summary.panel-head button'))event.preventDefault();});
