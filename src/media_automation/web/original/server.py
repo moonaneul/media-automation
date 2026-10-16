@@ -428,8 +428,10 @@ def make_server(store, port=0, password=None, bind_host="127.0.0.1", public_orig
                     else:
                         unresolved=report.get('unresolved',[])
                         if not isinstance(unresolved,list) or any(not isinstance(x,str) for x in unresolved):raise ValueError()
-                        acknowledged=[x for x in unresolved if x.endswith((':score_asset', ':audio_asset'))]
-                        if len(acknowledged)!=len(unresolved) or body.get('acknowledged_unresolved',[])!=acknowledged:raise ValueError()
+                        acknowledged=[x for x in unresolved if x.endswith((':score_asset', ':audio_asset', ':original_review', ':bible_review'))]
+                        manual_reviews=[x for x in acknowledged if x.endswith((':original_review', ':bible_review'))]
+                        if (len(acknowledged)!=len(unresolved) or body.get('acknowledged_unresolved',[])!=acknowledged
+                                or body.get('confirmed_manual_reviews',[])!=manual_reviews):raise ValueError()
                         from .generation import render_configuration, _asset, SUNDAY_TYPOGRAPHY_VERSION, FRIDAY_TYPOGRAPHY_VERSION
                         if body['service'] in ('sunday','wednesday') and report.get('typography_version')!=SUNDAY_TYPOGRAPHY_VERSION:raise ValueError()
                         if body['service']=='friday' and report.get('typography_version')!=FRIDAY_TYPOGRAPHY_VERSION:raise ValueError()
@@ -444,7 +446,8 @@ def make_server(store, port=0, password=None, bind_host="127.0.0.1", public_orig
                     data=current['data'];kind='pdf' if report['format']=='pdf' else 'ppt';o=data['outputs'][kind]
                     if o.get('fileId')!=identifier or o.get('changed'):raise ValueError()
                     o.update(complete=True,changed=False,archiveStatus='pending_connection',
-                             acknowledgedUnresolved=acknowledged if kind=='ppt' else [])
+                             acknowledgedUnresolved=acknowledged if kind=='ppt' else [],
+                             confirmedManualReviews=manual_reviews if kind=='ppt' else [])
                     saved=store.save(body['date'],body['service'],body['revision'],data)
                     return self.reply(200,saved)
                 except Exception:return self.reply(400,{'error':'최신 제작 파일과 입력·자료 변경을 확인하고 다시 검수하세요.'})
