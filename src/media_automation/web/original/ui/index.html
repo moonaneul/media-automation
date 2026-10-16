@@ -628,7 +628,7 @@ $('complete').onclick=async()=>{
  const acknowledged=unresolved.filter(item=>item.endsWith(':score_asset')||item.endsWith(':audio_asset'));
  const blocked=unresolved.filter(item=>!acknowledged.includes(item));
  if(blocked.length)return msg('필수 검수 또는 입력 미완료: '+blocked.join(', ')+' · 수정한 뒤 다시 제작하세요.');
- const warning=acknowledged.length?'\\n\\n연결하지 못한 악보·음원: '+acknowledged.join(', ')+'\\n이 항목은 빈 상태로 남는 것을 확인하고 완료 처리합니다.':'';
+ const warning=acknowledged.length?'\n\n연결하지 못한 악보·음원: '+acknowledged.join(', ')+'\n이 항목은 빈 상태로 남는 것을 확인하고 완료 처리합니다.':'';
  if(!confirm('PPT 전체 화면·성경 본문·찬양·담당자를 확인했나요? 영상·음원이 있으면 실제 재생까지 확인해야 합니다.'+warning))return;
  const k=key(),selectedService=service,selectedDate=k.split(':')[1],fileId=o.fileId;await flushShared(k);const st=syncState(k);if(st.dirty||st.busy||st.conflict)return msg('저장 상태를 확인하세요.');
  try{const response=await fetch('/api/complete',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({date:selectedDate,service:selectedService,revision:st.revision,file_id:fileId,reviewed:true,acknowledged_unresolved:acknowledged})});const result=await response.json();if(!response.ok)throw Error(result.error);if(st.dirty||st.busy){if(!st.busy)st.revision=result.revision;persistDraft(k);return msg('완료 확인 중 입력이 바뀌었습니다. 저장 후 다시 제작하세요.');}records[k]=result.data;st.revision=result.revision;render();try{await CloudMedia.archiveCurrent(k,'ppt');}catch(e){msg('제작 완료 표시는 저장됐습니다. OneDrive 보관 실패: '+e.message);}}catch(error){msg(error.message||'검수 확인 저장 실패');}
