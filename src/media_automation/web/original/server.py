@@ -63,7 +63,8 @@ def make_server(store, port=0, password=None, bind_host="127.0.0.1", public_orig
             self.send_header('X-Content-Type-Options', 'nosniff')
             self.send_header('Referrer-Policy', 'no-referrer')
             self.end_headers()
-            self.wfile.write(data)
+            if self.command != 'HEAD':
+                self.wfile.write(data)
 
         def route(self):
             if hosted is not None and self.command == 'GET' and self.path == '/healthz':
@@ -77,7 +78,7 @@ def make_server(store, port=0, password=None, bind_host="127.0.0.1", public_orig
                     or public_origin and ((hosted is None and not ipaddress.ip_address(self.client_address[0]).is_loopback)
                                           or self.headers.get('X-Forwarded-Proto') != 'https')):
                 return self.reply(403, {'error':'허용된 접속 주소만 이용할 수 있습니다.'})
-            if hosted is not None and self.command != 'GET' and self.headers.get('Origin') != expected_origin:
+            if hosted is not None and self.command not in ('GET', 'HEAD') and self.headers.get('Origin') != expected_origin:
                 return self.reply(403, {'error':'접속 주소를 확인하세요.'})
             parsed = urlsplit(self.path)
             if self.command == 'GET' and parsed.path in ('/', '/index.html'):
@@ -395,7 +396,7 @@ def make_server(store, port=0, password=None, bind_host="127.0.0.1", public_orig
                     'service':data.get('service'), 'connections':data.get('connections',[]),
                     'background_music':data.get('background_music',[]),
                     'complete':False, 'visual_review_pending':True})
-            if self.command=='GET' and parsed.path=='/api/generated':
+            if self.command in ('GET', 'HEAD') and parsed.path=='/api/generated':
                 identifier=parse_qs(parsed.query).get('id',[''])[0]
                 if len(identifier)!=32 or any(c not in '0123456789abcdef' for c in identifier):
                     return self.reply(400,{'error':'파일을 확인하세요.'})
@@ -403,7 +404,7 @@ def make_server(store, port=0, password=None, bind_host="127.0.0.1", public_orig
                 if extension not in ('pptx','pdf'):return self.reply(400,{'error':'파일 형식을 확인하세요.'})
                 file=Path(store.path).with_suffix('.generated')/(identifier+'.'+extension)
                 if not file.is_file():return self.reply(404,{'error':'파일을 찾지 못했습니다.'})
-                return send_download(self, file)
+                return send_download(self, file, head_only=self.command=='HEAD')
             if self.command=='POST' and parsed.path in ('/api/complete-bulletin','/api/complete'):
                 try:
                     size=int(self.headers.get('Content-Length','-1'))
@@ -496,6 +497,7 @@ def make_server(store, port=0, password=None, bind_host="127.0.0.1", public_orig
                 self.reply(500, {'error':'공동 저장에 실패했습니다.'})
 
         do_GET = route
+        do_HEAD = route
         do_PUT = route
         do_POST = route
     return ThreadingHTTPServer((bind_host,port), Handler)
