@@ -28,6 +28,10 @@ def attempt_complete(base, request):
     (['배경음악 첫 기도:audio_asset'], ['배경음악 첫 기도:audio_asset'], 200),
     (['성경 본문:bible_text'], ['성경 본문:bible_text'], 400),
     (['성경 본문:bible_review'], ['성경 본문:bible_review'], 400),
+    (['성경 본문:bible_review'], ['성경 본문:bible_review'], 200),
+    (['추가 찬양:original_review'], ['추가 찬양:original_review'], 200),
+    (['추가 찬양:original_review', '성경 본문:bible_review'],
+     ['추가 찬양:original_review', '성경 본문:bible_review'], 200),
     (['설교 제목:input'], ['설교 제목:input'], 400),
     (['예배 전 안내:template'], ['예배 전 안내:template'], 400),
     (['시작 찬양 1:original_review'], ['시작 찬양 1:original_review'], 400),
@@ -58,6 +62,7 @@ def test_completion_rejects_unreviewed_or_mandatory_gaps(tmp_path, unresolved, a
             'date': day, 'service': service, 'revision': revision,
             'file_id': identifier, 'reviewed': True,
             'acknowledged_unresolved': ack,
+            'confirmed_manual_reviews': [x for x in ack if x.endswith((':original_review', ':bible_review'))] if expected_status == 200 else [],
         }
         if expected_status == 200:
             result = attempt_complete(f'http://127.0.0.1:{server.server_port}', request)
@@ -65,6 +70,7 @@ def test_completion_rejects_unreviewed_or_mandatory_gaps(tmp_path, unresolved, a
             assert completed['complete'] is True
             assert completed['archiveStatus'] == 'pending_connection'
             assert completed['acknowledgedUnresolved'] == ack
+            assert completed['confirmedManualReviews'] == request['confirmed_manual_reviews']
         else:
             with pytest.raises(HTTPError) as rejected:
                 attempt_complete(f'http://127.0.0.1:{server.server_port}', request)
@@ -81,6 +87,9 @@ def test_worship_completion_ui_passes_acknowledged_media_list():
     handler = html[html.index("const completePdf=$('complete').onclick;"):
                    html.index("document.querySelectorAll('[data-workflow-target]')", html.index("const completePdf=$('complete').onclick;"))]
     assert 'acknowledged_unresolved:acknowledged' in handler
+    assert 'confirmed_manual_reviews:manualReview' in handler
+    assert '개역개정' in handler
+    assert '사용할 허락' in handler
     assert "item.endsWith(':score_asset')" in handler
     assert "item.endsWith(':audio_asset')" in handler
     assert 'if(blocked.length)' in handler
