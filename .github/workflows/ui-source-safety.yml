@@ -41,7 +41,10 @@ jobs:
             tests/test_restore_review_sources.py \
             tests/test_onedrive_inline_worship_import.py \
             tests/test_onedrive_folder_scopes_and_hymn_search.py \
-            tests/test_onedrive_picker_browser_js.py
+            tests/test_onedrive_picker_browser_js.py \
+            tests/test_download_feedback.py \
+            tests/test_original_streaming_download.py \
+            tests/test_reviewed_worship_completion.py
       - name: Run entire repository suite (asset availability independently reported)
         timeout-minutes: 12
         env:
