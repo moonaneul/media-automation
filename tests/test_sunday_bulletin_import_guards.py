@@ -72,12 +72,35 @@ def serving_table(second_prayer="두번째기도", second_offering="두번째봉
     }
 
 
-def test_flattened_hwp_roles_never_assigned_by_relative_line_order():
-    result=parse(FLATTENED)
-    assert "2부 기도 담당자" not in result["fields"]
-    assert "2부 봉헌기도 담당자" not in result["fields"]
-    assert "이번 주 설거지" not in result["fields"]
-    assert any("표의 행·열 좌표" in msg for msg in result["unknown"])
+def test_exact_flattened_hwp_restores_all_prayer_offering_and_serving_roles():
+    # This matches the 10/18 source's *structure*, with synthetic people.
+    for tables in (None, [], [{"rows":1,"columns":1,"cells":[{"row":0,"column":0,"text":"기타 안내"}]}]):
+        result=parse(FLATTENED,tables)
+        f=result["fields"]
+        assert f["이번 주 1부 기도"]["value"] == "인도자"
+        assert f["이번 주 1부 봉헌기도"]["value"] == "첫봉헌"
+        assert f["이번 주 설거지"]["value"] == "세척담당"
+        assert f["이번 주 수요예배 기도"]["value"] == "수요담당"
+        assert f["2부 기도 담당자"]["value"] == "두번째기도"
+        assert f["2부 봉헌기도 담당자"]["value"] == "두번째봉헌"
+        assert f["다음 주 1부 봉헌기도"]["value"] == "다음봉헌"
+        assert f["다음 주 2부 기도"]["value"] == "다음기도"
+        assert f["다음 주 2부 봉헌기도"]["value"] == "다음봉헌2"
+        assert "형식이 일치하지 않아" not in " ".join(result["unknown"])
+
+
+@pytest.mark.parametrize("altered", [
+    FLATTENED.replace("두번째기도\n두번째봉헌", "두번째기도"),
+    FLATTENED.replace("봉헌기도\n설거지", "설거지\n봉헌기도"),
+    FLATTENED.replace("2부\n두번째기도", "2부\n설거지"),
+    FLATTENED.replace("다음봉헌2", "설거지"),
+])
+def test_broken_flattened_hwp_never_guesses_roles(altered):
+    r=parse(altered,[])
+    assert "2부 기도 담당자" not in r["fields"]
+    assert "2부 봉헌기도 담당자" not in r["fields"]
+    assert "이번 주 설거지" not in r["fields"]
+    assert any("형식이 일치하지 않아" in msg for msg in r["unknown"])
 
 
 def test_structured_hwp_uses_actual_row_and_column_not_dishwashing():
