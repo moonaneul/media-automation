@@ -332,14 +332,23 @@ def test_archive_ui_uses_actual_week_key_and_captures_requested_output():
     code=r"""
     const fs=require('fs'),vm=require('vm');
     const source=fs.readFileSync('src/media_automation/web/original/ui/onedrive.js','utf8');
-    const fn=source.match(/async function archiveCurrent[^\n]+/)[0];
-    let sent;const context={key:()=> 'sunday:2026-10-11',output:'pdf',state:{connected:true,folders:{archive:{}}},refresh:async()=>{},api:async(a,b)=>{sent=b;return {work:{data:{},revision:2}}},records:{},syncState:()=>({}),render:()=>{},msg:()=>{}};
-    context.app={output:context.output,records:context.records};
-    const archive=vm.runInNewContext('('+fn+')',context);
-    archive('wednesday:2026-10-07','ppt').then(()=>console.log(JSON.stringify(sent)));
+    const fn=source.slice(source.indexOf('async function archiveCurrent('),source.indexOf('async function syncOriginal('));
+    let sent,notice='',stored='',button={disabled:false};
+    const work={'wednesday:2026-10-07':{outputs:{ppt:{complete:true}}}};
+    const context={
+      key:()=> 'sunday:2026-10-11',state:{connected:true,folders:{archive:{id:'archive'}}},
+      el:id=>id==='cloud-archive-current'?button:{set textContent(v){stored=v}},
+      refresh:async()=>{},api:async(a,b)=>{sent=b;return {item:{id:'new',name:'worship.pptx'},work:{data:work['wednesday:2026-10-07'],revision:2}}},
+      syncState:()=>({}),render:()=>{},msg:value=>notice=value,
+      app:{output:'pdf',records:work}
+    };
+    const archive=vm.runInNewContext('('+fn.trim()+')',context);
+    archive('wednesday:2026-10-07','ppt').then(()=>console.log(JSON.stringify({sent,disabled:button.disabled,stored})));
     """
     data=json.loads(subprocess.check_output(['node','-e',code],text=True))
-    assert data=={'date':'2026-10-07','service':'wednesday','kind':'ppt'}
+    assert data['sent']=={'date':'2026-10-07','service':'wednesday','kind':'ppt'}
+    assert data['disabled'] is False
+    assert '보관 완료' in data['stored']
 
 
 def test_large_completed_ppt_uses_archive_limit(cloud,monkeypatch):
