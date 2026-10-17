@@ -143,3 +143,36 @@ def test_common_keyvalue_parser_cannot_replace_bulletin_serving_grid():
     assert "const bulletinRoles=label" in html
     assert "if(service==='sunday'&&fridayParsed&&bulletinRoles(label))continue;" in html
     assert "if(!(service==='sunday'&&fridayParsed&&bulletinRoles(label)))parsed[label]=field" in html
+
+
+def test_imported_hwp_repairs_stale_missing_sunday_prayer_and_offering():
+    raw=FLATTENED
+    js=r"""
+    const p=require(process.argv[1]),raw=process.argv[2];
+    const parsed=p.parseBulletin(raw,[]).fields;
+    const cases=[
+      {label:'2부 기도 담당자',old:{state:'NONE',value:''},source:{state:'NONE',value:''},manual:false,expected:true},
+      {label:'2부 봉헌기도 담당자',old:{state:'VALUE',value:'설거지'},source:{state:'VALUE',value:'설거지'},manual:false,expected:true},
+      {label:'2부 기도 담당자',old:{state:'NONE',value:''},source:undefined,manual:false,expected:true},
+      {label:'2부 기도 담당자',old:{state:'NONE',value:''},source:{state:'VALUE',value:'다른 이름'},manual:false,expected:false},
+      {label:'2부 기도 담당자',old:{state:'NONE',value:''},source:{state:'NONE',value:''},manual:true,expected:false},
+      {label:'2부 기도 담당자',old:{state:'VALUE',value:'사람이 직접 고친 값'},source:{state:'VALUE',value:'예전 자동값'},manual:false,expected:false},
+      {label:'2부 기도 담당자',old:{state:'VALUE',value:'사람이 직접 고친 값'},source:undefined,manual:false,expected:false}
+    ];
+    const results=cases.map(x=>({label:x.label,actual:p.shouldApplyImportedField(x.old,parsed[x.label],x.source,x.manual),expected:x.expected}));
+    console.log(JSON.stringify({fields:parsed,results}));
+    """
+    result=json.loads(subprocess.check_output(['node','-e',js,str(PARSER),raw],text=True))
+    assert result['fields']['2부 기도 담당자']['value']=='두번째기도'
+    assert result['fields']['2부 봉헌기도 담당자']['value']=='두번째봉헌'
+    for r in result['results']:
+        assert r['actual']==r['expected'],r
+
+
+def test_input_controls_track_manual_overrides_and_clear_after_approved_import():
+    html=HTML.read_text()
+    assert "record().manualOverrides[label]=true;" in html
+    assert "record().manualOverrides?.[label]" in html
+    assert "delete record().manualOverrides[label]" in html
+    assert "delete record().suspendedFields[label]" in html
+    assert "' → 정정'" in html  # review displays the value to be replaced
