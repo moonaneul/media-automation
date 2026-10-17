@@ -60,6 +60,17 @@ function parseWednesday(raw){
 // Flattened .hwp text can still be unambiguously recovered when it matches
 // the church's full, labelled 4-column, two-week serving matrix exactly.
 // Do not guess values in partial/shifted tables; keep those for review.
+// When a corrected notice is imported, stale machine-imported values can be
+// updated automatically. A later explicit user override always wins.
+function shouldApplyImportedField(existing,imported,previousSource,manualOverride){
+ if(manualOverride)return false;
+ if(!existing||existing.state==='UNSET')return true;
+ if(!imported)return false;
+ if(existing.state===imported.state&&existing.value===imported.value)return false;
+ if(previousSource&&(existing.state!==previousSource.state||existing.value!==previousSource.value))return false;
+ if(existing.state==='NONE'&&imported.state==='VALUE')return true;
+ return !!previousSource&&existing.state===previousSource.state&&existing.value===previousSource.value;
+}
 function parseFlattenedServing(rows){
  const text=rows.map(v=>String(v).normalize('NFKC').trim()).filter(Boolean);
  const norm=v=>String(v).replace(/\s+/g,'').replace(/[：:]/g,'');
@@ -184,5 +195,5 @@ function parseTableFields(tables,allowed,aliases,service){
  }
  return {fields,unknown,consumed};
 }
-root.NoticeParser={parseCommon,cleanLine,parseFriday,parseWednesday,parseBulletin,parseTableFields,cleanPerson,isPerson};if(typeof module!=='undefined')module.exports=root.NoticeParser;
+root.NoticeParser={parseCommon,cleanLine,parseFriday,parseWednesday,parseBulletin,parseTableFields,cleanPerson,isPerson,shouldApplyImportedField};if(typeof module!=='undefined')module.exports=root.NoticeParser;
 })(typeof globalThis!=='undefined'?globalThis:this);
