@@ -94,3 +94,5 @@ def test_worship_completion_ui_passes_acknowledged_media_list():
     assert "item.endsWith(':audio_asset')" in handler
     assert 'if(blocked.length)' in handler
     assert 'if(!confirm(' in handler
+    assert r'\\n' not in handler  # Two literal backslashes are not a line break in JS.
+    assert r'\n' in handler  # Source contains one escaped newline, rendered as a line break.
