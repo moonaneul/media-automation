@@ -159,3 +159,48 @@ def test_bulletin_review_requires_sermon_preacher_in_current_week(tmp_path, monk
     )
     assert "설교자" in result["unresolved"]
     assert result["complete"] is False
+
+
+
+def test_pdf_review_returns_specific_missing_preacher_reason_and_never_marks_complete(
+    tmp_path
+):
+    from media_automation.bulletin.original_design import LAYOUT_VERSION
+    store=WorkStore(tmp_path/"review.db")
+    date="2026-10-18"
+    pdf_id="a" * 32
+    fields={"설교자":{"state":"UNSET","value":""}}
+    record={"fields":fields,"outputs":{"ppt":{},"pdf":{
+        "fileId":pdf_id,"generated":True,"complete":False,"changed":False
+    }}}
+    revision=store.save(date,"sunday",0,record)["revision"]
+    generated=tmp_path/"review.generated"
+    generated.mkdir()
+    (generated/(pdf_id+".pdf")).write_bytes(b"%PDF-1.4\n%%EOF")
+    settings=json.loads(
+        Path(bulletin.__file__).with_name("bulletin-base-reference.json").read_text()
+    )
+    (generated/(pdf_id+".json")).write_text(json.dumps({
+        "layout_version":LAYOUT_VERSION,"format":"pdf","date":date,
+        "service":"sunday","fields":fields,"unresolved":["설교자"],
+        "settings":settings,
+    },ensure_ascii=False))
+
+    server=make_server(store,0)
+    thread=threading.Thread(target=server.serve_forever,daemon=True)
+    thread.start()
+    try:
+        status,response=post(f"http://127.0.0.1:{server.server_port}",
+            "/api/complete-bulletin",{
+                "date":date,"service":"sunday","file_id":pdf_id,
+                "revision":revision,"reviewed":True
+            })
+        assert status == 409
+        assert "설교자" in response["error"]
+        assert "PDF를 다시 제작" in response["error"]
+        output=store.get(date,"sunday")["data"]["outputs"]["pdf"]
+        assert not output["complete"]
+    finally:
+        server.shutdown()
+        server.server_close()
+        thread.join(timeout=5)
