@@ -156,6 +156,7 @@ class OneDrive:
             # Switching accounts must never retain folder IDs from another drive.
             if data.get('account', {}).get('home_account_id') != account['home_account_id']:
                 data.pop('folders', None)
+                data.pop('shared_archive', None)
             data.update(account={'home_account_id': account['home_account_id'], 'username': account.get('username', '')},
                         cache=cache.serialize())
             self._write(data)
@@ -163,7 +164,7 @@ class OneDrive:
     def disconnect(self):
         with self.lock:
             data = self._read()
-            for key in ('cache', 'account', 'folders'):
+            for key in ('cache', 'account', 'folders', 'shared_archive'):
                 data.pop(key, None)
             self.pending.clear()
             self._write(data)
