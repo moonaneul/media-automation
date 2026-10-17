@@ -22,6 +22,11 @@ from ..streaming_download import send_download
 
 UI = Path(__file__).resolve().parent / 'ui'
 
+
+class BulletinReviewBlocked(ValueError):
+    """Safe and actionable reason for refusing a bulletin's review approval."""
+    pass
+
 def make_server(store, port=0, password=None, bind_host="127.0.0.1", public_origin=None, supabase_auth=None, hosted=None):
     address = ipaddress.ip_address(bind_host)
     if address.version != 4 or not (address.is_loopback or address.is_private) or (address.is_unspecified and hosted is None):
@@ -416,15 +421,25 @@ def make_server(store, port=0, password=None, bind_host="127.0.0.1", public_orig
                     directory=Path(store.path).with_suffix('.generated')
                     report=json.loads((directory/(identifier+'.json')).read_text())
                     current=store.get(body['date'],body['service'])
-                    if report.get('date')!=body['date'] or report.get('service')!=body['service'] or report['fields']!=current['data']['fields']:raise ValueError()
+                    if report.get('date')!=body['date'] or report.get('service')!=body['service']:raise ValueError()
+                    if report['fields']!=current['data']['fields']:
+                        if report.get('format')=='pdf':
+                            raise BulletinReviewBlocked('주보 PDF를 만든 뒤 입력이 변경되었습니다. PDF를 다시 제작해 확인하세요.')
+                        raise ValueError()
                     if report.get('format')=='pdf':
-                        if report.get('unresolved'):raise ValueError()
+                        if report.get('unresolved'):
+                            labels=', '.join(str(name) for name in report['unresolved'][:25])
+                            raise BulletinReviewBlocked('주보 PDF 미확정 항목: '+labels+' · 내용을 확정하고 PDF를 다시 제작해 주세요.')
                         from media_automation.bulletin.original_design import LAYOUT_VERSION
-                        if report.get('layout_version')!=LAYOUT_VERSION or not (directory/(identifier+'.pdf')).is_file():raise ValueError()
+                        if report.get('layout_version')!=LAYOUT_VERSION:
+                            raise BulletinReviewBlocked('주보 PDF 제작 코드가 갱신되었습니다. 최신 코드로 PDF를 다시 제작해 주세요.')
+                        if not (directory/(identifier+'.pdf')).is_file():
+                            raise BulletinReviewBlocked('생성된 주보 PDF 파일이 없습니다. PDF를 다시 제작해 주세요.')
                         with store.connect() as db:
                             row=db.execute('SELECT payload FROM bulletin_settings WHERE id=1').fetchone()
                         settings=json.loads(row[0]) if row else json.loads((UI.parent/'bulletin-base-reference.json').read_text())
-                        if report.get('settings')!=settings:raise ValueError()
+                        if report.get('settings')!=settings:
+                            raise BulletinReviewBlocked('주보 기본 설정이 PDF 제작 후 변경되었습니다. PDF를 다시 제작해 주세요.')
                     else:
                         unresolved=report.get('unresolved',[])
                         if not isinstance(unresolved,list) or any(not isinstance(x,str) for x in unresolved):raise ValueError()
@@ -444,12 +459,19 @@ def make_server(store, port=0, password=None, bind_host="127.0.0.1", public_orig
                             selected=_asset(store,body,{'key':slot,'content':text})
                             if not selected or selected[2]['digest']!=connected['digest']:raise ValueError()
                     data=current['data'];kind='pdf' if report['format']=='pdf' else 'ppt';o=data['outputs'][kind]
-                    if o.get('fileId')!=identifier or o.get('changed'):raise ValueError()
+                    if o.get('fileId')!=identifier or o.get('changed'):
+                        if kind=='pdf':
+                            raise BulletinReviewBlocked('현재 선택한 파일이 최신 주보 PDF가 아닙니다. PDF를 다시 제작해 주세요.')
+                        raise ValueError()
                     o.update(complete=True,changed=False,archiveStatus='pending_connection',
                              acknowledgedUnresolved=acknowledged if kind=='ppt' else [],
                              confirmedManualReviews=manual_reviews if kind=='ppt' else [])
                     saved=store.save(body['date'],body['service'],body['revision'],data)
                     return self.reply(200,saved)
+                except BulletinReviewBlocked as exc:
+                    return self.reply(409, {'error':str(exc)})
+                except RevisionConflict:
+                    return self.reply(409, {'error':'다른 화면에서 예배 입력이나 완료 상태가 변경됐습니다. 최신 상태를 확인해 주세요.'})
                 except Exception:return self.reply(400,{'error':'최신 제작 파일과 입력·자료 변경을 확인하고 다시 검수하세요.'})
             if self.command=='POST' and parsed.path=='/api/build':
                 output_label = 'PPT'
