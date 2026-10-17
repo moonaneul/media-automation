@@ -176,3 +176,15 @@ def test_input_controls_track_manual_overrides_and_clear_after_approved_import()
     assert "delete record().manualOverrides[label]" in html
     assert "delete record().suspendedFields[label]" in html
     assert "' → 정정'" in html  # review displays the value to be replaced
+
+
+def test_new_hwp_upload_runs_parser_without_requiring_a_separate_button():
+    html=HTML.read_text()
+    handler=html[html.index("$('file-input').onchange=async e=>"):html.index(";$('save-names').onclick",html.index("$('file-input').onchange=async e=>"))]
+    assert "noticeDocument=result;" in handler
+    assert "parse();msg(" in handler
+    assert "noticeDocument=null" in handler
+    # The import still requires the user to accept the change preview, and
+    # cannot silently overwrite post-import manual adjustments.
+    assert "panel.querySelectorAll('input[data-label]:checked')" in html
+    assert "record().manualOverrides?.[label]" in html
