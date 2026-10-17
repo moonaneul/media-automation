@@ -323,7 +323,8 @@ class OneDrive:
         path=base+valid_id(folder_id)+':/'+quote(name,safe='')
         if len(content)<4*1024*1024:
             return self.graph(path+':/content',method='PUT',content=content)
-        existing=[item for item in self.children(folder_id, drive_id=drive_id) if item.get('name')==name]
+        folder_entries = self.children(folder_id, drive_id=drive_id) if drive_id else self.children(folder_id)
+        existing=[item for item in folder_entries if item.get('name')==name]
         if existing:
             if len(existing)==1 and 'file' in existing[0] and existing[0].get('size')==len(content):return existing[0]
             if len(existing)!=1 or 'file' not in existing[0] or existing[0].get('size')!=0:
