@@ -149,7 +149,7 @@ def test_original_parser_with_structured_table_never_assigns_role_as_person():
 def test_original_ui_guards_dates_existing_fields_and_issue_inference():
     html=(ROOT/'src/media_automation/web/original/ui/index.html').read_text()
     assert 'apply.disabled=dateMismatch' in html
-    assert "c.checked=!old||old.state==='UNSET'" in html
+    assert "c.checked=NoticeParser.shouldApplyImportedField(old,value,record().sourceValues?.[label],record().manualOverrides?.[label])" in html
     assert '전달된 주보 호수:' in html
 
 
