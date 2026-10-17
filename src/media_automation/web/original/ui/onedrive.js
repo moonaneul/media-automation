@@ -131,7 +131,7 @@ const CloudMedia=(()=>{
   const root=el('cloud-archive-list');root.replaceChildren(text('p','보관 자료 불러오는 중…','hint'));
   try{
    await refresh();
-   const purposes=[
+   const purposes=state?.shared_archive?.enabled?[['archive','미디어팀 공유 완료본']]:[
     ['archive','완료본 전체'],
     ['archive_wednesday','수요예배'],
     ['archive_friday_zoom','금요 Zoom'],
