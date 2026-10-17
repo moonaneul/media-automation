@@ -20,6 +20,12 @@ const CloudMedia=(()=>{
    el('cloud-'+purpose+'-folder').textContent=state.folders[purpose]?.name||(purpose.startsWith('archive_')?'기본 경로 사용':'폴더 미지정');
    el('cloud-pick-'+purpose).disabled=!state.connected;
   }
+  const shared=state.shared_archive?.enabled;
+  el('cloud-shared-archive-status').textContent=shared?
+    '완료본 저장 위치: 미디어팀 공유폴더 / '+state.shared_archive.name+' · 개인 OneDrive 원본 연결 유지':
+    '현재 미지정 · 개인 OneDrive의 완료본 저장 위치 사용';
+  el('cloud-apply-shared-archive').disabled=!state.connected;
+  el('cloud-clear-shared-archive').hidden=!shared;
   el('cloud-library-state').textContent=state.connected?(state.folders.source?'OneDrive · '+state.folders.source.name:'원본 폴더를 선택하세요.'):'OneDrive 연결 전 · 등록 곡은 서버에서 검색합니다.';
   el('cloud-library-search').disabled=!state.connected||!state.folders.source;
   const storage=el('storage-status');if(storage)storage.textContent=state.connected?'OneDrive 연결됨 · 검수 후 제작 완료 표시하면 완료본 보관을 시도합니다.':'OneDrive 연결 전 · 완료본은 서버에 보존됩니다.';
@@ -171,7 +177,7 @@ const CloudMedia=(()=>{
    const [svc,date]=k.split(':'),mode=app.records[k]?.fridayMode||'zoom';
    const keyName=svc==='wednesday'?'archive_wednesday':svc==='friday'?(mode==='in_person'?'archive_friday_in_person':'archive_friday_zoom'):(kind==='pdf'?'archive_sunday_pdf':'archive_sunday_ppt');
    if(!state?.connected)requireBeforeUpload('OneDrive 연결이 필요합니다. 설정에서 로그인하세요.');
-   if(!(state.folders?.archive||state.folders?.[keyName]))requireBeforeUpload('해당 예배 완료본 폴더가 미설정입니다. 설정에서 완료본 폴더를 지정하세요.');
+   if(!(state.shared_archive?.enabled||state.folders?.archive||state.folders?.[keyName]))requireBeforeUpload('해당 예배 완료본 폴더가 미설정입니다. 설정에서 완료본 폴더를 지정하세요.');
    if(!app.records[k]?.outputs?.[kind]?.complete)requireBeforeUpload('먼저 실제 결과를 검수하고 제작 완료 표시를 해 주세요.');
    if(app.records[k]?.outputs?.[kind]?.changed)requireBeforeUpload('입력이 변경된 이전 생성본입니다. 최신 파일을 다시 제작하고 검수 완료 표시를 해 주세요.');
    status.textContent='OneDrive에 완료본 업로드 중… 파일이 크면 시간이 걸릴 수 있습니다.';
@@ -201,6 +207,23 @@ const CloudMedia=(()=>{
   el('cloud-connect').onclick=async()=>{const b=el('cloud-connect');b.disabled=true;try{if(state?.local_url&&location.origin!==new URL(state.local_url).origin){window.location.assign(state.local_url+'/?onedrive=setup');return;}const result=await api('connect',{});window.location.assign(result.url);}catch(e){msg(e.message);b.disabled=false;}};
   el('cloud-disconnect').onclick=async()=>{if(!confirm('이 서버의 OneDrive 연결을 해제할까요? OneDrive 파일은 삭제하지 않습니다.'))return;await api('disconnect',{});await refresh();msg('서버의 연결 정보를 해제했습니다. Microsoft 계정의 앱 권한 취소는 Microsoft 계정 설정에서 할 수 있습니다.');};
   for(const purpose of ['source','archive',...otherFolders])el('cloud-pick-'+purpose).onclick=()=>chooseFolder(purpose).catch(e=>msg(e.message));
+  el('cloud-apply-shared-archive').onclick=async()=>{
+   const link=el('cloud-shared-archive-link').value.trim();
+   if(!link)return msg('미디어팀 공유폴더에서 “공유 → 링크 복사”한 주소를 입력해 주세요.');
+   const btn=el('cloud-apply-shared-archive');btn.disabled=true;
+   try{
+    const r=await api('shared-archive',{url:link});
+    el('cloud-shared-archive-link').value='';
+    await refresh(true);
+    msg('미디어팀 공유폴더 · '+r.name+' · 완료본 저장 위치를 지정했습니다. 원본 보관 폴더는 변경되지 않았습니다.');
+   }catch(e){msg('공유 완료본 폴더를 연결하지 못했습니다: '+e.message);}
+   finally{btn.disabled=false;}
+  };
+  el('cloud-clear-shared-archive').onclick=async()=>{
+   if(!confirm('미디어팀 공유폴더를 완료본 저장 위치에서 해제하고, 이전 개인 OneDrive 완료본 폴더로 돌아갈까요? 공유폴더 파일은 삭제하지 않습니다.'))return;
+   try{await api('clear-shared-archive',{});await refresh(true);msg('완료본 저장 위치를 이전 개인 OneDrive 설정으로 되돌렸습니다.');}
+   catch(e){msg(e.message);}
+  };
   el('cloud-folder-select').onclick=()=>saveFolder(folderStack.at(-1).id,folderStack.at(-1).name);
   el('cloud-auto-connect').onclick=()=>{if(confirm('OneDrive 전체 원본을 검색하고 정확히 일치하는 자료는 자동으로 연결합니다. 검수와 사용 허락은 별도이며, OneDrive 파일은 삭제하지 않습니다. 계속할까요?'))autoConnect().catch(e=>msg(e.message));};
   el('cloud-library-search').onclick=sources;el('cloud-archive-refresh').onclick=()=>archives();el('cloud-archive-current').onclick=()=>archiveCurrent().catch(e=>msg(e.beforeUpload?e.message:'완료 표시는 유지됩니다. '+e.message));
