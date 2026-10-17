@@ -93,7 +93,7 @@ def test_shared_archive_upload_uses_remote_drive_without_changing_sources(cloud,
             return {'id':'team_folder','name':'미디어팀 완료본','folder':{}}
         assert path.startswith('/drives/remote_drive/items/')
         if method=='POST':
-            return {'id':'created_'+body['name'], 'name':body['name'], 'folder':{}}
+            return {'id':{'주일 예배':'created_sunday','주보':'created_bulletin'}[body['name']], 'name':body['name'], 'folder':{}}
         raise AssertionError(path)
     monkeypatch.setattr(cloud,'graph',graph)
     cloud.select_shared_archive('https://1drv.ms/f/s!test-team-link')
@@ -106,7 +106,7 @@ def test_shared_archive_upload_uses_remote_drive_without_changing_sources(cloud,
     assert folder['drive_id']=='remote_drive'
     assert folder['name']=='주보'
     assert scans == [('team_folder','remote_drive'),
-                     ('created_주일 예배','remote_drive')]
+                     ('created_sunday','remote_drive')]
     day='2026-10-18'
     ident='a'*32
     cloud.store.save(day,'sunday',0,{'fields':{},'outputs':{'pdf':{
@@ -121,7 +121,7 @@ def test_shared_archive_upload_uses_remote_drive_without_changing_sources(cloud,
     monkeypatch.setattr(cloud,'upload_file',upload)
     result=cloud.archive(day,'sunday','pdf')
     assert len(written)==1
-    assert written[0][0]=='created_주보'
+    assert written[0][0]=='created_bulletin'
     assert written[0][3]=='remote_drive'
     assert result['work']['data']['outputs']['pdf']['archiveStatus']=='uploaded'
     assert cloud._read()['folders']['source']['id']=='source'
