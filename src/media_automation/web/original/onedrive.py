@@ -4,6 +4,7 @@ One shared connection is used by the media team. File operations are restricted
 by this application to the two explicitly chosen folders; Graph's delegated
 Files.ReadWrite permission itself is broader than those folders.
 """
+import base64
 import json
 import os
 import re
@@ -105,7 +106,9 @@ class OneDrive:
             return dict(configured=bool(data.get('secret')), client_id=data['client_id'],
                         redirect_uri=(local_url or origin) + CALLBACK, local_url=local_url,
                         connected=bool(data.get('account')),
-                        account=data.get('account'), folders=data.get('folders', {}))
+                        account=data.get('account'), folders=data.get('folders', {}),
+                        shared_archive={'enabled':True,'name':data['shared_archive']['name']}
+                        if data.get('shared_archive') else {'enabled':False})
 
     def _app(self, data):
         import msal
@@ -184,7 +187,10 @@ class OneDrive:
     def graph(self, path, method='GET', body=None, content=None):
         url = GRAPH + path if path.startswith('/') else path
         parts = urlsplit(url)
-        if parts.scheme != 'https' or parts.netloc != 'graph.microsoft.com' or not (parts.path == '/v1.0/me/drive' or parts.path.startswith('/v1.0/me/drive/')):
+        shared_lookup = bool(re.fullmatch(r'/v1\\.0/shares/u![A-Za-z0-9_-]{8,4096}/driveItem', parts.path))
+        remote_item = bool(re.match(r'/v1\\.0/drives/[A-Za-z0-9!_.-]{1,200}/items/[A-Za-z0-9!_.-]{1,200}(?:$|[:/])', parts.path))
+        own_drive = parts.path == '/v1.0/me/drive' or parts.path.startswith('/v1.0/me/drive/')
+        if parts.scheme != 'https' or parts.netloc != 'graph.microsoft.com' or not (own_drive or shared_lookup or remote_item):
             raise CloudError('허용되지 않은 OneDrive 요청입니다.')
         headers = {'Authorization': 'Bearer ' + self._token()}
         if content is not None:
@@ -212,8 +218,13 @@ class OneDrive:
     def item(self, identifier):
         return self.graph('/me/drive/root' if identifier == 'root' else '/me/drive/items/' + valid_id(identifier))
 
-    def children(self, identifier='root', query=''):
-        base = '/me/drive/root' if identifier == 'root' else '/me/drive/items/' + valid_id(identifier)
+    def children(self, identifier='root', query='', *, drive_id=None):
+        if drive_id:
+            if identifier == 'root':
+                raise CloudError('공유 드라이브의 폴더 ID를 확인하세요.')
+            base = '/drives/' + valid_id(drive_id) + '/items/' + valid_id(identifier)
+        else:
+            base = '/me/drive/root' if identifier == 'root' else '/me/drive/items/' + valid_id(identifier)
         if query:
             if len(query) > 100:
                 raise CloudError('검색어는 100자 이내로 입력하세요.')
@@ -228,6 +239,50 @@ class OneDrive:
             if not path:
                 return items
         raise CloudError('검색 결과가 너무 많습니다. 하위 폴더나 더 구체적인 검색어를 사용하세요.')
+
+    @staticmethod
+    def _share_token(link):
+        """Accept only Microsoft sharing URLs, never arbitrary redirect targets."""
+        if not isinstance(link, str) or not 20 <= len(link) <= 2048:
+            raise CloudError('미디어팀 OneDrive 공유 폴더의 복사 링크를 입력하세요.')
+        parts = urlsplit(link.strip())
+        host = (parts.hostname or '').lower()
+        domains = ('1drv.ms', '1drv.com', 'onedrive.live.com', 'onedrive.com', 'sharepoint.com')
+        if (parts.scheme != 'https' or not any(host == d or host.endswith('.' + d) for d in domains)
+                or parts.username or parts.password or parts.port not in (None, 443)
+                or not parts.path or parts.fragment):
+            raise CloudError('Microsoft OneDrive에서 복사한 HTTPS 공유 폴더 링크인지 확인하세요.')
+        return 'u!' + base64.urlsafe_b64encode(link.strip().encode('utf-8')).decode('ascii').rstrip('=')
+
+    def select_shared_archive(self, link):
+        """Select ONLY a writable external folder for approved output artifacts.
+
+        Do not change the source/Zoom folders or upload any actual file here.
+        A sharedWithMe listing is deliberately avoided (deprecated in 2026).
+        """
+        token = self._share_token(link)
+        item = self.graph('/shares/' + token + '/driveItem')
+        item = item.get('remoteItem') or item
+        parent = item.get('parentReference', {})
+        drive_id, item_id = parent.get('driveId'), item.get('id')
+        if not drive_id or not item_id or 'folder' not in item:
+            raise CloudError('공유 링크가 폴더를 가리키는지 확인하세요. 파일 링크는 사용할 수 없습니다.')
+        # A browser-visible share is not necessarily writable through Graph.
+        verified = self.graph('/drives/' + valid_id(drive_id) + '/items/' + valid_id(item_id))
+        if 'folder' not in verified:
+            raise CloudError('미디어팀 공유폴더에 접근할 수 없습니다. 편집 권한을 확인하세요.')
+        shared = {'id':item_id, 'drive_id':drive_id, 'name':verified.get('name') or item.get('name') or '미디어팀 공유폴더'}
+        with self.lock:
+            data = self._read()
+            data['shared_archive'] = shared
+            self._write(data)
+        return {'enabled':True, 'name':shared['name']}
+
+    def clear_shared_archive(self):
+        with self.lock:
+            data = self._read()
+            data.pop('shared_archive', None)
+            self._write(data)
 
     SOURCE_PURPOSES = frozenset({'source', 'source_video'})
     ARCHIVE_PURPOSES = frozenset({'archive', 'archive_wednesday', 'archive_friday_zoom', 'archive_friday_in_person', 'archive_sunday_ppt', 'archive_sunday_pdf'})
@@ -263,16 +318,17 @@ class OneDrive:
             raise CloudError('설정에서 ' + meaning + ' 폴더를 선택하세요.')
         return folder
 
-    def upload_file(self, folder_id, name, content):
-        path='/me/drive/items/'+valid_id(folder_id)+':/'+quote(name,safe='')
+    def upload_file(self, folder_id, name, content, *, drive_id=None):
+        base = ('/drives/' + valid_id(drive_id) + '/items/' if drive_id else '/me/drive/items/')
+        path=base+valid_id(folder_id)+':/'+quote(name,safe='')
         if len(content)<4*1024*1024:
             return self.graph(path+':/content',method='PUT',content=content)
-        existing=[item for item in self.children(folder_id) if item.get('name')==name]
+        existing=[item for item in self.children(folder_id, drive_id=drive_id) if item.get('name')==name]
         if existing:
             if len(existing)==1 and 'file' in existing[0] and existing[0].get('size')==len(content):return existing[0]
             if len(existing)!=1 or 'file' not in existing[0] or existing[0].get('size')!=0:
                 raise CloudError('동일 이름의 기존 파일을 확인하세요.')
-            session_path='/me/drive/items/'+valid_id(existing[0]['id'])+'/createUploadSession'
+            session_path=base+valid_id(existing[0]['id'])+'/createUploadSession'
         else:
             session_path=path+':/createUploadSession'
         session=self.graph(session_path,method='POST',
@@ -574,7 +630,31 @@ class OneDrive:
                    if service == 'friday' else
                    ('archive_sunday_pdf' if kind == 'pdf' else 'archive_sunday_ppt'))
         with self.lock:
-            assigned = self._read().get('folders', {}).get(purpose)
+            settings = self._read()
+            shared = settings.get('shared_archive')
+            assigned = settings.get('folders', {}).get(purpose)
+        if shared:
+            folder = {'id':shared['id'], 'name':shared['name'],
+                      'drive_id':shared['drive_id'], 'folder':{}}
+            names = {'wednesday':['수요 예배'], 'friday':['금요 기도회'],
+                     'sunday':['주일 예배', '주보' if kind == 'pdf' else '예배 PPT']}[service]
+            for name in names:
+                entries = [v for v in self.children(folder['id'], drive_id=shared['drive_id'])
+                           if v.get('name') == name]
+                if len(entries) > 1:
+                    raise CloudError('공유폴더의 동일 이름 항목이 여러 개입니다. 보관 위치를 확인하세요.')
+                if entries:
+                    child = entries[0]
+                    if 'folder' not in child:
+                        raise CloudError(name+' 이름의 파일이 있습니다. 공유폴더를 확인하세요.')
+                else:
+                    child = self.graph('/drives/'+valid_id(shared['drive_id'])+'/items/'+valid_id(folder['id'])+'/children',
+                                       method='POST',body={'name':name,'folder':{},'@microsoft.graph.conflictBehavior':'fail'})
+                if 'folder' not in child or not child.get('id'):
+                    raise CloudError('공유 OneDrive 완료본 하위 폴더를 확인하지 못했습니다.')
+                folder = {'id':child['id'], 'name':child['name'],
+                          'drive_id':shared['drive_id'], 'folder':{}}
+            return folder
         if assigned:
             return assigned
         names = {'wednesday':['수요 예배'], 'friday':['금요 기도회'],
@@ -611,7 +691,10 @@ class OneDrive:
                   if service == 'friday' and current['data'].get('fridayMode') == 'in_person'
                   else self.archive_destination(service, kind))
         name = f'{day}_{service}_{kind}_{identifier}.{extension}'
-        item = self.upload_file(folder['id'],name,path.read_bytes())
+        if folder.get('drive_id'):
+            item = self.upload_file(folder['id'],name,path.read_bytes(),drive_id=folder['drive_id'])
+        else:
+            item = self.upload_file(folder['id'],name,path.read_bytes())
         latest = self.store.get(day,service)
         latest_output = latest['data'].get('outputs',{}).get(kind,{})
         if (latest_output.get('fileId') == identifier and latest['revision'] == current['revision']
