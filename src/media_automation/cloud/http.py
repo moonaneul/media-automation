@@ -413,7 +413,7 @@ class Hosted:
             return handler.reply(200,self.cloud.status('https://'+handler.headers['Host']))
         if action=='files' and handler.command=='GET':
             purpose=query.get('purpose',['source'])[0]
-            if purpose not in ('source','source_video','archive'):raise ValueError('자료 종류를 확인하세요.')
+            if purpose not in ('source','source_video','archive','archive_wednesday','archive_friday_zoom','archive_friday_in_person','archive_sunday_ppt','archive_sunday_pdf'):raise ValueError('자료 종류를 확인하세요.')
             terms=query.get('q',[''])[0]
             if purpose in ('source','source_video') and not terms.strip():
                 raise ValueError('원본을 찾을 곡명 또는 찬송가 번호를 입력하세요.')
