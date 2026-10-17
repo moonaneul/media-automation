@@ -164,14 +164,15 @@ const CloudMedia=(()=>{
  }
  async function archiveCurrent(k=key(),kind=app.output){
   const button=el('cloud-archive-current'),status=el('storage-status');
+  const requireBeforeUpload=message=>{const error=new Error(message);error.beforeUpload=true;throw error;};
   button.disabled=true;
   try{
    await refresh();
    const [svc,date]=k.split(':'),mode=app.records[k]?.fridayMode||'zoom';
    const keyName=svc==='wednesday'?'archive_wednesday':svc==='friday'?(mode==='in_person'?'archive_friday_in_person':'archive_friday_zoom'):(kind==='pdf'?'archive_sunday_pdf':'archive_sunday_ppt');
-   if(!state?.connected)throw Error('OneDrive 연결이 필요합니다. 설정에서 로그인하세요.');
-   if(!(state.folders?.archive||state.folders?.[keyName]))throw Error('해당 예배 완료본 폴더가 미설정입니다. 설정에서 완료본 폴더를 지정하세요.');
-   if(!app.records[k]?.outputs?.[kind]?.complete)throw Error('먼저 실제 결과를 검수하고 제작 완료 표시를 해 주세요.');
+   if(!state?.connected)requireBeforeUpload('OneDrive 연결이 필요합니다. 설정에서 로그인하세요.');
+   if(!(state.folders?.archive||state.folders?.[keyName]))requireBeforeUpload('해당 예배 완료본 폴더가 미설정입니다. 설정에서 완료본 폴더를 지정하세요.');
+   if(!app.records[k]?.outputs?.[kind]?.complete)requireBeforeUpload('먼저 실제 결과를 검수하고 제작 완료 표시를 해 주세요.');
    status.textContent='OneDrive에 완료본 업로드 중… 파일이 크면 시간이 걸릴 수 있습니다.';
    const result=await api('archive',{date,service:svc,kind});
    if(!result.item?.id)throw Error('OneDrive 업로드 응답에서 파일 ID를 확인하지 못했습니다.');
@@ -188,7 +189,7 @@ const CloudMedia=(()=>{
    msg('완료본을 OneDrive에 보관했습니다. 보관 자료에서 확인할 수 있습니다.');
    return result;
   }catch(e){
-   status.textContent='OneDrive 보관 실패 · '+e.message+' · 만든 파일은 유지됩니다. 다시 시도할 수 있습니다.';
+   status.textContent=(e.beforeUpload?'OneDrive 보관 준비 필요 · ':'OneDrive 업로드 실패 · ')+e.message+(e.beforeUpload?' · 파일은 서버에 유지됩니다.':' · 만든 파일은 유지됩니다. 다시 시도할 수 있습니다.');
    throw e;
   }finally{button.disabled=false;}
  }
@@ -201,7 +202,7 @@ const CloudMedia=(()=>{
   for(const purpose of ['source','archive',...otherFolders])el('cloud-pick-'+purpose).onclick=()=>chooseFolder(purpose).catch(e=>msg(e.message));
   el('cloud-folder-select').onclick=()=>saveFolder(folderStack.at(-1).id,folderStack.at(-1).name);
   el('cloud-auto-connect').onclick=()=>{if(confirm('OneDrive 전체 원본을 검색하고 정확히 일치하는 자료는 자동으로 연결합니다. 검수와 사용 허락은 별도이며, OneDrive 파일은 삭제하지 않습니다. 계속할까요?'))autoConnect().catch(e=>msg(e.message));};
-  el('cloud-library-search').onclick=sources;el('cloud-archive-refresh').onclick=()=>archives();el('cloud-archive-current').onclick=()=>archiveCurrent().catch(e=>msg('완료 표시는 유지됩니다. '+e.message));
+  el('cloud-library-search').onclick=sources;el('cloud-archive-refresh').onclick=()=>archives();el('cloud-archive-current').onclick=()=>archiveCurrent().catch(e=>msg(e.beforeUpload?e.message:'완료 표시는 유지됩니다. '+e.message));
   el('library-search').addEventListener('input',()=>{if(!el('cloud-library-tools').open||!state?.connected||!state.folders.source)return;clearTimeout(searchTimer);searchTimer=setTimeout(sources,600);});
   window.addEventListener('focus',refresh);
   document.querySelectorAll('[data-page]').forEach(b=>b.addEventListener('click',()=>{if(b.dataset.page==='settings')refresh();if(b.dataset.page==='library')refresh();if(b.dataset.page==='archive')archives();}));
