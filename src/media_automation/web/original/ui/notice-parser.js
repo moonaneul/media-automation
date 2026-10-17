@@ -68,10 +68,7 @@ function parseBulletinCore(raw){
  if(section&&/^[<〈《＜\[【]/.test(line)){finish();unknown.push(line);continue;}if(section){body.push(line);continue;}
  m=line.match(/^(?:cf\)\s*)?오후\s*예배\s*[:：]\s*(.*)$/);if(m){put('오후예배',m[1]);continue;}
  m=line.match(/^찬양\s*[:：]\s*(.*)$/);if(m){put('전달 주보 찬양 목록',m[1]);continue;}
- if(/^예배\/섬김[:：]?$/.test(heading)){let table=[];while(i+1<lines.length&&!lines[i+1].startsWith('*')&&!lines[i+1].startsWith('<')&&!/^주\s*일\s*오\s*전/.test(lines[i+1]))table.push(lines[++i]);put('전달 섬김표 원문',table.join('\n'));const compact=table.map(v=>v.replace(/\s/g,''));const a=compact.indexOf('이번주'),b=compact.indexOf('다음주');let valid=true;
- for(const [start,end,key]of [[a,b,'이번 주 섬김'],[b,table.length,'다음 주 섬김']]){if(start<0||end<=start){valid=false;continue;}const rows=table.slice(start+1,end),clean=rows.map(v=>v.replace(/\s/g,''));const one=clean.indexOf('1부'),two=clean.indexOf('2부');const first=rows.slice(one+1,two),second=rows.slice(two+1);if(one!==0||first.length!==4||second.length!==2){valid=false;continue;}/* Flattened HWP cells are not reliable table coordinates: never map names
-    to prayer/offering/dishwashing roles by sequential row positions. */}
- unknown.push('섬김표는 표의 행·열 좌표로만 담당자를 자동 배정합니다. 평문만 읽힌 경우에는 원본을 확인하세요.');continue;}
+ if(/^예배\/섬김[:：]?$/.test(heading)){let table=[];while(i+1<lines.length&&!lines[i+1].startsWith('*')&&!lines[i+1].startsWith('<')&&!/^주\s*일\s*오\s*전/.test(lines[i+1]))table.push(lines[++i]);put('전달 섬김표 원문',table.join('\n'));unknown.push('섬김표는 표의 행·열 좌표로만 담당자를 자동 배정합니다. 평문만 읽힌 경우에는 원본을 확인하세요.');continue;}
  m=line.match(/^\*설교\s*중\s*읽을\s*말씀\s*[☞:：–—-]?\s*(.*)$/);if(m){put('추가 말씀',m[1]);continue;}
  m=line.match(/^\*1면\s*[–—-]\s*(.*)$/);if(m){put('표지 변경 사항',m[1]);continue;}
  if(line==='*'){unknown.push('이름 없는 빈 항목은 자동으로 배정하지 않았습니다.');continue;}
@@ -101,7 +98,7 @@ function parseBulletin(raw,tables){
  for(const [key,prefix]of [['이번 주 섬김','이번 주'],['다음 주 섬김','다음 주']]){const text=result.fields[key]?.value;if(text)for(const line of text.split('\n')){const m=line.match(/^(.+?):\s*(.*)$/);if(!m)continue;const name=m[1]==='수요예배 기도'?'수요예배 기도':m[1];const label=prefix==='이번 주'&&/^2부 (기도|봉헌기도)$/.test(name)?name+' 담당자':prefix+' '+name;if(!result.fields[label])result.fields[label]={state:m[2]?'VALUE':'NONE',value:m[2]};}delete result.fields[key];}delete result.fields['전달 섬김표 원문'];delete result.fields['1부 예배 순서·담당자'];
  // Structured coordinates take precedence over all flattened serving guesses.
  if(Array.isArray(tables)){
-  result.unknown=result.unknown.filter(v=>!v.startsWith('섬김표의 담당자'));
+  result.unknown=result.unknown.filter(v=>!v.startsWith('섬김표는 표의 행·열 좌표로만'));
   for(const label of Object.keys(result.fields))if(/^(이번 주|다음 주) |^[12]부 (기도|봉헌기도) 담당자$/.test(label))delete result.fields[label];
   const norm=v=>String(v).replace(/\s/g,'');
   for(const table of tables){
