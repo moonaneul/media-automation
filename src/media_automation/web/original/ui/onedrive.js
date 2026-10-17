@@ -121,10 +121,45 @@ const CloudMedia=(()=>{
   const result=await api('import-to-slot',{id:itemId,date:day,service,slot});
   return result;
  }
- async function archives(id){const root=el('cloud-archive-list');root.replaceChildren(text('p','보관 자료 불러오는 중…','hint'));
-  try{const items=(await api('files?purpose=archive'+(id?'&id='+encodeURIComponent(id):''))).items;root.replaceChildren();if(id)root.append(button('완료본 폴더로',()=>archives()));
-   for(const item of items){const row=text('div',undefined,'asset-row');row.append(text('strong',item.name));if(item.folder)row.append(button('폴더 열기',()=>archives(item.id)));else if(/\.(pptx?|pdf)$/i.test(item.name)){const link=text('a','다운로드','cloud-download');link.href='/api/onedrive/download?id='+encodeURIComponent(item.id);link.download=item.name;row.append(link);}root.append(row);}
-   if(!items.length)root.append(text('p','아직 보관한 완료본이 없습니다. 결과를 검수하고 제작 완료 표시한 뒤 보관하세요.','empty'));
+ async function archives(purpose=null,id=null){
+  const root=el('cloud-archive-list');root.replaceChildren(text('p','보관 자료 불러오는 중…','hint'));
+  try{
+   await refresh();
+   const purposes=[
+    ['archive','완료본 전체'],
+    ['archive_wednesday','수요예배'],
+    ['archive_friday_zoom','금요 Zoom'],
+    ['archive_friday_in_person','금요 대면'],
+    ['archive_sunday_ppt','주일 PPT'],
+    ['archive_sunday_pdf','주일 주보']
+   ].filter(([key])=>state?.folders?.[key]);
+   if(!purposes.length){root.replaceChildren(text('p','설정에서 완료본 폴더를 먼저 선택하세요.','empty'));return;}
+   const chosen=purposes.some(([key])=>key===purpose)?purpose:purposes[0][0];
+   const query='files?purpose='+encodeURIComponent(chosen)+(id?'&id='+encodeURIComponent(id):'');
+   const items=(await api(query)).items;
+   root.replaceChildren();
+   if(purposes.length>1){
+    const chooser=text('div',undefined,'actions');
+    for(const [key,label] of purposes)chooser.append(button(label+(key===chosen?' · 선택됨':''),()=>archives(key)));
+    root.append(chooser);
+   }
+   if(id)root.append(button('이전 폴더로',()=>archives(chosen)));
+   for(const item of items){
+    const row=text('div',undefined,'asset-row');row.append(text('strong',item.name));
+    if(item.folder)row.append(button('폴더 열기',()=>archives(chosen,item.id)));
+    else if(/\.(pptx?|pdf)$/i.test(item.name)){
+     // Large Zoom decks may exceed the server's 128 MB source-download limit.
+     // The official OneDrive URL is the proper archive retrieval location.
+     let address;
+     try{address=new URL(item.webUrl||'');}catch{}
+     if(address?.protocol==='https:'&&/\.((?:live\.com)|(?:1drv\.com)|(?:sharepoint\.com))$/i.test(address.hostname)){
+      const link=text('a','OneDrive에서 열기','cloud-download');
+      link.href=address.href;link.target='_blank';link.rel='noopener noreferrer';row.append(link);
+     }
+    }
+    root.append(row);
+   }
+   if(!items.length)root.append(text('p','이 폴더에는 아직 완료본이 없습니다. 다른 예배 폴더도 확인하세요.','empty'));
   }catch(e){root.replaceChildren(text('p',e.message,'empty'));}
  }
  async function archiveCurrent(k=key(),kind=app.output){await refresh();const [svc]=k.split(':');const mode=app.records[k]?.fridayMode||'zoom';const keyName=svc==='wednesday'?'archive_wednesday':svc==='friday'?(mode==='in_person'?'archive_friday_in_person':'archive_friday_zoom'):(kind==='pdf'?'archive_sunday_pdf':'archive_sunday_ppt');if(!state?.connected||!(state.folders.archive||state.folders[keyName]))return msg('OneDrive 연결 및 해당 예배 완료본 폴더를 설정하세요.');const [currentService,currentDate]=k.split(':');const result=await api('archive',{date:currentDate,service:currentService,kind});const st=syncState(k);if(st.dirty||st.busy){if(!st.busy)st.revision=result.work.revision;persistDraft(k);msg('OneDrive에 이전 완료본을 보관했습니다. 화면의 새 입력은 유지됩니다.');return;}app.records[k]=result.work.data;st.revision=result.work.revision;render();msg('완료본을 OneDrive에 보관했습니다. 보관 자료에서 확인할 수 있습니다.');}
