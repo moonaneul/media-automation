@@ -58,22 +58,64 @@ def test_web_bulletin_writes_the_correct_leader_and_reports_provenance(
     report = json.loads(
         (tmp_path / "review.generated" / (result["file_id"] + ".json")).read_text()
     )
+    assert report["derived_defaults"]["설교자"] == "이은철 목사"
+    assert seen["document"].worship.preacher == "이은철 목사"
+    assert "설교자" not in result["unresolved"]
     if leader is None:
-        assert report["derived_defaults"] == {"주일 인도자": "이은철 목사"}
+        assert report["derived_defaults"]["주일 인도자"] == "이은철 목사"
         assert "주일 인도자" not in report["effective_fields"]
     else:
-        assert report["derived_defaults"] == {}
+        assert "주일 인도자" not in report["derived_defaults"]
 
 
-def test_sunday_preacher_is_required_and_not_inferred_from_leader(tmp_path, monkeypatch):
+@pytest.mark.parametrize(
+    "current, expected",
+    [
+        ({}, "이은철 목사"),
+        ({"설교자": {"state": "UNSET", "value": ""}}, "이은철 목사"),
+        ({"설교자": {"state": "VALUE", "value": "초청 설교자 목사"}}, "초청 설교자 목사"),
+        ({"설교자": {"state": "NONE", "value": ""}}, None),
+    ],
+)
+def test_preacher_defaults_only_when_unset(current, expected):
+    assert bulletin.default_sunday_preacher(current, {"담임목사": "이은철"}) == expected
+
+
+@pytest.mark.parametrize(
+    "preacher, expected",
+    [(None, "이은철 목사"), ("초청 목사", "초청 목사"), ("none", None)],
+)
+def test_generated_pdf_preacher_default_override_and_explicit_none(
+    tmp_path, monkeypatch, preacher, expected
+):
     store = WorkStore(tmp_path / "review.db")
-    store.save("2026-10-18", "sunday", 0, {"fields": {}})
-    monkeypatch.setattr(
-        bulletin, "render_original_bulletin",
-        lambda _doc, dst, **_: dst.write_bytes(b"%PDF-1.4\n%%EOF\n"),
-    )
+    fields = {}
+    if preacher == "none":
+        fields["설교자"] = {"state": "NONE", "value": ""}
+    elif preacher:
+        fields["설교자"] = {"state": "VALUE", "value": preacher}
+    store.save("2026-10-18", "sunday", 0, {"fields": fields})
+    seen = {}
+
+    def fake_renderer(document, dst, **_):
+        seen["preacher"] = document.worship.preacher
+        dst.write_bytes(b"%PDF-1.4\n%%EOF\n")
+
+    monkeypatch.setattr(bulletin, "render_original_bulletin", fake_renderer)
     result = bulletin.generate_bulletin(
         store, {"date": "2026-10-18", "service": "sunday", "revision": 1}
     )
-    assert "설교자" in result["unresolved"]
-    assert "주일 인도자" not in result["unresolved"]
+    report = json.loads(
+        (tmp_path / "review.generated" / (result["file_id"] + ".json")).read_text()
+    )
+    assert seen["preacher"] == expected
+    assert "설교자" not in result["unresolved"]
+    assert report["derived_defaults"].get("설교자") == (
+        "이은철 목사" if preacher is None else None
+    )
+    assert "설교자" not in report["effective_fields"] if preacher is None else True
+    assert store.get("2026-10-18", "sunday")["data"]["fields"] == fields
+
+
+def test_missing_pastor_setting_does_not_invent_preacher():
+    assert bulletin.default_sunday_preacher({}, {"담임목사": ""}) is None
