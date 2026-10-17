@@ -162,7 +162,36 @@ const CloudMedia=(()=>{
    if(!items.length)root.append(text('p','이 폴더에는 아직 완료본이 없습니다. 다른 예배 폴더도 확인하세요.','empty'));
   }catch(e){root.replaceChildren(text('p',e.message,'empty'));}
  }
- async function archiveCurrent(k=key(),kind=app.output){await refresh();const [svc]=k.split(':');const mode=app.records[k]?.fridayMode||'zoom';const keyName=svc==='wednesday'?'archive_wednesday':svc==='friday'?(mode==='in_person'?'archive_friday_in_person':'archive_friday_zoom'):(kind==='pdf'?'archive_sunday_pdf':'archive_sunday_ppt');if(!state?.connected||!(state.folders.archive||state.folders[keyName]))return msg('OneDrive 연결 및 해당 예배 완료본 폴더를 설정하세요.');const [currentService,currentDate]=k.split(':');const result=await api('archive',{date:currentDate,service:currentService,kind});const st=syncState(k);if(st.dirty||st.busy){if(!st.busy)st.revision=result.work.revision;persistDraft(k);msg('OneDrive에 이전 완료본을 보관했습니다. 화면의 새 입력은 유지됩니다.');return;}app.records[k]=result.work.data;st.revision=result.work.revision;render();msg('완료본을 OneDrive에 보관했습니다. 보관 자료에서 확인할 수 있습니다.');}
+ async function archiveCurrent(k=key(),kind=app.output){
+  const button=el('cloud-archive-current'),status=el('storage-status');
+  button.disabled=true;
+  try{
+   await refresh();
+   const [svc,date]=k.split(':'),mode=app.records[k]?.fridayMode||'zoom';
+   const keyName=svc==='wednesday'?'archive_wednesday':svc==='friday'?(mode==='in_person'?'archive_friday_in_person':'archive_friday_zoom'):(kind==='pdf'?'archive_sunday_pdf':'archive_sunday_ppt');
+   if(!state?.connected)throw Error('OneDrive 연결이 필요합니다. 설정에서 로그인하세요.');
+   if(!(state.folders?.archive||state.folders?.[keyName]))throw Error('해당 예배 완료본 폴더가 미설정입니다. 설정에서 완료본 폴더를 지정하세요.');
+   if(!app.records[k]?.outputs?.[kind]?.complete)throw Error('먼저 실제 결과를 검수하고 제작 완료 표시를 해 주세요.');
+   status.textContent='OneDrive에 완료본 업로드 중… 파일이 크면 시간이 걸릴 수 있습니다.';
+   const result=await api('archive',{date,service:svc,kind});
+   if(!result.item?.id)throw Error('OneDrive 업로드 응답에서 파일 ID를 확인하지 못했습니다.');
+   const st=syncState(k);
+   if(st.dirty||st.busy){
+    if(!st.busy)st.revision=result.work.revision;
+    persistDraft(k);
+    status.textContent='OneDrive 보관 완료 · 화면의 새 입력은 별도로 유지됨';
+    msg('OneDrive에 이전 완료본을 보관했습니다. 새 입력은 유지됩니다.');
+    return result;
+   }
+   app.records[k]=result.work.data;st.revision=result.work.revision;render();
+   status.textContent='OneDrive 보관 완료 · '+(result.item.name||'완료 파일')+' · 지정한 폴더에서 확인하세요.';
+   msg('완료본을 OneDrive에 보관했습니다. 보관 자료에서 확인할 수 있습니다.');
+   return result;
+  }catch(e){
+   status.textContent='OneDrive 보관 실패 · '+e.message+' · 만든 파일은 유지됩니다. 다시 시도할 수 있습니다.';
+   throw e;
+  }finally{button.disabled=false;}
+ }
  async function syncOriginal(songId,digest){await refresh();if(!state?.connected||!state.folders.source)return {uploaded:false};const result=await api('upload-source',{song_id:songId,digest});return {uploaded:!!result?.item?.id,item:result?.item||null};}
  function init(){
   el('cloud-copy-redirect').onclick=async()=>{try{await navigator.clipboard.writeText(el('cloud-redirect').textContent);msg('반환 주소를 복사했습니다. Microsoft 앱의 Web 반환 주소에 붙여 넣으세요.');}catch{msg('표시된 반환 주소를 직접 복사하세요.');}};
