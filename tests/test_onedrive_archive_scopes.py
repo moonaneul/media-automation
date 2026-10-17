@@ -109,6 +109,13 @@ def test_archive_browser_separates_prerequisite_from_real_transfer_errors(tmp_pa
       if(!blocked||count!==0||!status.textContent.startsWith('OneDrive 보관 준비 필요 ·')||button.disabled)
         throw Error('Pre-review should not be mislabeled as a failed upload');
       output.complete=true;
+      output.changed=true;
+      let staleBlocked=false;
+      try{await archiveCurrent(k,'pdf');}
+      catch(e){staleBlocked=e.beforeUpload===true;}
+      if(!staleBlocked||count!==0||!status.textContent.startsWith('OneDrive 보관 준비 필요 ·'))
+        throw Error('Changed output should not attempt remote archive');
+      output.changed=false;
       await archiveCurrent(k,'pdf');
       if(count!==1||!status.textContent.startsWith('OneDrive 보관 완료 ·')||button.disabled)
         throw Error('Approved output did not trigger archive request');
