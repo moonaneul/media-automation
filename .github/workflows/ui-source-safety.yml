@@ -47,7 +47,8 @@ jobs:
             tests/test_reviewed_worship_completion.py \
             tests/test_onedrive_archive_scopes.py \
             tests/test_workflow_races.py \
-            tests/test_sunday_bulletin_import_guards.py
+            tests/test_sunday_bulletin_import_guards.py \
+            tests/test_sunday_hwp_import_browser_flow.py
       - name: Run entire repository suite (asset availability independently reported)
         timeout-minutes: 12
         env:
