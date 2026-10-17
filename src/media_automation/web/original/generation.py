@@ -27,7 +27,7 @@ from .production_order import build_order, combine_friday_prayers
 from .bible_connection import resolve
 from .ppt_conversion import convert_original
 
-BUILD_VERSION = 'official-web-engine-v9-source-conversion-and-linkage-review'
+BUILD_VERSION = 'official-web-engine-v10-case-insensitive-media-names'
 ROOT = Path(__file__).resolve().parents[4]
 
 def compatible_original(filename, service, mode, slot):
