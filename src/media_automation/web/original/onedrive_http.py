@@ -91,9 +91,12 @@ def handle(cloud, handler, parsed, origin, authenticated, session_token, session
         elif action=='archive' and handler.command=='POST':
             handler.reply(201,cloud.archive(body.get('date'),body.get('service'),body.get('kind')))
         elif action=='download' and handler.command=='GET':
-            item=cloud.item(argument('id'))
-            if not cloud.within(item,cloud.selected('archive')):
-                raise CloudError('완료본 폴더의 파일만 내려받을 수 있습니다.')
+            if cloud.status(origin)['shared_archive']['enabled']:
+                item=cloud.shared_archive_item(argument('id'))
+            else:
+                item=cloud.item(argument('id'))
+                if not cloud.within(item,cloud.selected('archive')):
+                    raise CloudError('완료본 폴더의 파일만 내려받을 수 있습니다.')
             handler.reply(200,cloud._download(item),'application/octet-stream')
         else:
             handler.reply(404,{'error':'지원하지 않는 OneDrive 요청입니다.'})
