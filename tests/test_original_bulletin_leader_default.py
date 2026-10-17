@@ -113,7 +113,12 @@ def test_generated_pdf_preacher_default_override_and_explicit_none(
     assert report["derived_defaults"].get("설교자") == (
         "이은철 목사" if preacher is None else None
     )
-    assert "설교자" not in report["effective_fields"] if preacher is None else True
+    if preacher is None:
+        assert "설교자" not in report["effective_fields"]
+    else:
+        assert report["effective_fields"]["설교자"]["state"] == (
+            "NONE" if preacher == "none" else "VALUE"
+        )
     assert store.get("2026-10-18", "sunday")["data"]["fields"] == fields
 
 
