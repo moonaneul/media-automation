@@ -67,6 +67,65 @@ def test_archive_retry_reports_failed_prerequisites():
     from pathlib import Path
     src=Path('src/media_automation/web/original/ui/onedrive.js').read_text()
     chunk=src[src.index('async function archiveCurrent('):src.index('async function syncOriginal(')]
-    assert 'if(!(state.folders?.archive||state.folders?.[keyName]))throw Error' in chunk
+    assert 'if(!(state.folders?.archive||state.folders?.[keyName]))requireBeforeUpload' in chunk
     assert 'status.textContent' in chunk
     assert 'finally{button.disabled=false;}' in chunk
+
+
+def test_archive_browser_separates_prerequisite_from_real_transfer_errors(tmp_path):
+    """Execute actual archiveCurrent JS: no upload before review; distinguish HTTP error."""
+    import json
+    import subprocess
+    from pathlib import Path
+
+    script = r"""
+    const fs=require('fs');
+    const src=fs.readFileSync(process.argv[1], 'utf8');
+    const part=src.slice(src.indexOf(' async function archiveCurrent('),
+                         src.indexOf(' async function syncOriginal('));
+    const k='sunday:2026-10-18';
+    const output={fileId:'f'.repeat(32),changed:false,complete:false};
+    const app={output:'pdf',records:{[k]:{outputs:{pdf:output}}}};
+    let count=0,failRemote=false;
+    const status={textContent:''},button={disabled:false};
+    const el=id=>id==='storage-status'?status:id==='cloud-archive-current'?button:null;
+    const state={connected:true,folders:{archive:{id:'chosen'}}};
+    const api=async(action,body)=>{
+      if(action!=='archive')throw Error('unexpected request');
+      count++;
+      if(failRemote)throw Error('HTTP 403');
+      return {item:{id:'remote-id',name:'test.pdf'},
+              work:{data:app.records[k],revision:4}};
+    };
+    const refresh=async()=>{},key=()=>k,render=()=>{},persistDraft=()=>{},
+          syncState=()=>({dirty:false,busy:false,revision:1}),msg=()=>{};
+    const archiveCurrent=new Function('state','el','key','app','refresh',
+      'api','syncState','render','persistDraft','msg',part+';return archiveCurrent;')(
+      state,el,key,app,refresh,api,syncState,render,persistDraft,msg);
+    (async()=>{
+      let blocked=false;
+      try{await archiveCurrent(k,'pdf');}
+      catch(e){blocked=e.beforeUpload===true;}
+      if(!blocked||count!==0||!status.textContent.startsWith('OneDrive 보관 준비 필요 ·')||button.disabled)
+        throw Error('Pre-review should not be mislabeled as a failed upload');
+      output.complete=true;
+      await archiveCurrent(k,'pdf');
+      if(count!==1||!status.textContent.startsWith('OneDrive 보관 완료 ·')||button.disabled)
+        throw Error('Approved output did not trigger archive request');
+      failRemote=true;
+      let failed=false;
+      try{await archiveCurrent(k,'pdf');}
+      catch(e){failed=!e.beforeUpload;}
+      if(!failed||count!==2||!status.textContent.startsWith('OneDrive 업로드 실패 ·')||button.disabled)
+        throw Error('Actual request error not separated from review prerequisite');
+      console.log(JSON.stringify({blocked,attempts:count,remoteError:failed}));
+    })().catch(error=>{console.error(error);process.exit(1)});
+    """
+    path = Path('src/media_automation/web/original/ui/onedrive.js').resolve()
+    outcome = subprocess.run(
+        ['node', '-e', script, str(path)],
+        capture_output=True, text=True, timeout=12, check=True,
+    )
+    assert json.loads(outcome.stdout) == {
+        'blocked': True, 'attempts': 2, 'remoteError': True,
+    }
