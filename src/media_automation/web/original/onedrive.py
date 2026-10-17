@@ -187,8 +187,8 @@ class OneDrive:
     def graph(self, path, method='GET', body=None, content=None):
         url = GRAPH + path if path.startswith('/') else path
         parts = urlsplit(url)
-        shared_lookup = bool(re.fullmatch(r'/v1\\.0/shares/u![A-Za-z0-9_-]{8,4096}/driveItem', parts.path))
-        remote_item = bool(re.match(r'/v1\\.0/drives/[A-Za-z0-9!_.-]{1,200}/items/[A-Za-z0-9!_.-]{1,200}(?:$|[:/])', parts.path))
+        shared_lookup = bool(re.fullmatch(r'/v1[.]0/shares/u![A-Za-z0-9_-]{8,4096}/driveItem', parts.path))
+        remote_item = bool(re.match(r'/v1[.]0/drives/[A-Za-z0-9!_.-]{1,200}/items/[A-Za-z0-9!_.-]{1,200}(?:$|[:/])', parts.path))
         own_drive = parts.path == '/v1.0/me/drive' or parts.path.startswith('/v1.0/me/drive/')
         if parts.scheme != 'https' or parts.netloc != 'graph.microsoft.com' or not (own_drive or shared_lookup or remote_item):
             raise CloudError('허용되지 않은 OneDrive 요청입니다.')
