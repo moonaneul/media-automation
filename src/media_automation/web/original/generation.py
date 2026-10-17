@@ -92,6 +92,8 @@ def _asset(store, body, block):
                        if chosen_asset else asset.get('eligible'))]
         if len(assets) != 1: return None
         asset = dict(assets[0], selected_for_service=bool(chosen_asset))
+    ensure_original = getattr(store, 'ensure_original', None)
+    if ensure_original is not None: ensure_original(asset['digest'])
     path = Path(store.path).with_suffix('.files') / asset['digest']
     if not path.is_file() or hashlib.sha256(path.read_bytes()).hexdigest() != asset['digest']: return None
     suffix = Path(asset['filename']).suffix.lower()

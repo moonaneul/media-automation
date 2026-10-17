@@ -105,12 +105,13 @@ def test_song_original_entire_sequence_and_missing_blank(tmp_path):
 def test_bulletin_requires_explicit_issue_and_does_not_promote_cell_group(tmp_path):
     store,body=setup(tmp_path)
     initial=generate_bulletin(store,body)
-    assert initial['issue_number']=='13-41'
+    assert initial['issue_number'] is None
+    assert '확정 주보 호수' in initial['unresolved']
     initial_report=json.loads((Path(store.path).with_suffix('.generated')/(initial['file_id']+'.json')).read_text())
-    assert initial_report['effective_fields']['이번 주 1부 기도']['value']=='인도자'
-    assert initial_report['effective_fields']['다음 주 1부 기도']['value']=='인도자'
-    assert '이번 주 1부 기도' not in initial['unresolved']
-    assert '다음 주 1부 기도' not in initial['unresolved']
+    assert '이번 주 1부 기도' not in initial_report['effective_fields']
+    assert '다음 주 1부 기도' not in initial_report['effective_fields']
+    assert '이번 주 1부 기도' in initial['unresolved']
+    assert '다음 주 1부 기도' in initial['unresolved']
     assert '확정 주보 호수' not in store.get(body['date'],'sunday')['data']['fields']
     current=store.get(body['date'],'sunday');data=current['data'];data['fields']['확정 주보 호수']=value('검증용')
     data['fields']['목장 본문']=value('단 1:8~9');data['fields']['목장 제목']=value('연결 시험')
@@ -119,8 +120,8 @@ def test_bulletin_requires_explicit_issue_and_does_not_promote_cell_group(tmp_pa
     result=generate_bulletin(store,body);directory=Path(store.path).with_suffix('.generated');pdf=PdfReader(directory/(result['file_id']+'.pdf'))
     assert len(pdf.pages)==2
     assert float(pdf.pages[0].mediabox.width)>float(pdf.pages[0].mediabox.height)
-    assert '다음 주 1부 기도' not in result['unresolved']
-    assert '13-41' in pdf.pages[0].extract_text() and '연결 시험' in pdf.pages[1].extract_text().replace('\xa0',' ')
+    assert '다음 주 1부 기도' in result['unresolved']
+    assert '검증용' in pdf.pages[0].extract_text() and '연결 시험' in pdf.pages[1].extract_text().replace('\xa0',' ')
     assert store.get(body['date'],'sunday')['data']['fields']['설교 제목']['value']=='연결 시험'
 
 
@@ -149,7 +150,7 @@ def test_original_ui_guards_dates_existing_fields_and_issue_inference():
     html=(ROOT/'src/media_automation/web/original/ui/index.html').read_text()
     assert 'apply.disabled=dateMismatch' in html
     assert "c.checked=!old||old.state==='UNSET'" in html
-    assert '날짜로 계산한 주보 호수:' in html
+    assert '전달된 주보 호수:' in html
 
 
 def test_zoom_embeds_five_exact_videos_and_four_explicit_audio_files(tmp_path, monkeypatch):
@@ -217,7 +218,7 @@ def test_store_migration_preserves_records_original_bytes_and_rejects_overwrite(
     before=source.read_bytes();target=tmp_path/'new.db';snapshot_store(source,target)
     new=WorkStore(target)
     assert new.get('2026-09-27','sunday')==old.get('2026-09-27','sunday')
-    assert new.get('2026-10-11','sunday')['data']=={'fields': {'폐회 기도 담당자': value('이은철 목사')}}
+    assert new.get('2026-10-11','sunday')['data']=={}
     assert source.read_bytes()==before
     with pytest.raises(ValueError):snapshot_store(source,target)
 
@@ -338,7 +339,7 @@ def test_latest_bulletin_aligns_shared_serving_and_four_column_meetings(tmp_path
     title=inner.search_for('믿음')[0]
     reference=inner.search_for('단1:8~9')[0]
     assert title.y0>reference.y0 # original puts scripture above sermon
-    first=next(r for r in inner.search_for('인도자') if r.y0>380);second=next(r for r in inner.search_for('둘기도') if r.y0>380)
+    first=next(r for r in inner.search_for('첫기도') if r.y0>380);second=next(r for r in inner.search_for('둘기도') if r.y0>380)
     dishes=inner.search_for('공통설거지')[0]
     assert dishes.y0==pytest.approx((first.y0+second.y0)/2,abs=1)
     assert doc[0].get_images() # original cover artwork preserved
@@ -421,7 +422,7 @@ def test_sunday_fixed_closing_prayer_default_preserves_saved_override(tmp_path):
     from media_automation.web.original.work_store import WorkStore
     store = WorkStore(tmp_path / 'work.db')
     fresh = store.get('2026-10-18', 'sunday')
-    assert fresh['data']['fields']['폐회 기도 담당자'] == {'state': 'VALUE', 'value': '이은철 목사'}
+    assert fresh['data'] == {}
     override = {'fields': {'폐회 기도 담당자': {'state': 'VALUE', 'value': '별도 지정'}}}
     store.save('2026-10-18', 'sunday', 0, override)
     assert store.get('2026-10-18', 'sunday')['data'] == override
@@ -519,7 +520,7 @@ def test_ui_new_week_normalizes_partial_server_record_without_erasing_values():
     node=shutil.which('node')
     if not node:pytest.skip('Node.js required for browser regression')
     html=ROOT/'src/media_automation/web/original/ui/index.html'
-    code='''const fs=require('fs');const src=fs.readFileSync(process.argv[1],'utf8');const recordFunction='function record()'+src.split('function record()')[1].split('function msg')[0];const key=()=>'new';const service='sunday';let records={new:{fields:{'폐회 기도 담당자':{state:'VALUE',value:'이은철 목사'}}}};eval(recordFunction);let r=record();if(!r.outputs.ppt||!r.outputs.pdf||!r.sourceValues)throw Error('partial record');if(r.fields['1부 찬양 인도자'].value!=='이광민'||r.fields['2부 찬양 인도자'].value!=='장기훈')throw Error('missing defaults');r.fields['2부 찬양 인도자'].value='직접 수정';if(record().fields['2부 찬양 인도자'].value!=='직접 수정')throw Error('override lost');r.outputs.pdf.fileId='preserved';if(record().outputs.pdf.fileId!=='preserved'||record().fields['폐회 기도 담당자'].value!=='이은철 목사')throw Error('lost stored data');console.log('ok');'''
+    code='''const fs=require('fs');const src=fs.readFileSync(process.argv[1],'utf8');const recordFunction='function record()'+src.split('function record()')[1].split('function msg')[0];const key=()=>'new';const service='sunday';let records={new:{fields:{'폐회 기도 담당자':{state:'VALUE',value:'이은철 목사'}}}};eval(recordFunction);let r=record();if(!r.outputs.ppt||!r.outputs.pdf||!r.sourceValues)throw Error('partial record');if(r.fields['1부 찬양 인도자']||r.fields['2부 찬양 인도자'])throw Error('invented weekly names');if(r.fields['이번 주 1부 기도']||r.fields['다음 주 1부 기도'])throw Error('invented prayer roles');r.fields['이번 주 1부 기도']={state:'VALUE',value:'명시 기도자'};r.fields['다음 주 1부 기도']={state:'NONE',value:''};if(record().fields['이번 주 1부 기도'].value!=='명시 기도자'||record().fields['다음 주 1부 기도'].state!=='NONE')throw Error('explicit prayer role lost');r.fields['2부 찬양 인도자']={state:'VALUE',value:'직접 수정'};if(record().fields['2부 찬양 인도자'].value!=='직접 수정')throw Error('override lost');r.outputs.pdf.fileId='preserved';if(record().outputs.pdf.fileId!=='preserved'||record().fields['폐회 기도 담당자'].value!=='이은철 목사')throw Error('lost stored data');console.log('ok');'''
     assert subprocess.check_output([node,'-e',code,str(html)],text=True).strip()=='ok'
 
 
@@ -566,4 +567,19 @@ def test_pending_refresh_never_replaces_a_new_local_input():
     node=shutil.which('node')
     if not node:pytest.skip('Node.js required')
     code="""const fs=require('fs');const src=fs.readFileSync(process.argv[1],'utf8');const fn='async function loadShared'+src.split('async function loadShared')[1].split('async function flushShared')[0];const st={loaded:true,revision:1,dirty:false};const syncState=()=>st,endpoint=()=>'',key=()=>'k',syncLabel=()=>{};let saveOk=false;let records={k:{fields:{title:'local'}}};let release;const fetch=()=>new Promise(r=>release=r);const document={activeElement:{matches:()=>true}};const render=()=>{throw Error('input replaced');};eval(fn);(async()=>{let pending=loadShared('k');st.dirty=true;release({ok:true,json:async()=>({revision:2,data:{fields:{title:'remote'}}})});await pending;if(records.k.fields.title!=='local'||st.revision!==1)throw Error('lost local edit');console.log('ok');})();"""
+    assert subprocess.check_output([node,'-e',code,str(ROOT/'src/media_automation/web/original/ui/index.html')],text=True).strip()=='ok'
+
+
+def test_production_save_waits_for_pending_refresh():
+    node=shutil.which('node')
+    if not node:pytest.skip('Node.js required')
+    code="""const fs=require('fs'),src=fs.readFileSync(process.argv[1],'utf8');
+const fn='async function loadShared'+src.split('async function loadShared')[1].split('async function startShared')[0];
+const st={loaded:true,revision:1,dirty:false,busy:false},syncState=()=>st,endpoint=()=>'',key=()=>'other',syncLabel=()=>{};
+let records={k:{fields:{}}},saveOk=false,release,finished=false;
+const fetch=()=>new Promise(r=>release=r);eval(fn);
+(async()=>{const refresh=loadShared('k');const ready=flushShared('k').then(()=>finished=true);
+await new Promise(r=>setImmediate(r));if(finished)throw Error('Production did not wait');
+release({ok:true,json:async()=>({revision:1,data:{fields:{}}})});await refresh;await ready;
+if(st.busy||!finished)throw Error('Production remains blocked');console.log('ok');})();"""
     assert subprocess.check_output([node,'-e',code,str(ROOT/'src/media_automation/web/original/ui/index.html')],text=True).strip()=='ok'

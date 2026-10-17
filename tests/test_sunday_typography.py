@@ -51,3 +51,25 @@ def test_reference_announcements_and_character_spacing(tmp_path):
         root=E.fromstring(z.read('ppt/slides/slide5.xml'))
         assert root.xpath('//a:rPr/@spc',namespaces=NS)==['0','-60']
         assert root.xpath('//a:spcBef/a:spcPts/@val',namespaces=NS)==['800','800']
+
+
+def test_multi_digit_verse_labels_do_not_wrap(tmp_path):
+    prs = create_4x3_presentation()
+    numbers = (9, 10, 11, 100)
+    for n in numbers:
+        add_scripture_passage_slides(prs, BiblePassage(f'시 119:{n}', (
+            BibleVerse(n, '줄바꿈 검증용 본문'),)))
+    path = tmp_path / 'numbers.pptx'
+    prs.save(path)
+    apply_sunday_typography(path, [dict(kind='text', key='성경 본문',
+        start=1, end=4, status='bible_inserted')])
+    with ZipFile(path) as package:
+        for slide, number in enumerate(numbers, 1):
+            root = E.fromstring(package.read(f'ppt/slides/slide{slide}.xml'))
+            label = root.xpath('//p:sp[p:nvSpPr/p:cNvPr[@name="Verse number"]]', namespaces=NS)[0]
+            props = label.find('p:txBody/a:bodyPr', NS)
+            assert props.get('wrap') == 'none'
+            assert props.get('lIns') == props.get('rIns') == '0'
+            assert label.xpath('.//a:t/text()', namespaces=NS) == [f'{number}.']
+            assert label.xpath('.//a:rPr/@sz', namespaces=NS) == ['4100']
+            assert len(root.findall('.//p:sp', NS)) == 3

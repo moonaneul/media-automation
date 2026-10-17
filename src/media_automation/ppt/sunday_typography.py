@@ -8,7 +8,7 @@ from zipfile import ZipFile, ZIP_DEFLATED
 from lxml import etree as E
 import unicodedata
 
-VERSION = 'sunday-gyeonggi-20260125-v5-long-verses'
+VERSION = 'sunday-gyeonggi-20260125-v6-verse-number'
 # Explicitly identified in the supplied original, not inferred from a rota.
 from media_automation.people import format_people
 TITLE_FONT = '경기천년제목 Bold'
@@ -107,6 +107,11 @@ def _scripture(root, shapes):
     number_shape.find('p:nvSpPr/p:cNvPr',NS).set('id',str(max(int(n.get('id')) for n in root.findall('.//p:cNvPr',NS))+1))
     number_shape.find('p:nvSpPr/p:cNvPr',NS).set('name','Verse number')
     number_tx = number_shape.find('p:txBody',NS)
+    # The body box's inherited padding can wrap the dot in a two-digit label.
+    # Keep verse numbers on one line without changing the scripture typography.
+    number_props = number_tx.find('a:bodyPr',NS)
+    number_props.set('wrap','none')
+    number_props.set('lIns','0'); number_props.set('rIns','0')
     for p in list(number_tx.findall('a:p',NS)):number_tx.remove(p)
     number_tx.append(deepcopy(number));_font(number_tx.find('a:p',NS),BIBLE_FONT,41)
     _spacing(number_tx.find('a:p',NS),'r',8)

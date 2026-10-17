@@ -38,8 +38,9 @@ def public_item(item):
 
 
 class OneDrive:
-    def __init__(self, store):
+    def __init__(self, store, connection_backend=None):
         self.store = store
+        self.connection_backend = connection_backend
         self.folder = Path(store.path).with_suffix('.onedrive')
         self.lock = threading.RLock()
         self.pending = {}
@@ -61,6 +62,8 @@ class OneDrive:
         return Fernet(key.read_bytes())
 
     def _read(self):
+        if self.connection_backend is not None:
+            return self.connection_backend.read()
         path = self.folder / 'connection.enc'
         if not path.exists():
             return {'client_id': CLIENT_ID}
@@ -70,6 +73,8 @@ class OneDrive:
             raise CloudError('OneDrive 연결 정보를 읽지 못했습니다. 서버의 암호화 키를 확인하세요.') from None
 
     def _write(self, data):
+        if self.connection_backend is not None:
+            return self.connection_backend.write(data)
         encrypted = self._cipher().encrypt(json.dumps(data).encode())
         temporary = self.folder / ('connection.' + secrets.token_hex(8) + '.tmp')
         fd = os.open(temporary, os.O_CREAT | os.O_EXCL | os.O_WRONLY, 0o600)
