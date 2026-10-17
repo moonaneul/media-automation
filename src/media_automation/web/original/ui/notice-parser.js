@@ -69,11 +69,14 @@ function parseBulletinCore(raw){
  m=line.match(/^(?:cf\)\s*)?오후\s*예배\s*[:：]\s*(.*)$/);if(m){put('오후예배',m[1]);continue;}
  m=line.match(/^찬양\s*[:：]\s*(.*)$/);if(m){put('전달 주보 찬양 목록',m[1]);continue;}
  if(/^예배\/섬김[:：]?$/.test(heading)){let table=[];while(i+1<lines.length&&!lines[i+1].startsWith('*')&&!lines[i+1].startsWith('<')&&!/^주\s*일\s*오\s*전/.test(lines[i+1]))table.push(lines[++i]);put('전달 섬김표 원문',table.join('\n'));const compact=table.map(v=>v.replace(/\s/g,''));const a=compact.indexOf('이번주'),b=compact.indexOf('다음주');let valid=true;
- for(const [start,end,key]of [[a,b,'이번 주 섬김'],[b,table.length,'다음 주 섬김']]){if(start<0||end<=start){valid=false;continue;}const rows=table.slice(start+1,end),clean=rows.map(v=>v.replace(/\s/g,''));const one=clean.indexOf('1부'),two=clean.indexOf('2부');const first=rows.slice(one+1,two),second=rows.slice(two+1);if(one!==0||first.length!==4||second.length!==2){valid=false;continue;}put(key,'1부 기도: '+first[0]+'\n1부 봉헌기도: '+first[1]+'\n2부 기도: '+second[0]+'\n2부 봉헌기도: '+second[1]+'\n설거지: '+first[2]+'\n수요예배 기도: '+first[3]);if(key==='이번 주 섬김'){put('1부 예배 순서·담당자','기도: '+first[0]+' / 봉헌기도: '+first[1]);put('2부 기도 담당자',second[0]);put('2부 봉헌기도 담당자',second[1]);}}
- unknown.push(valid?'섬김표의 담당자를 자동 배정했습니다. 병합된 설거지·수요 기도 칸은 첨부 원본과 확인하세요.':'섬김표 구조가 달라 자동 배정하지 못했습니다. 원문을 확인하고 각 담당자를 입력하세요.');continue;}
+ for(const [start,end,key]of [[a,b,'이번 주 섬김'],[b,table.length,'다음 주 섬김']]){if(start<0||end<=start){valid=false;continue;}const rows=table.slice(start+1,end),clean=rows.map(v=>v.replace(/\s/g,''));const one=clean.indexOf('1부'),two=clean.indexOf('2부');const first=rows.slice(one+1,two),second=rows.slice(two+1);if(one!==0||first.length!==4||second.length!==2){valid=false;continue;}/* Flattened HWP cells are not reliable table coordinates: never map names
+    to prayer/offering/dishwashing roles by sequential row positions. */}
+ unknown.push('섬김표는 표의 행·열 좌표로만 담당자를 자동 배정합니다. 평문만 읽힌 경우에는 원본을 확인하세요.');continue;}
  m=line.match(/^\*설교\s*중\s*읽을\s*말씀\s*[☞:：–—-]?\s*(.*)$/);if(m){put('추가 말씀',m[1]);continue;}
  m=line.match(/^\*1면\s*[–—-]\s*(.*)$/);if(m){put('표지 변경 사항',m[1]);continue;}
  if(line==='*'){unknown.push('이름 없는 빈 항목은 자동으로 배정하지 않았습니다.');continue;}
+ m=line.match(/^(?:주보\s*호수\s*[:：]\s*|주보\s+|제\s*)(\d{1,3}\s*[-–]\s*\d{1,3})\s*(?:호)?\s*$/);
+ if(m){put('확정 주보 호수',m[1].replace(/\s/g,'').replace('–','-'));continue;}
  if(/^\d{1,2}\/\d{1,2}$/.test(line)||/^주보\s+/.test(line))continue;unknown.push(line);
  }finish();const date=lines.find(v=>/^\d{1,2}\/\d{1,2}$/.test(v));
  cleanPeople(fields);return {fields,unknown,dateLabel:date||null};
@@ -138,11 +141,11 @@ function parseTableFields(tables,allowed,aliases,service){
  for(const table of tables||[]){
   const cells=table.cells||[];
   // Serving matrices require their own week/service coordinate parser.
-  if(cells.some(c=>norm(c.text)==='이번주')&&cells.some(c=>norm(c.text)==='봉헌기도'))continue;
+  if(cells.some(c=>norm(c.text)==='기도')&&cells.some(c=>norm(c.text)==='봉헌기도'))continue;
   for(const cell of cells){
    const label=names.get(norm(cell.text));if(!label||conflicts.has(label))continue;
    const value=cells.find(c=>c.row===cell.row&&c.column===cell.column+(cell.colspan||1));
-   if(!value||names.has(norm(value.text)))continue;
+   if(!value||names.has(norm(value.text))||/^(?:설거지|봉헌기도|기도|수요예배기도|1부|2부|이번주|다음주|구분)$/.test(norm(value.text)))continue;
    const text=String(value.text||'').trim();
    if(fields[label]&&fields[label].value!==text){delete fields[label];conflicts.add(label);unknown.push(label+': 표에 서로 다른 값이 있어 직접 확인');continue;}
    fields[label]={state:text?'VALUE':'NONE',value:isPerson(label)?cleanPerson(text):text};consumed.push(String(cell.text||'').trim(),...text.split(/\r?\n/));
