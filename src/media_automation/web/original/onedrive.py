@@ -397,7 +397,45 @@ class OneDrive:
         number = re.fullmatch(r'(?:새찬송가|구찬송가|찬송가)?(\d{1,3})(?:장)?', term)
         return bool(number and re.search(r'(?<!\d)' + re.escape(number[1]) + r'(?!\d)', name))
 
+    def _remote_archive_within(self, item, folder):
+        """Enforce ancestry in the explicitly selected shared drive only."""
+        expected_drive = folder['drive_id']
+        seen = set()
+        for _ in range(40):
+            if item.get('id') == folder['id']:
+                return True
+            parent = item.get('parentReference', {})
+            parent_id = parent.get('id')
+            if (not parent_id or parent_id in seen
+                    or parent.get('driveId') != expected_drive):
+                return False
+            seen.add(parent_id)
+            item = self.graph('/drives/'+valid_id(expected_drive)+'/items/'+valid_id(parent_id))
+        return False
+
+    def shared_archive_item(self, identifier):
+        """Fetch a file only when its ancestry belongs to the shared archive."""
+        with self.lock:
+            shared = self._read().get('shared_archive')
+        if not shared:
+            raise CloudError('미디어팀 공유 완료본 폴더가 지정되지 않았습니다.')
+        folder = {'id':shared['id'], 'drive_id':shared['drive_id']}
+        item = self.graph('/drives/'+valid_id(shared['drive_id'])+'/items/'+valid_id(identifier))
+        if not self._remote_archive_within(item, folder):
+            raise CloudError('미디어팀 완료본 공유폴더 안의 파일만 확인할 수 있습니다.')
+        return item
+
     def list_selected(self, purpose, identifier=None, query=''):
+        with self.lock:
+            shared = self._read().get('shared_archive') if purpose in self.ARCHIVE_PURPOSES else None
+        if shared:
+            folder = {'id':shared['id'],'drive_id':shared['drive_id']}
+            if identifier:
+                self.shared_archive_item(identifier)
+            root = identifier or folder['id']
+            # Archive browsing never creates folders. It shows only the
+            # selected shared root and its descendants, never other drives.
+            return self.children(root, drive_id=shared['drive_id'])
         folder = self.selected(purpose)
         if identifier and identifier != folder['id'] and not self.within(self.item(identifier), folder):
             raise CloudError('지정한 자료 폴더 안에서만 조회할 수 있습니다.')
