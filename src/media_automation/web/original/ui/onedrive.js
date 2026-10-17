@@ -173,6 +173,7 @@ const CloudMedia=(()=>{
    if(!state?.connected)requireBeforeUpload('OneDrive 연결이 필요합니다. 설정에서 로그인하세요.');
    if(!(state.folders?.archive||state.folders?.[keyName]))requireBeforeUpload('해당 예배 완료본 폴더가 미설정입니다. 설정에서 완료본 폴더를 지정하세요.');
    if(!app.records[k]?.outputs?.[kind]?.complete)requireBeforeUpload('먼저 실제 결과를 검수하고 제작 완료 표시를 해 주세요.');
+   if(app.records[k]?.outputs?.[kind]?.changed)requireBeforeUpload('입력이 변경된 이전 생성본입니다. 최신 파일을 다시 제작하고 검수 완료 표시를 해 주세요.');
    status.textContent='OneDrive에 완료본 업로드 중… 파일이 크면 시간이 걸릴 수 있습니다.';
    const result=await api('archive',{date,service:svc,kind});
    if(!result.item?.id)throw Error('OneDrive 업로드 응답에서 파일 ID를 확인하지 못했습니다.');
