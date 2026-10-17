@@ -70,7 +70,7 @@ def test_importing_corrected_hwp_replaces_stale_none_and_wrong_offering_value():
     const iso=()=> '2026-10-18',markChanged=()=>applied=true;
     const render=()=>rendered=true,msg=x=>msgText=x;
     const shared=false,fridayMode=()=> 'zoom',syncState=()=>({loaded:true});
-    const NoticeParser=p, pendingDraft=null;
+    const NoticeParser=p;let pendingDraft=null;
     eval(src);
     parse();
     const selected=preview.filter(x=>x.checked).map(x=>x.dataset.label);
