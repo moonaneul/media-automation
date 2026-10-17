@@ -59,8 +59,8 @@ def test_bulletin_review_http_completes_then_archives_without_touching_ppt(
         "확정 주보 호수": field("13-42"),
         "성경 본문": field("마 16:13~18"),
         "설교 제목": field("교회가 소중한 이유"),
-        # 주일 인도자는 UNSET -> church-confirmed pastor default.
-        "설교자": field("확인된 설교자 목사"),
+        # 주일 인도자와 설교자는 둘 다 교회 기본 설정의 담임목사.
+        # 추가 필드를 저장하지 않아도 완결된 주보가 생성되어야 한다.
         **{f"질문 {i}": field(f"확인된 질문 {i}") for i in range(1, 5)},
     })
     work = {"fields": fields, "outputs": {"ppt": {}, "pdf": {}}}
@@ -107,6 +107,12 @@ def test_bulletin_review_http_completes_then_archives_without_touching_ppt(
         assert status == 200, generated
         assert generated["unresolved"] == []
         pdf_id = generated["file_id"]
+        report=json.loads(
+            (Path(store.path).with_suffix(".generated")/(pdf_id+".json")).read_text()
+        )
+        assert report["derived_defaults"] == {
+            "주일 인도자": "이은철 목사", "설교자": "이은철 목사"
+        }
         work = store.get(day, "sunday")["data"]
         work["outputs"]["pdf"] = {
             "fileId": pdf_id, "generated": True,
@@ -146,7 +152,7 @@ def test_bulletin_review_http_completes_then_archives_without_touching_ppt(
         thread.join(timeout=5)
 
 
-def test_bulletin_review_requires_sermon_preacher_in_current_week(tmp_path, monkeypatch):
+def test_bulletin_review_uses_church_preacher_without_extra_weekly_input(tmp_path, monkeypatch):
     store=WorkStore(tmp_path / "review.db")
     data={"fields":{"성경 본문":field("마 16:13~18"),"설교 제목":field("교회가 소중한 이유")}}
     revision=store.save("2026-10-18","sunday",0,data)["revision"]
@@ -157,7 +163,7 @@ def test_bulletin_review_requires_sermon_preacher_in_current_week(tmp_path, monk
     result=bulletin.generate_bulletin(
         store,{"date":"2026-10-18","service":"sunday","revision":revision}
     )
-    assert "설교자" in result["unresolved"]
+    assert "설교자" not in result["unresolved"]
     assert result["complete"] is False
 
 
