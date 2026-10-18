@@ -9,6 +9,7 @@ import threading
 from http.cookies import SimpleCookie
 import json
 import mimetypes
+from datetime import datetime, timezone
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from urllib.parse import urlsplit, parse_qs
@@ -412,6 +413,38 @@ def make_server(store, port=0, password=None, bind_host="127.0.0.1", public_orig
                 file=Path(store.path).with_suffix('.generated')/(identifier+'.'+extension)
                 if not file.is_file():return self.reply(404,{'error':'파일을 찾지 못했습니다.'})
                 return send_download(self, file, head_only=self.command=='HEAD')
+            if self.command=='POST' and parsed.path=='/api/reopen-ppt-review':
+                # Revoking approval affects this PPT's review status only.
+                # Neither the generated artifact nor past OneDrive uploads
+                # are ever deleted, moved or marked as missing.
+                try:
+                    size=int(self.headers.get('Content-Length','-1'))
+                    if self.headers.get('Content-Type')!='application/json' or not 0<size<=8192:
+                        raise ValueError()
+                    body=json.loads(self.rfile.read(size))
+                    if body.get('confirmed') is not True:
+                        raise ValueError()
+                    identifier=body.get('file_id','')
+                    if not isinstance(identifier,str) or len(identifier)!=32 or any(
+                            ch not in '0123456789abcdef' for ch in identifier):
+                        raise ValueError()
+                    if body.get('service') not in ('sunday','wednesday','friday'):
+                        raise ValueError()
+                    current=store.get(body['date'],body['service'])
+                    ppt=current['data'].get('outputs',{}).get('ppt',{})
+                    if (ppt.get('fileId')!=identifier or not ppt.get('complete')
+                            or ppt.get('changed')):
+                        return self.reply(409,{'error':'해당 PPT의 완료 기록이 변경되었습니다. 최신 상태를 확인하세요.'})
+                    ppt['complete']=False
+                    ppt['reviewRevokedAt']=datetime.now(timezone.utc).isoformat(timespec='seconds')
+                    # Keep cloudItem, cloudVerified, archiveStatus and prior
+                    # manual review audit; re-approval must be explicit.
+                    saved=store.save(body['date'],body['service'],body['revision'],current['data'])
+                    return self.reply(200,saved)
+                except RevisionConflict:
+                    return self.reply(409,{'error':'다른 화면에서 검수 기록이 변경됐습니다. 새로고침 후 확인하세요.'})
+                except Exception:
+                    return self.reply(400,{'error':'현재 파일과 검수 완료 기록을 확인한 뒤 다시 시도하세요.'})
             if self.command=='POST' and parsed.path in ('/api/complete-bulletin','/api/complete'):
                 try:
                     size=int(self.headers.get('Content-Length','-1'))
@@ -465,9 +498,18 @@ def make_server(store, port=0, password=None, bind_host="127.0.0.1", public_orig
                         if kind=='pdf':
                             raise BulletinReviewBlocked('현재 선택한 파일이 최신 주보 PDF가 아닙니다. PDF를 다시 제작해 주세요.')
                         raise ValueError()
-                    o.update(complete=True,changed=False,archiveStatus='pending_connection',
+                    # Re-reviewing an already approved file must never
+                    # invalidate an existing OneDrive archive record.
+                    previous_archive=o.get('archiveStatus')
+                    has_cloud_item=bool(o.get('cloudItem'))
+                    new_status=(previous_archive if kind=='ppt' and has_cloud_item
+                                else 'pending_connection')
+                    o.update(complete=True,changed=False,archiveStatus=new_status,
                              acknowledgedUnresolved=acknowledged if kind=='ppt' else [],
                              confirmedManualReviews=manual_reviews if kind=='ppt' else [])
+                    if kind=='ppt':
+                        o['reviewedAt']=datetime.now(timezone.utc).isoformat(timespec='seconds')
+                        o.pop('reviewRevokedAt',None)
                     saved=store.save(body['date'],body['service'],body['revision'],data)
                     return self.reply(200,saved)
                 except BulletinReviewBlocked as exc:
