@@ -11,11 +11,12 @@ from media_automation.web.original import bible_connection
 UI=Path("src/media_automation/web/original/ui/index.html")
 
 
-def test_completed_ppt_disables_repeat_review_button():
+def test_existing_ppt_review_is_identified_as_saved_history_and_can_be_rechecked():
     script=UI.read_text(encoding="utf-8")
-    assert "$('complete').disabled=!o.fileId||!!o.changed||!!o.complete;" in script
-    assert "PPT 검수 완료됨" in script
-    assert "if(o.complete&&!o.changed)return msg('이 PPT는 이미 검수 완료됐습니다." in script
+    assert "$('complete').disabled=!o.fileId||!!o.changed||(pdf&&!!o.complete);" in script
+    assert "PPT 다시 검수" in script
+    assert "id=\"ppt-review-cancel\"" in script
+    assert "이번 화면에서 새로 검수했다는 뜻은 아닙니다." in script
 
 
 def test_manual_confirmation_is_not_mislabelled_as_auto_scripture_validation():
