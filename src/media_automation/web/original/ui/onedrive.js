@@ -214,10 +214,18 @@ const CloudMedia=(()=>{
    const began=Date.now();
    status.textContent='OneDrive에 완료본 업로드 중… 파일이 크면 시간이 걸릴 수 있습니다.';
    if(supportsTimeout){
-    if(typeof setInterval==='function')ticker=setInterval(()=>{
+    if(typeof setInterval==='function')ticker=setInterval(async()=>{
      const seconds=Math.max(0,Math.floor((Date.now()-began)/1000));
-     status.textContent='OneDrive 업로드 응답 대기 중 · '+Math.floor(seconds/60)+'분 '+(seconds%60)+'초 경과'+
-       (seconds>=120?' · 지연되고 있습니다. 서버의 업로드는 계속될 수 있습니다.':'');
+     const prefix='OneDrive 업로드 · '+Math.floor(seconds/60)+'분 '+(seconds%60)+'초 경과';
+     try{
+      const progress=await api('archive-progress?date='+encodeURIComponent(date)+
+       '&service='+encodeURIComponent(svc)+'&kind='+encodeURIComponent(kind));
+      status.textContent=prefix+' · '+(progress.stage||'상태 확인 중')+
+       (progress.percent!==undefined?' · '+progress.percent+'%':'')+
+       (progress.error?' · '+progress.error:'');
+     }catch{
+      status.textContent=prefix+' · 서버 응답을 기다리는 중';
+     }
     },5000);
     timeout=setTimeout(()=>controller.abort(),maxWait);
    }
@@ -279,6 +287,22 @@ const CloudMedia=(()=>{
   el('cloud-folder-select').onclick=()=>saveFolder(folderStack.at(-1).id,folderStack.at(-1).name);
   el('cloud-auto-connect').onclick=()=>{if(confirm('OneDrive 전체 원본을 검색하고 정확히 일치하는 자료는 자동으로 연결합니다. 검수와 사용 허락은 별도이며, OneDrive 파일은 삭제하지 않습니다. 계속할까요?'))autoConnect().catch(e=>msg(e.message));};
   el('cloud-library-search').onclick=sources;el('cloud-archive-refresh').onclick=()=>archives();el('cloud-archive-current').onclick=()=>archiveCurrent().catch(e=>msg(e.beforeUpload?e.message:'완료 표시는 유지됩니다. '+e.message));
+  el('cloud-check-current').onclick=async()=>{
+   const button=el('cloud-check-current'),status=el('storage-status');
+   const [svc]=key().split(':'),kind=app.output;
+   button.disabled=true;
+   status.textContent='OneDrive 저장 폴더의 읽기 접근을 점검 중… (파일을 업로드하지 않습니다.)';
+   try{
+    const mode=svc==='friday'?(app.records[key()]?.fridayMode||'zoom'):'zoom';
+    const params=new URLSearchParams({service:svc,kind,mode});
+    const result=await api('archive-check?'+params);
+    status.textContent=result.target+' · 폴더 조회 성공 · 파일 쓰기는 실제 승인본 업로드에서 확인합니다.';
+    msg(result.target+' 저장 폴더를 읽을 수 있습니다. 업로드 가능 여부는 별도로 확인해야 합니다.');
+   }catch(e){
+    status.textContent='OneDrive 저장 폴더 연결 점검 실패 · '+e.message;
+    msg(e.message);
+   }finally{button.disabled=false;}
+  };
   el('library-search').addEventListener('input',()=>{if(!el('cloud-library-tools').open||!state?.connected||!state.folders.source)return;clearTimeout(searchTimer);searchTimer=setTimeout(sources,600);});
   window.addEventListener('focus',refresh);
   document.querySelectorAll('[data-page]').forEach(b=>b.addEventListener('click',()=>{if(b.dataset.page==='settings')refresh();if(b.dataset.page==='library')refresh();if(b.dataset.page==='archive')archives();}));
