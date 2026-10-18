@@ -20,7 +20,7 @@ const CloudMedia=(()=>{
   const allowed=u?.protocol==='https:'&&official.some(d=>host===d||host.endsWith('.'+d));
   link.hidden=!allowed;
   if(allowed){link.href=u.href;link.textContent=label;}
-  else{link.removeAttribute('href');link.textContent='';}
+  else{link.removeAttribute?.('href');link.textContent='';}
  }
 
  const text=(tag,value,cls)=>{const n=document.createElement(tag);if(value!==undefined)n.textContent=value;if(cls)n.className=cls;return n;};
