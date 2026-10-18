@@ -261,7 +261,7 @@ const CloudMedia=(()=>{
    app.records[k]=result.work.data;st.revision=result.work.revision;render();
    status.textContent=result.verified?
      'OneDrive 공유폴더에서 파일 실제 존재 확인 완료 · '+(result.target||'')+' · '+(result.item.name||'완료 파일'):
-     'OneDrive 업로드 응답 기록됨 · '+(result.item.name||'완료 파일')+' · 실제 위치 추가 확인 필요';
+     'OneDrive 보관 완료 응답 기록됨 · '+(result.item.name||'완료 파일')+' · 실제 위치 추가 확인 필요';
    msg('완료본을 OneDrive에 보관했습니다. 보관 자료에서 확인할 수 있습니다.');
    return result;
   }catch(e){
