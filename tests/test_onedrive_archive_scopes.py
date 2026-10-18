@@ -119,7 +119,7 @@ def test_archive_browser_separates_prerequisite_from_real_transfer_errors(tmp_pa
         throw Error('Changed output should not attempt remote archive');
       output.changed=false;
       await archiveCurrent(k,'pdf');
-      if(count!==1||!status.textContent.startsWith('OneDrive 보관 완료 ·')||button.disabled)
+      if(count!==1||!status.textContent.startsWith('OneDrive 보관 완료')||button.disabled)
         throw Error('Approved output did not trigger archive request');
       failRemote=true;
       let failed=false;
