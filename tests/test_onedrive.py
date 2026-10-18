@@ -348,7 +348,7 @@ def test_archive_ui_uses_actual_week_key_and_captures_requested_output():
     data=json.loads(subprocess.check_output(['node','-e',code],text=True))
     assert data['sent']=={'date':'2026-10-07','service':'wednesday','kind':'ppt','require_team_shared':True}
     assert data['disabled'] is False
-    assert '보관 완료' in data['stored']
+    assert '파일 실제 존재 확인 완료' in data['stored']
 
 
 def test_large_completed_ppt_uses_archive_limit(cloud,monkeypatch):
