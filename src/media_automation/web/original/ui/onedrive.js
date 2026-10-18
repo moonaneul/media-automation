@@ -191,7 +191,8 @@ const CloudMedia=(()=>{
   const requireBeforeUpload=message=>{const error=new Error(message);error.beforeUpload=true;throw error;};
   // A response-less Microsoft request must not leave this button locked forever.
   // Aborting browser wait does NOT guarantee the server stopped its upload.
-  const controller=new AbortController();
+  const supportsTimeout=typeof AbortController==='function'&&typeof setTimeout==='function';
+  const controller=supportsTimeout?new AbortController():null;
   const maxWait=kind==='pdf'?180000:900000;
   let ticker=null,timeout=null;
   button.disabled=true;
@@ -212,13 +213,16 @@ const CloudMedia=(()=>{
    if(app.records[k]?.outputs?.[kind]?.changed)requireBeforeUpload('입력이 변경된 이전 생성본입니다. 최신 파일을 다시 제작하고 검수 완료 표시를 해 주세요.');
    const began=Date.now();
    status.textContent='OneDrive에 완료본 업로드 중… 파일이 크면 시간이 걸릴 수 있습니다.';
-   ticker=setInterval(()=>{
-    const seconds=Math.max(0,Math.floor((Date.now()-began)/1000));
-    status.textContent='OneDrive 업로드 응답 대기 중 · '+Math.floor(seconds/60)+'분 '+(seconds%60)+'초 경과'+
-      (seconds>=120?' · 지연되고 있습니다. 서버의 업로드는 계속될 수 있습니다.':'');
-   },5000);
-   timeout=setTimeout(()=>controller.abort(),maxWait);
-   const result=await api('archive',{date,service:svc,kind},{signal:controller.signal});
+   if(supportsTimeout){
+    if(typeof setInterval==='function')ticker=setInterval(()=>{
+     const seconds=Math.max(0,Math.floor((Date.now()-began)/1000));
+     status.textContent='OneDrive 업로드 응답 대기 중 · '+Math.floor(seconds/60)+'분 '+(seconds%60)+'초 경과'+
+       (seconds>=120?' · 지연되고 있습니다. 서버의 업로드는 계속될 수 있습니다.':'');
+    },5000);
+    timeout=setTimeout(()=>controller.abort(),maxWait);
+   }
+   const result=await api('archive',{date,service:svc,kind},
+      controller?{signal:controller.signal}:{});
    if(!result.item?.id)throw Error('OneDrive 업로드 응답에서 파일 ID를 확인하지 못했습니다.');
    const st=syncState(k);
    if(st.dirty||st.busy){
@@ -233,7 +237,7 @@ const CloudMedia=(()=>{
    msg('완료본을 OneDrive에 보관했습니다. 보관 자료에서 확인할 수 있습니다.');
    return result;
   }catch(e){
-   if(controller.signal.aborted){
+   if(controller?.signal.aborted){
     const uncertain=new Error('OneDrive 응답 대기 시간이 초과됐습니다. 업로드는 서버에서 계속 진행 중일 수 있습니다. 공유폴더에서 파일 존재 여부를 확인한 뒤 다시 시도하세요.');
     uncertain.uncertain=true;e=uncertain;
    }
