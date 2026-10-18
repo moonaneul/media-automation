@@ -461,6 +461,7 @@ def make_server(store, port=0, password=None, bind_host="127.0.0.1", public_orig
                         if report.get('format')=='pdf':
                             raise BulletinReviewBlocked('주보 PDF를 만든 뒤 입력이 변경되었습니다. PDF를 다시 제작해 확인하세요.')
                         raise ValueError()
+                    bible_receipts={}
                     if report.get('format')=='pdf':
                         if report.get('unresolved'):
                             labels=', '.join(str(name) for name in report['unresolved'][:25])
@@ -488,6 +489,35 @@ def make_server(store, port=0, password=None, bind_host="127.0.0.1", public_orig
                         if report.get('render_configuration')!=render_configuration(current['data']):raise ValueError()
                         if report.get('attachments')!=store.attachments(body['date'],body['service']):raise ValueError()
                         if not (directory/(identifier+'.pptx')).is_file():raise ValueError()
+                        # Only a freshly generated PPT with source digests
+                        # can seed reusable manual review receipts. Historic
+                        # complete=True records cannot be promoted silently.
+                        pending=report.get('bible_review_digests',{})
+                        if pending:
+                            if not isinstance(pending,dict):raise ValueError()
+                            from .bible_connection import resolve
+                            from .bible_review_cache import units_for_manual_confirmation
+                            labels=[name for name in manual_reviews if name.endswith(':bible_review')]
+                            blocks=[]
+                            expected={}
+                            for label in labels:
+                                slot=label[:-len(':bible_review')]
+                                stored=pending.get(slot)
+                                if stored is None:
+                                    continue # supporting-prayer verse: no exact source receipt
+                                if not isinstance(stored,dict):raise ValueError()
+                                expected.update(stored)
+                                field=current['data']['fields'].get(slot,{})
+                                if field.get('state')!='VALUE' or not field.get('value'):
+                                    raise ValueError()
+                                blocks.append(dict(kind='input',key=slot,state='VALUE',
+                                                   content=field['value']))
+                            if blocks:
+                                candidate=units_for_manual_confirmation(resolve(blocks),labels)
+                                if candidate!=expected:
+                                    raise BulletinReviewBlocked(
+                                        '검수할 성경 본문이 PPT 제작 시 사용한 원문과 달라졌습니다. 정확한 자료로 다시 제작하세요.')
+                                bible_receipts=candidate
                         for slot, connected in report.get('connections',{}).items():
                             if connected.get('status')!='connected':continue
                             text=current['data']['fields'].get(slot,{}).get('value','')
@@ -511,6 +541,12 @@ def make_server(store, port=0, password=None, bind_host="127.0.0.1", public_orig
                         o['reviewedAt']=datetime.now(timezone.utc).isoformat(timespec='seconds')
                         o.pop('reviewRevokedAt',None)
                     saved=store.save(body['date'],body['service'],body['revision'],data)
+                    if kind=='ppt' and bible_receipts:
+                        # A human explicitly checked all verses at approval.
+                        # Store exact hashes, not copyrighted verse text.
+                        store.record_bible_review_receipts(
+                            bible_receipts,date=body['date'],
+                            service=body['service'],file_id=identifier)
                     return self.reply(200,saved)
                 except BulletinReviewBlocked as exc:
                     return self.reply(409, {'error':str(exc)})
