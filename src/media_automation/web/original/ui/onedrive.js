@@ -11,7 +11,7 @@ const CloudMedia=(()=>{
  const otherFolders=['source_video','archive_wednesday','archive_friday_zoom','archive_friday_in_person','archive_sunday_ppt','archive_sunday_pdf'];
  const el=id=>document.getElementById(id);
  const text=(tag,value,cls)=>{const n=document.createElement(tag);if(value!==undefined)n.textContent=value;if(cls)n.className=cls;return n;};
- async function api(action,body){const r=await fetch('/api/onedrive/'+action,body===undefined?{}:{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});const data=await r.json();if(!r.ok)throw Error(data.error||'OneDrive 요청 실패');return data;}
+ async function api(action,body,options={}){const init=body===undefined?{}:{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)};if(options.signal)init.signal=options.signal;const r=await fetch('/api/onedrive/'+action,init);const data=await r.json();if(!r.ok)throw Error(data.error||'OneDrive 요청 실패');return data;}
  function button(label,action){const b=text('button',label);b.onclick=async()=>{b.disabled=true;try{await action();}catch(e){msg(e.message);}finally{b.disabled=false;}};return b;}
  async function refresh(strict=false){
   try{state=await api('status');}catch(e){state=null;el('cloud-status').textContent=e.message;if(strict)throw e;return;}
@@ -189,6 +189,11 @@ const CloudMedia=(()=>{
  async function archiveCurrent(k=key(),kind=app.output){
   const button=el('cloud-archive-current'),status=el('storage-status');
   const requireBeforeUpload=message=>{const error=new Error(message);error.beforeUpload=true;throw error;};
+  // A response-less Microsoft request must not leave this button locked forever.
+  // Aborting browser wait does NOT guarantee the server stopped its upload.
+  const controller=new AbortController();
+  const maxWait=kind==='pdf'?180000:900000;
+  let ticker=null,timeout=null;
   button.disabled=true;
   try{
    await refresh();
@@ -205,8 +210,15 @@ const CloudMedia=(()=>{
     requireBeforeUpload('해당 예배 완료본 폴더가 미설정입니다. 설정에서 완료본 폴더를 지정하세요.');
    if(!app.records[k]?.outputs?.[kind]?.complete)requireBeforeUpload('먼저 실제 결과를 검수하고 제작 완료 표시를 해 주세요.');
    if(app.records[k]?.outputs?.[kind]?.changed)requireBeforeUpload('입력이 변경된 이전 생성본입니다. 최신 파일을 다시 제작하고 검수 완료 표시를 해 주세요.');
+   const began=Date.now();
    status.textContent='OneDrive에 완료본 업로드 중… 파일이 크면 시간이 걸릴 수 있습니다.';
-   const result=await api('archive',{date,service:svc,kind});
+   ticker=setInterval(()=>{
+    const seconds=Math.max(0,Math.floor((Date.now()-began)/1000));
+    status.textContent='OneDrive 업로드 응답 대기 중 · '+Math.floor(seconds/60)+'분 '+(seconds%60)+'초 경과'+
+      (seconds>=120?' · 지연되고 있습니다. 서버의 업로드는 계속될 수 있습니다.':'');
+   },5000);
+   timeout=setTimeout(()=>controller.abort(),maxWait);
+   const result=await api('archive',{date,service:svc,kind},{signal:controller.signal});
    if(!result.item?.id)throw Error('OneDrive 업로드 응답에서 파일 ID를 확인하지 못했습니다.');
    const st=syncState(k);
    if(st.dirty||st.busy){
@@ -221,9 +233,18 @@ const CloudMedia=(()=>{
    msg('완료본을 OneDrive에 보관했습니다. 보관 자료에서 확인할 수 있습니다.');
    return result;
   }catch(e){
-   status.textContent=(e.beforeUpload?'OneDrive 보관 준비 필요 · ':'OneDrive 업로드 실패 · ')+e.message+(e.beforeUpload?' · 파일은 서버에 유지됩니다.':' · 만든 파일은 유지됩니다. 다시 시도할 수 있습니다.');
+   if(controller.signal.aborted){
+    const uncertain=new Error('OneDrive 응답 대기 시간이 초과됐습니다. 업로드는 서버에서 계속 진행 중일 수 있습니다. 공유폴더에서 파일 존재 여부를 확인한 뒤 다시 시도하세요.');
+    uncertain.uncertain=true;e=uncertain;
+   }
+   status.textContent=(e.beforeUpload?'OneDrive 보관 준비 필요 · ':e.uncertain?'OneDrive 업로드 결과 미확인 · ':'OneDrive 업로드 실패 · ')+e.message+
+     (e.beforeUpload?' · 파일은 서버에 유지됩니다.':e.uncertain?' · 검수 완료 파일은 서버에 보존됩니다.':' · 만든 파일은 유지됩니다. 다시 시도할 수 있습니다.');
    throw e;
-  }finally{button.disabled=false;}
+  }finally{
+   if(ticker!==null)clearInterval(ticker);
+   if(timeout!==null)clearTimeout(timeout);
+   button.disabled=false;
+  }
  }
  async function syncOriginal(songId,digest){await refresh();if(!state?.connected||!state.folders.source)return {uploaded:false};const result=await api('upload-source',{song_id:songId,digest});return {uploaded:!!result?.item?.id,item:result?.item||null};}
  function init(){
