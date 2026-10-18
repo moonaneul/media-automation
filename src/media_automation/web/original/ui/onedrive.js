@@ -8,7 +8,6 @@ const CloudMedia=(()=>{
   ['archive_wednesday','02.수요예배'],
   ['archive_friday','03.금요예배']
  ];
- const otherFolders=['source_video','archive_wednesday','archive_friday_zoom','archive_friday_in_person','archive_sunday_ppt','archive_sunday_pdf'];
  const el=id=>document.getElementById(id);
  function setTargetLink(value, label='Microsoft OneDrive에서 열기 ↗'){
   const link=el('cloud-target-folder-link');
@@ -35,7 +34,7 @@ const CloudMedia=(()=>{
   el('cloud-connect').disabled=!state.configured;
   el('cloud-connect').textContent=state.connected?'다시 로그인':'OneDrive 연결';
   el('cloud-disconnect').hidden=!state.connected;
-  for(const purpose of ['source','archive',...otherFolders]){
+  for(const purpose of ['source','source_video']){
    el('cloud-'+purpose+'-folder').textContent=state.folders[purpose]?.name||(purpose.startsWith('archive_')?'기본 경로 사용':'폴더 미지정');
    el('cloud-pick-'+purpose).disabled=!state.connected;
   }
@@ -158,21 +157,13 @@ const CloudMedia=(()=>{
   try{
    await refresh();
    const configured=state?.shared_archives||{};
-   const purposes=Object.keys(configured).length?[
+   const purposes=[
     ['archive_sunday_pdf','00.주보'],
     ['archive_sunday_ppt','01.주일예배'],
     ['archive_wednesday','02.수요예배'],
     ['archive_friday_zoom','03.금요예배']
-   ].filter(([key])=>configured[key==='archive_friday_zoom'?'archive_friday':key]):state?.shared_archive?.enabled?
-     [['archive','미디어팀 공유 완료본']]:[
-    ['archive','완료본 전체'],
-    ['archive_wednesday','수요예배'],
-    ['archive_friday_zoom','금요 Zoom'],
-    ['archive_friday_in_person','금요 대면'],
-    ['archive_sunday_ppt','주일 PPT'],
-    ['archive_sunday_pdf','주일 주보']
-   ].filter(([key])=>state?.folders?.[key]);
-   if(!purposes.length){root.replaceChildren(text('p','설정에서 완료본 폴더를 먼저 선택하세요.','empty'));return;}
+   ].filter(([role])=>configured[role==='archive_friday_zoom'?'archive_friday':role]);
+   if(!purposes.length){root.replaceChildren(text('p','미디어팀 공유 OneDrive에서 예배별 완료본 폴더를 연결하세요. 개인 OneDrive의 완료본은 표시하지 않습니다.','empty'));return;}
    const chosen=purposes.some(([key])=>key===purpose)?purpose:purposes[0][0];
    const query='files?purpose='+encodeURIComponent(chosen)+(id?'&id='+encodeURIComponent(id):'');
    const items=(await api(query)).items;
@@ -284,7 +275,7 @@ const CloudMedia=(()=>{
   el('cloud-save-config').onclick=async()=>{const b=el('cloud-save-config');b.disabled=true;try{await api('configure',{client_id:el('cloud-client-id').value.trim(),secret:el('cloud-secret').value});el('cloud-secret').value='';await refresh();msg('연결 설정을 서버에 저장했습니다. OneDrive 연결을 눌러 로그인하세요.');}catch(e){msg(e.message);}finally{b.disabled=false;}};
   el('cloud-connect').onclick=async()=>{const b=el('cloud-connect');b.disabled=true;try{if(state?.local_url&&location.origin!==new URL(state.local_url).origin){window.location.assign(state.local_url+'/?onedrive=setup');return;}const result=await api('connect',{});window.location.assign(result.url);}catch(e){msg(e.message);b.disabled=false;}};
   el('cloud-disconnect').onclick=async()=>{if(!confirm('이 서버의 OneDrive 연결을 해제할까요? OneDrive 파일은 삭제하지 않습니다.'))return;await api('disconnect',{});await refresh();msg('서버의 연결 정보를 해제했습니다. Microsoft 계정의 앱 권한 취소는 Microsoft 계정 설정에서 할 수 있습니다.');};
-  for(const purpose of ['source','archive',...otherFolders])el('cloud-pick-'+purpose).onclick=()=>chooseFolder(purpose).catch(e=>msg(e.message));
+  for(const purpose of ['source','source_video'])el('cloud-pick-'+purpose).onclick=()=>chooseFolder(purpose).catch(e=>msg(e.message));
   for(const [purpose,folderName] of sharedDestinations){
    el('cloud-set-'+purpose).onclick=async()=>{
     const input=el('cloud-shared-'+purpose+'-link');
