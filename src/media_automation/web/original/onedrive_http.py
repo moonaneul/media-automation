@@ -61,9 +61,9 @@ def handle(cloud, handler, parsed, origin, authenticated, session_token, session
         elif action=='disconnect' and handler.command=='POST':
             cloud.disconnect();handler.reply(200,cloud.status(origin))
         elif action=='shared-archive' and handler.command=='POST':
-            handler.reply(200,cloud.select_shared_archive(body.get('url')))
+            handler.reply(200,cloud.select_shared_archive(body.get('url'), body.get('purpose')))
         elif action=='clear-shared-archive' and handler.command=='POST':
-            cloud.clear_shared_archive()
+            cloud.clear_shared_archive(body.get('purpose'))
             handler.reply(200,cloud.status(origin))
         elif action=='folders' and handler.command=='GET':
             handler.reply(200,{'items':[i for i in cloud.children(argument('id','root')) if 'folder' in i]})
@@ -91,7 +91,8 @@ def handle(cloud, handler, parsed, origin, authenticated, session_token, session
         elif action=='archive' and handler.command=='POST':
             handler.reply(201,cloud.archive(body.get('date'),body.get('service'),body.get('kind')))
         elif action=='download' and handler.command=='GET':
-            if cloud.status(origin)['shared_archive']['enabled']:
+            if (cloud.status(origin)['shared_archive']['enabled']
+                    or cloud.status(origin).get('shared_archives')):
                 item=cloud.shared_archive_item(argument('id'))
             else:
                 item=cloud.item(argument('id'))
