@@ -217,13 +217,13 @@ const CloudMedia=(()=>{
    const keyName=svc==='wednesday'?'archive_wednesday':svc==='friday'?(mode==='in_person'?'archive_friday_in_person':'archive_friday_zoom'):(kind==='pdf'?'archive_sunday_pdf':'archive_sunday_ppt');
    if(!state?.connected)requireBeforeUpload('OneDrive 연결이 필요합니다. 설정에서 로그인하세요.');
    const role=svc==='friday'?'archive_friday':keyName;
-   if(Object.keys(state.shared_archives||{}).length){
-    if(!state.shared_archives[role])requireBeforeUpload('미디어팀 공유폴더 '+({
-      archive_sunday_pdf:'00.주보',archive_sunday_ppt:'01.주일예배',
-      archive_wednesday:'02.수요예배',archive_friday:'03.금요예배'
-     }[role]||role)+' 연결이 필요합니다. 설정에서 해당 공유폴더를 지정하세요.');
-   }else if(!(state.shared_archive?.enabled||state.folders?.archive||state.folders?.[keyName]))
-    requireBeforeUpload('해당 예배 완료본 폴더가 미설정입니다. 설정에서 완료본 폴더를 지정하세요.');
+   // This church's personal drive is source-only. Never silently fall back
+   // to its 5 GB '예배 완료본' archive when the team share is unconnected.
+   if(!state.shared_archives?.[role])requireBeforeUpload(
+     '미디어팀 공유 OneDrive '+({
+       archive_sunday_pdf:'00.주보',archive_sunday_ppt:'01.주일예배',
+       archive_wednesday:'02.수요예배',archive_friday:'03.금요예배'
+     }[role]||role)+' 폴더가 미연결입니다. 설정에서 연결하세요. 개인 OneDrive에는 업로드하지 않습니다.');
    if(!app.records[k]?.outputs?.[kind]?.complete)requireBeforeUpload('먼저 실제 결과를 검수하고 제작 완료 표시를 해 주세요.');
    if(app.records[k]?.outputs?.[kind]?.changed)requireBeforeUpload('입력이 변경된 이전 생성본입니다. 최신 파일을 다시 제작하고 검수 완료 표시를 해 주세요.');
    const began=Date.now();
@@ -287,16 +287,33 @@ const CloudMedia=(()=>{
   for(const purpose of ['source','archive',...otherFolders])el('cloud-pick-'+purpose).onclick=()=>chooseFolder(purpose).catch(e=>msg(e.message));
   for(const [purpose,folderName] of sharedDestinations){
    el('cloud-set-'+purpose).onclick=async()=>{
-    const link=el('cloud-shared-'+purpose+'-link').value.trim();
-    if(!link)return msg(folderName+' 폴더의 ‘공유 → 링크 복사’ 주소를 입력하세요.');
-    const btn=el('cloud-set-'+purpose);btn.disabled=true;
+    const input=el('cloud-shared-'+purpose+'-link');
+    const indicator=el('cloud-shared-'+purpose+'-status');
+    const link=input.value.trim();
+    if(!link){
+     indicator.textContent='미연결 · '+folderName+' 폴더에서 “공유 → 링크 복사”한 주소를 입력하세요.';
+     return msg(folderName+' 공유폴더 링크를 입력하세요.');
+    }
+    const btn=el('cloud-set-'+purpose);
+    btn.disabled=true;
+    indicator.textContent='연결 확인 중 · Microsoft 공유폴더 접근과 폴더 이름을 확인하고 있습니다…';
     try{
      const r=await api('shared-archive',{url:link,purpose});
-     el('cloud-shared-'+purpose+'-link').value='';
-     await refresh(true);
+     // The POST succeeded: persist visible success even if refreshing the
+     // status later fails, so a temporary network issue cannot look like
+     // a failed folder connection.
+     indicator.textContent='연결 성공 · '+r.name+' · 공유 완료본 저장 위치로 사용합니다.';
+     input.value='';
+     try{await refresh(true);}
+     catch(e){indicator.textContent='연결 저장 성공 · 상태 재조회 실패: '+e.message;return;}
      msg(folderName+' → 미디어팀 OneDrive 공유폴더 연결 완료 · 기존 원본 자료는 유지됩니다.');
-    }catch(e){msg(folderName+' 연결 실패: '+e.message);}
-    finally{btn.disabled=false;}
+    }catch(e){
+     // A toast elsewhere on the page is not sufficient in a long settings
+     // form. Keep the exact actionable message next to this field.
+     indicator.textContent='미연결 · '+folderName+' 연결 실패: '+(e.message||'Microsoft 요청 확인 필요')+
+       ' · 개인 OneDrive에는 완료본을 대신 저장하지 않습니다.';
+     msg(folderName+' 연결 실패: '+(e.message||'Microsoft 요청 확인 필요'));
+    }finally{btn.disabled=false;}
    };
    el('cloud-unset-'+purpose).onclick=async()=>{
     if(!confirm(folderName+' 완료본 저장 위치 연결을 해제할까요? OneDrive 파일은 삭제하지 않습니다.'))return;
