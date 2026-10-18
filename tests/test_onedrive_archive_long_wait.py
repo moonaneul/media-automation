@@ -48,7 +48,7 @@ def test_while_one_archive_is_uploading_second_request_is_rejected(tmp_path,monk
         with pytest.raises(CloudError,match='업로드 중'):
             cloud.archive(day,'sunday','pdf')
         assert not sent
-        assert not store.get(day,'sunday')['data']['outputs']['pdf']['archiveStatus'] if 'archiveStatus' in store.get(day,'sunday')['data']['outputs']['pdf'] else True
+        assert 'archiveStatus' not in store.get(day,'sunday')['data']['outputs']['pdf']
     finally:
         released.set()
         thread.join(timeout=5)
@@ -63,7 +63,7 @@ def test_browser_archive_timeout_unlocks_without_claiming_failure(tmp_path):
         pytest.skip('node is unavailable')
     script=r"""
     const fs=require('fs');
-    const src=fs.readFileSync(process.argv[1], 'utf8');
+    const src=fs.readFileSync(process.argv[2], 'utf8');
     const part=src.slice(src.indexOf(' async function archiveCurrent('),
                          src.indexOf(' async function syncOriginal('));
     const k='sunday:2026-10-18';
