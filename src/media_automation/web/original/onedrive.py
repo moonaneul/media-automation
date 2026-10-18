@@ -772,6 +772,28 @@ class OneDrive:
             except CloudError as error:result['errors'].append({'name':item['name'],'reason':str(error)})
         return result
 
+    def verify_archive_target(self, service, kind, mode=None):
+        """Non-mutating Graph probe for the currently selected output folder.
+
+        Confirms metadata and folder enumeration only; it cannot guarantee
+        that Microsoft will permit a write until an approved file is uploaded.
+        """
+        target=self.archive_destination(service,kind,mode)
+        try:
+            if target.get('drive_id'):
+                base='/drives/'+valid_id(target['drive_id'])+'/items/'+valid_id(target['id'])
+            else:
+                base='/me/drive/items/'+valid_id(target['id'])
+            item=self.graph(base)
+            if 'folder' not in item:
+                raise CloudError('완료본 저장 대상이 폴더가 아닙니다.')
+            self.graph(base+'/children?$top=1')
+        except CloudError as exc:
+            raise CloudError('저장소 접근 점검 실패: '+str(exc)) from None
+        return {'target':target['name'],'folder_readable':True,
+                'write_verified':False,
+                'message':'대상 폴더 조회 성공 · 쓰기 권한은 실제 검수 완료 파일 업로드로 확인합니다.'}
+
     def archive_destination(self, service, kind, mode=None):
         """Use an explicit worship folder when chosen, otherwise existing hierarchy."""
         purpose = ('archive_wednesday' if service == 'wednesday' else
