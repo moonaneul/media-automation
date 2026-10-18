@@ -33,7 +33,9 @@ const CloudMedia=(()=>{
   for(const [purpose,expected] of sharedDestinations){
    const chosen=assignments[purpose];
    el('cloud-shared-'+purpose+'-status').textContent=chosen?
-     '연결됨 · '+chosen.name+' · 이 폴더에 직접 보관':'미연결 · '+expected+' 공유폴더 링크를 연결하세요.';
+     (chosen.reconnectRequired?'재연결 필요 · '+chosen.name+' · 공유 링크를 다시 붙여 넣어 주세요.':
+       '연결됨 · '+chosen.name+' · 이 폴더에 직접 보관'):
+     '미연결 · '+expected+' 공유폴더 링크를 연결하세요.';
    el('cloud-set-'+purpose).disabled=!state.connected;
    el('cloud-unset-'+purpose).hidden=!chosen;
   }
