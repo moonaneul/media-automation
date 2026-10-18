@@ -244,7 +244,7 @@ const CloudMedia=(()=>{
     },5000);
     timeout=setTimeout(()=>controller.abort(),maxWait);
    }
-   const result=await api('archive',{date,service:svc,kind},
+   const result=await api('archive',{date,service:svc,kind,require_team_shared:true},
       controller?{signal:controller.signal}:{});
    if(!result.item?.id)throw Error('OneDrive 업로드 응답에서 파일 ID를 확인하지 못했습니다.');
    if(Object.keys(state.shared_archives||{}).length&&!result.verified)
