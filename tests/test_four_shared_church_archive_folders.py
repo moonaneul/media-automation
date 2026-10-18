@@ -138,3 +138,37 @@ def test_four_shared_folders_do_not_require_second_microsoft_account(cloud,monke
     assert data['account']=={'home_account_id':'tester'}
     assert 'archive_sunday_pdf' in data['shared_archives']
     assert 'cache' not in data
+
+
+
+def test_reviewed_bulletin_archives_to_00_folder_without_creating_nested_directories(
+    cloud,monkeypatch
+):
+    from pathlib import Path
+    calls,names=install_fake_graph(monkeypatch,cloud)
+    cloud.select_shared_archive(
+        'https://1drv.ms/f/archive_sunday_pdf', 'archive_sunday_pdf'
+    )
+    day='2026-10-18'
+    identifier='a'*32
+    cloud.store.save(day,'sunday',0,{'fields':{},'outputs':{
+        'pdf':{'fileId':identifier,'complete':True,'changed':False},'ppt':{}
+    }})
+    generated=Path(cloud.store.path).with_suffix('.generated')
+    generated.mkdir()
+    source=b'%PDF-1.4\\nreal approval required only in user interface\\n%%EOF'
+    (generated/(identifier+'.pdf')).write_bytes(source)
+    uploaded=[]
+    def upload(folder_id,name,data,*,drive_id=None):
+        uploaded.append((folder_id,name,data,drive_id))
+        return {'id':'archived-item','name':name,'file':{},'size':len(data)}
+    monkeypatch.setattr(cloud,'upload_file',upload)
+    calls.clear()
+    response=cloud.archive(day,'sunday','pdf')
+    expected_folder,expected_drive,expected_id=names['archive_sunday_pdf']
+    assert uploaded==[(expected_id,
+                       f'{day}_sunday_pdf_{identifier}.pdf',
+                       source,expected_drive)]
+    assert response['work']['data']['outputs']['pdf']['archiveStatus']=='uploaded'
+    assert response['work']['data']['outputs']['ppt']=={}
+    assert calls == [],'The upload path must not auto-create folders'
