@@ -201,7 +201,10 @@ class OneDrive:
         if shared_lookup:
             # A shared folder visible in the web UI may still need its
             # sharing link redeemed before its drive/item ID is readable.
-            headers['Prefer'] = 'redeemSharingLinkIfNecessary'
+            # Persistent access is required for later requests to
+            # /drives/{ownerDrive}/items/{sharedFolder} after the share
+            # lookup completes; the IfNecessary variant is only temporary.
+            headers['Prefer'] = 'redeemSharingLink'
         if content is not None:
             headers['Content-Type'] = 'application/octet-stream'
         try:
