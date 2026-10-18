@@ -303,6 +303,9 @@ class OneDrive:
             if purpose is None:
                 data['shared_archive'] = shared
             else:
+                # Switch away from the earlier single-share mode permanently,
+                # so removing a target cannot silently revive old upload paths.
+                data.pop('shared_archive', None)
                 data.setdefault('shared_archives', {})[purpose] = shared
             self._write(data)
         return {'enabled':True, 'name':shared['name']}
