@@ -159,6 +159,6 @@ def test_ui_has_separate_shared_archive_selector_and_no_browser_link_storage():
         assert f'id="cloud-shared-{purpose}-link"' in source
         assert folder in source
     assert "await api('shared-archive',{url:link,purpose})" in script
-    assert "el('cloud-shared-'+purpose+'-link').value='';" in script
+    assert "input.value='';" in script
     assert 'localStorage.setItem' not in script
     assert 'state.shared_archives' in script
