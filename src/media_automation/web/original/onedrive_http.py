@@ -88,6 +88,17 @@ def handle(cloud, handler, parsed, origin, authenticated, session_token, session
                                                         body.get('service'),body.get('slot')))
         elif action=='upload-source' and handler.command=='POST':
             handler.reply(201,cloud.upload_song(body.get('song_id'),body.get('digest')))
+        elif action=='archive-check' and handler.command=='GET':
+            service=argument('service')
+            kind=argument('kind')
+            if service not in ('wednesday','friday','sunday') or kind not in ('ppt','pdf') or (kind=='pdf' and service!='sunday'):
+                raise CloudError('점검할 예배와 결과물을 확인하세요.')
+            mode=argument('mode','zoom') if service=='friday' else None
+            if mode not in (None,'zoom','in_person'):
+                raise CloudError('금요예배 진행 방식을 확인하세요.')
+            handler.reply(200,cloud.verify_archive_target(service,kind,mode))
+        elif action=='archive-progress' and handler.command=='GET':
+            handler.reply(200,cloud.archive_progress(argument('date'),argument('service'),argument('kind')))
         elif action=='archive' and handler.command=='POST':
             handler.reply(201,cloud.archive(body.get('date'),body.get('service'),body.get('kind')))
         elif action=='download' and handler.command=='GET':
