@@ -4,7 +4,7 @@ const CloudMedia=(()=>{
  let state=null, folderPurpose='source', folderStack=[], requestSerial=0, searchTimer;
  const sharedDestinations=[
   ['archive_sunday_pdf','00.주보'],
-  ['archive_sunday_ppt','01.주일예배'],
+  ['archive_sunday_ppt','01.주일예배 (하위 연도 폴더 자동 선택)'],
   ['archive_wednesday','02.수요예배'],
   ['archive_friday','03.금요예배']
  ];
@@ -343,7 +343,8 @@ const CloudMedia=(()=>{
    status.textContent='OneDrive 저장 폴더의 읽기 접근을 점검 중… (파일을 업로드하지 않습니다.)';
    try{
     const mode=svc==='friday'?(app.records[key()]?.fridayMode||'zoom'):'zoom';
-    const params=new URLSearchParams({service:svc,kind,mode});
+    const date=key().split(':')[1];
+    const params=new URLSearchParams({service:svc,kind,mode,date});
     const result=await api('archive-check?'+params);
     status.textContent=result.target+' · 폴더 조회 성공 · 파일 쓰기는 실제 승인본 업로드에서 확인합니다.';
     msg(result.target+' 저장 폴더를 읽을 수 있습니다. 업로드 가능 여부는 별도로 확인해야 합니다.');
