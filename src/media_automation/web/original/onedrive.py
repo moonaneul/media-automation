@@ -247,6 +247,15 @@ class OneDrive:
             response = self.http.request(method, url, headers=headers, json=body, data=content,
                                          timeout=(10,120), allow_redirects=False)
             if not 200 <= response.status_code < 300:
+                if shared_lookup and response.status_code in (400,403,404):
+                    explanations={
+                        400:'공유 링크가 Microsoft Graph에서 유효한 폴더 링크로 인식되지 않았습니다.',
+                        403:'현재 앱의 Microsoft 계정이 이 공유폴더에 접근할 수 없습니다.',
+                        404:'Microsoft Graph에서 공유 링크 대상 폴더를 찾을 수 없습니다.',
+                    }
+                    raise CloudError('공유폴더 연결 오류 (HTTP '+str(response.status_code)+') · '+
+                        explanations[response.status_code]+
+                        ' OneDrive의 공유됨에서 해당 폴더를 열고 “공유 → 링크 복사”로 다시 시도하세요.')
                 messages = {
                     401: 'OneDrive 로그인이 만료됐습니다. 설정에서 다시 로그인하세요.',
                     403: 'OneDrive 파일·폴더 접근 권한을 확인하세요.',
