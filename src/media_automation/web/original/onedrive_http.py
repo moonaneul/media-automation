@@ -102,6 +102,11 @@ def handle(cloud, handler, parsed, origin, authenticated, session_token, session
         elif action=='archive-verify' and handler.command=='GET':
             handler.reply(200,cloud.verify_saved_archive(argument('date'),argument('service'),argument('kind')))
         elif action=='archive' and handler.command=='POST':
+            if body.get('require_team_shared') is True:
+                role=cloud.shared_archive_role(body.get('service'),body.get('kind'))
+                if not cloud.status(origin).get('shared_archives',{}).get(role):
+                    raise CloudError('미디어팀 공유폴더 '+cloud.SHARED_DESTINATIONS[role]+
+                                     '가 미연결입니다. 개인 OneDrive로 대신 저장하지 않습니다. 설정에서 공유폴더를 연결하세요.')
             handler.reply(201,cloud.archive(body.get('date'),body.get('service'),body.get('kind')))
         elif action=='download' and handler.command=='GET':
             if (cloud.status(origin)['shared_archive']['enabled']
