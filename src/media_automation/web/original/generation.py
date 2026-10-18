@@ -25,6 +25,7 @@ from media_automation.ppt.sunday_typography import apply_sunday_typography, VERS
 from media_automation.ppt.friday_typography import apply_friday_typography, VERSION as FRIDAY_TYPOGRAPHY_VERSION
 from .production_order import build_order, combine_friday_prayers
 from .bible_connection import resolve
+from .bible_review_cache import apply_review_receipts, units_for_manual_confirmation
 from .ppt_conversion import convert_original
 
 BUILD_VERSION = 'official-web-engine-v10-case-insensitive-media-names'
@@ -124,7 +125,17 @@ def generate(store, body):
     service = body['service']
     zoom = service == 'friday' and data.get('fridayMode', 'zoom') == 'zoom'
     order = build_order(body['groups'], fields, service)
-    bible = resolve(order)
+    bible = apply_review_receipts(store, resolve(order))
+    # Pending units are recorded with source-text fingerprints. A future
+    # reviewer may attest them once, and only unchanged copies get reused.
+    bible_review_digests={
+        key:units_for_manual_confirmation(bible,[key+':bible_review'])
+        for key, entry in bible.items()
+        if entry.get('units') and entry.get('text_review_pending')
+    }
+    reused_manual_bible=[
+        key for key, entry in bible.items() if entry.get('previous_manual_review')
+    ]
     if service == 'friday': order = combine_friday_prayers(order, bible, include_personal=zoom)
     directory = Path(store.path).with_suffix('.generated')
     directory.mkdir(parents=True, exist_ok=True)
@@ -316,10 +327,13 @@ def generate(store, body):
             fields=fields, attachments=store.attachments(body['date'],service), format='pptx', slide_count=len(prs.slides), mapping=mapping,
             unresolved=unresolved, connections=connections, complete=False, visual_review_pending=True,
             media_playback_review_pending=zoom, reference_layout_applied=reference_applied, background_music=background_music,
-            render_configuration=render_configuration(data))
+            render_configuration=render_configuration(data),
+            bible_review_digests=bible_review_digests,
+            reused_manual_bible=reused_manual_bible)
         (directory / (identifier + '.json')).write_text(json.dumps(report, ensure_ascii=False))
         return dict(engine_version=BUILD_VERSION, typography_version=SUNDAY_TYPOGRAPHY_VERSION if service in ('sunday', 'wednesday') else FRIDAY_TYPOGRAPHY_VERSION if service == 'friday' else None, file_id=identifier, filename=f"{body['date']}-{service}-검수전.pptx",
-            slide_count=len(prs.slides), unresolved=unresolved, complete=False, visual_review_pending=True)
+            slide_count=len(prs.slides), unresolved=unresolved, complete=False,
+            reused_manual_bible=reused_manual_bible, visual_review_pending=True)
     except Exception:
         path.unlink(missing_ok=True)
         raise
