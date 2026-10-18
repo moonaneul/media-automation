@@ -146,7 +146,8 @@ class OneDrive:
                         account=data.get('account'), folders=data.get('folders', {}),
                         shared_archive={'enabled':True,'name':data['shared_archive']['name']}
                         if data.get('shared_archive') else {'enabled':False},
-                        shared_archives={key: {'name': entry['name']} for key, entry in data.get('shared_archives', {}).items()})
+                        shared_archives={key: {'name': entry['name'], 'reconnectRequired':not entry.get('redeemed')}
+                                         for key, entry in data.get('shared_archives', {}).items()})
 
     def _app(self, data):
         import msal
@@ -350,6 +351,7 @@ class OneDrive:
                 # Switch away from the earlier single-share mode permanently,
                 # so removing a target cannot silently revive old upload paths.
                 data.pop('shared_archive', None)
+                shared['redeemed']=True
                 data.setdefault('shared_archives', {})[purpose] = shared
             self._write(data)
         return {'enabled':True, 'name':shared['name']}
