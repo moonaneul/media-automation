@@ -790,13 +790,38 @@ class OneDrive:
             except CloudError as error:result['errors'].append({'name':item['name'],'reason':str(error)})
         return result
 
-    def verify_archive_target(self, service, kind, mode=None):
+    def resolve_archive_output_folder(self, folder, day, service, kind):
+        """Find the EXISTING year folder inside the shared Sunday PPT area.
+
+        The linked permission root remains '01.주일예배'; a shared folder
+        owner may keep yearly PPT files under 01.예배 PPT/2026년, etc.
+        Never create or move folders as part of selecting a destination.
+        """
+        if (service, kind) != ('sunday', 'ppt') or not folder.get('drive_id') or folder.get('name') != '01.주일예배':
+            return folder
+        if not isinstance(day,str) or not re.fullmatch(r'20[0-9]{2}-[0-9]{2}-[0-9]{2}',day):
+            raise CloudError('주일 PPT 저장 연도를 확인할 예배 날짜가 필요합니다.')
+        year_folder = day[:4]+'년'
+        result=dict(folder)
+        for segment in ('01.예배 PPT',year_folder):
+            entries=self.children(result['id'],drive_id=folder['drive_id'])
+            candidates=[entry for entry in entries if entry.get('name') == segment]
+            if len(candidates)!=1 or 'folder' not in candidates[0] or not candidates[0].get('id'):
+                raise CloudError('주일 PPT 저장 폴더를 찾지 못했습니다: 01.주일예배/01.예배 PPT/'+year_folder+
+                                 ' · 기존 공유폴더 구조를 확인하세요. 새 폴더는 자동 생성하지 않습니다.')
+            result={'id':candidates[0]['id'],'name':candidates[0]['name'],
+                    'drive_id':folder['drive_id'],'folder':{}}
+        return result
+
+    def verify_archive_target(self, service, kind, mode=None, day=None):
         """Non-mutating Graph probe for the currently selected output folder.
 
         Confirms metadata and folder enumeration only; it cannot guarantee
         that Microsoft will permit a write until an approved file is uploaded.
         """
         target=self.archive_destination(service,kind,mode)
+        if day is not None:
+            target=self.resolve_archive_output_folder(target,day,service,kind)
         try:
             if target.get('drive_id'):
                 base='/drives/'+valid_id(target['drive_id'])+'/items/'+valid_id(target['id'])
@@ -857,7 +882,8 @@ class OneDrive:
         if not re.fullmatch('[a-f0-9]{32}',identifier) or not output.get('complete'):
             raise CloudError('검수 완료된 결과물이 없습니다.')
         mode=current.get('fridayMode','zoom') if service=='friday' else None
-        folder=self.archive_destination(service,kind,mode)
+        folder=self.resolve_archive_output_folder(
+            self.archive_destination(service,kind,mode),day,service,kind)
         if not folder.get('drive_id'):
             raise CloudError('미디어팀 공유 완료본 폴더가 아직 지정되지 않았습니다.')
         folder_base='/drives/'+valid_id(folder['drive_id'])+'/items/'+valid_id(folder['id'])
@@ -989,6 +1015,7 @@ class OneDrive:
         folder = (self.archive_destination(service, kind, 'in_person')
                   if service == 'friday' and current['data'].get('fridayMode') == 'in_person'
                   else self.archive_destination(service, kind))
+        folder=self.resolve_archive_output_folder(folder,day,service,kind)
         name = f'{day}_{service}_{kind}_{identifier}.{extension}'
         self._archive_step('Microsoft OneDrive 업로드 요청 중',0)
         if folder.get('drive_id'):
