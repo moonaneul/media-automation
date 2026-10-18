@@ -99,6 +99,8 @@ def handle(cloud, handler, parsed, origin, authenticated, session_token, session
             handler.reply(200,cloud.verify_archive_target(service,kind,mode))
         elif action=='archive-progress' and handler.command=='GET':
             handler.reply(200,cloud.archive_progress(argument('date'),argument('service'),argument('kind')))
+        elif action=='archive-verify' and handler.command=='GET':
+            handler.reply(200,cloud.verify_saved_archive(argument('date'),argument('service'),argument('kind')))
         elif action=='archive' and handler.command=='POST':
             handler.reply(201,cloud.archive(body.get('date'),body.get('service'),body.get('kind')))
         elif action=='download' and handler.command=='GET':
