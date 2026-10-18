@@ -10,6 +10,19 @@ const CloudMedia=(()=>{
  ];
  const otherFolders=['source_video','archive_wednesday','archive_friday_zoom','archive_friday_in_person','archive_sunday_ppt','archive_sunday_pdf'];
  const el=id=>document.getElementById(id);
+ function setTargetLink(value, label='Microsoft OneDrive에서 열기 ↗'){
+  const link=el('cloud-target-folder-link');
+  if(!link)return;
+  let u;
+  try{u=new URL(value||'');}catch{u=null;}
+  const host=u?.hostname?.toLowerCase()||'';
+  const official=['onedrive.live.com','1drv.ms','1drv.com','sharepoint.com'];
+  const allowed=u?.protocol==='https:'&&official.some(d=>host===d||host.endsWith('.'+d));
+  link.hidden=!allowed;
+  if(allowed){link.href=u.href;link.textContent=label;}
+  else{link.removeAttribute('href');link.textContent='';}
+ }
+
  const text=(tag,value,cls)=>{const n=document.createElement(tag);if(value!==undefined)n.textContent=value;if(cls)n.className=cls;return n;};
  async function api(action,body,options={}){const init=body===undefined?{}:{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)};if(options.signal)init.signal=options.signal;const r=await fetch('/api/onedrive/'+action,init);const data=await r.json();if(!r.ok)throw Error(data.error||'OneDrive 요청 실패');return data;}
  function button(label,action){const b=text('button',label);b.onclick=async()=>{b.disabled=true;try{await action();}catch(e){msg(e.message);}finally{b.disabled=false;}};return b;}
@@ -234,6 +247,9 @@ const CloudMedia=(()=>{
    const result=await api('archive',{date,service:svc,kind},
       controller?{signal:controller.signal}:{});
    if(!result.item?.id)throw Error('OneDrive 업로드 응답에서 파일 ID를 확인하지 못했습니다.');
+   if(Object.keys(state.shared_archives||{}).length&&!result.verified)
+    throw Error('실제 공유폴더 파일 조회 확인이 없어서 보관 완료로 표시할 수 없습니다.');
+   if(result.verified)setTargetLink(result.itemUrl,'업로드된 파일을 OneDrive에서 열기 ↗');
    const st=syncState(k);
    if(st.dirty||st.busy){
     if(!st.busy)st.revision=result.work.revision;
@@ -243,7 +259,9 @@ const CloudMedia=(()=>{
     return result;
    }
    app.records[k]=result.work.data;st.revision=result.work.revision;render();
-   status.textContent='OneDrive 보관 완료 · '+(result.item.name||'완료 파일')+' · 지정한 폴더에서 확인하세요.';
+   status.textContent=result.verified?
+     'OneDrive 공유폴더에서 파일 실제 존재 확인 완료 · '+(result.target||'')+' · '+(result.item.name||'완료 파일'):
+     'OneDrive 업로드 응답 기록됨 · '+(result.item.name||'완료 파일')+' · 실제 위치 추가 확인 필요';
    msg('완료본을 OneDrive에 보관했습니다. 보관 자료에서 확인할 수 있습니다.');
    return result;
   }catch(e){
@@ -289,6 +307,27 @@ const CloudMedia=(()=>{
   el('cloud-folder-select').onclick=()=>saveFolder(folderStack.at(-1).id,folderStack.at(-1).name);
   el('cloud-auto-connect').onclick=()=>{if(confirm('OneDrive 전체 원본을 검색하고 정확히 일치하는 자료는 자동으로 연결합니다. 검수와 사용 허락은 별도이며, OneDrive 파일은 삭제하지 않습니다. 계속할까요?'))autoConnect().catch(e=>msg(e.message));};
   el('cloud-library-search').onclick=sources;el('cloud-archive-refresh').onclick=()=>archives();el('cloud-archive-current').onclick=()=>archiveCurrent().catch(e=>msg(e.beforeUpload?e.message:'완료 표시는 유지됩니다. '+e.message));
+  el('cloud-verify-current').onclick=async()=>{
+   const button=el('cloud-verify-current'),status=el('storage-status');
+   const [svc,date]=key().split(':'),kind=app.output;
+   button.disabled=true;
+   setTargetLink(null);
+   status.textContent='OneDrive 기존 보관 기록과 실제 공유폴더의 파일 위치를 대조 중…';
+   try{
+    const params=new URLSearchParams({date,service:svc,kind});
+    const result=await api('archive-verify?'+params.toString());
+    setTargetLink(result.targetUrl,'현재 지정된 '+result.target+' 공유폴더 열기 ↗');
+    if(result.verified){
+     status.textContent='실제 보관 위치 검증 성공 · '+result.target+' · 파일 ID·이름·크기·상위 폴더 모두 일치';
+     setTargetLink(result.itemUrl||result.targetUrl,'확인된 OneDrive 파일 열기 ↗');
+    }else{
+     status.textContent='보관 완료 기록 불일치 · '+result.target+' · '+result.message+
+       ' · 실제 파일이 있는 것으로 확인되지 않았으므로 업로드 성공으로 간주하지 않습니다.';
+    }
+    msg(result.message);
+   }catch(e){status.textContent='실제 저장 위치 검증 실패 · '+e.message;msg(e.message);}
+   finally{button.disabled=false;}
+  };
   el('cloud-check-current').onclick=async()=>{
    const button=el('cloud-check-current'),status=el('storage-status');
    const [svc]=key().split(':'),kind=app.output;
