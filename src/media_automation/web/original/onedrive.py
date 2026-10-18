@@ -1013,5 +1013,5 @@ class OneDrive:
             db.execute('INSERT OR REPLACE INTO cloud_archives VALUES (?,?,?,?,?)',(identifier,day,service,kind,json.dumps(public_item(item))))
         self._archive_step('완료',100)
         return dict(item=public_item(item),work=saved,
-                    verified=bool(folder.get('drive_id')),target=folder['name'],
+                    verified=bool(folder.get('drive_id')),target=folder.get('name','기존 완료본 폴더'),
                     itemUrl=self._safe_onedrive_url(item.get('webUrl')))
