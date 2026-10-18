@@ -55,7 +55,9 @@ def test_archive_ui_uses_selected_folder_scopes():
     from pathlib import Path
     src=Path('src/media_automation/web/original/ui/onedrive.js').read_text()
     chunk=src[src.index('async function archives('):src.index('async function archiveCurrent(')]
-    assert 'state?.folders?.[key]' in chunk
+    assert 'state?.shared_archives||{}' in chunk
+    assert "Object.keys(configured)" not in chunk
+    assert 'state?.folders?.[key]' not in chunk
     assert "encodeURIComponent(chosen)" in chunk
     assert "archives(chosen,item.id)" in chunk
     assert "OneDrive에서 열기" in chunk
