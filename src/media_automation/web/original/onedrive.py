@@ -815,6 +815,7 @@ class OneDrive:
                 self._archive_inflight.discard(identifier)
 
     def _archive_once(self, day, service, kind, current, identifier, path):
+        extension = 'pdf' if kind == 'pdf' else 'pptx'
         folder = (self.archive_destination(service, kind, 'in_person')
                   if service == 'friday' and current['data'].get('fridayMode') == 'in_person'
                   else self.archive_destination(service, kind))
