@@ -23,6 +23,37 @@ class WorkStore:
             db.execute('CREATE TABLE IF NOT EXISTS asset_reviews (song_id TEXT, digest TEXT, payload TEXT NOT NULL, PRIMARY KEY(song_id,digest))')
             db.execute('CREATE TABLE IF NOT EXISTS song_assets (song_id TEXT, digest TEXT, filename TEXT, PRIMARY KEY(song_id,digest))')
             db.execute('CREATE TABLE IF NOT EXISTS attachments (day TEXT, service TEXT, slot TEXT, filename TEXT, digest TEXT, PRIMARY KEY(day,service,slot))')
+            db.execute('CREATE TABLE IF NOT EXISTS bible_review_receipts (reference TEXT PRIMARY KEY, digest TEXT NOT NULL, approved_at TEXT NOT NULL, evidence_date TEXT NOT NULL, evidence_service TEXT NOT NULL, evidence_file_id TEXT NOT NULL)')
+
+    def bible_review_receipts(self, references):
+        """Content-bound prior human approvals; never a claimed external source."""
+        if not references:
+            return {}
+        if any(not isinstance(ref,str) or len(ref)>120 for ref in references):
+            raise ValueError('성경 구절 참조 형식이 잘못되었습니다.')
+        placeholders=','.join('?' for _ in references)
+        with self.connect() as db:
+            rows=db.execute(
+                'SELECT reference,digest FROM bible_review_receipts WHERE reference IN ('+
+                placeholders+')',tuple(references)).fetchall()
+        return dict(rows)
+
+    def record_bible_review_receipts(self, approvals, *, date, service, file_id):
+        """Called only after server accepts explicit human PPT review."""
+        self.validate(date,service)
+        if not isinstance(file_id,str) or len(file_id)!=32 or any(
+                char not in '0123456789abcdef' for char in file_id):
+            raise ValueError('확인한 PPT 파일 ID가 잘못되었습니다.')
+        if any(not isinstance(reference,str) or len(reference)>120 or
+               not isinstance(digest,str) or len(digest)!=64 or any(
+                   char not in '0123456789abcdef' for char in digest)
+               for reference,digest in approvals.items()):
+            raise ValueError('성경 확인 기록이 올바르지 않습니다.')
+        stamped=datetime.now(timezone.utc).isoformat(timespec='seconds')
+        with self.connect() as db:
+            for reference,digest in approvals.items():
+                db.execute('INSERT INTO bible_review_receipts (reference,digest,approved_at,evidence_date,evidence_service,evidence_file_id) VALUES (?,?,?,?,?,?) ON CONFLICT(reference) DO UPDATE SET digest=excluded.digest,approved_at=excluded.approved_at,evidence_date=excluded.evidence_date,evidence_service=excluded.evidence_service,evidence_file_id=excluded.evidence_file_id',
+                           (reference,digest,stamped,date,service,file_id))
 
     def attachments(self, day, service):
         self.validate(day, service)
