@@ -96,7 +96,7 @@ def handle(cloud, handler, parsed, origin, authenticated, session_token, session
             mode=argument('mode','zoom') if service=='friday' else None
             if mode not in (None,'zoom','in_person'):
                 raise CloudError('금요예배 진행 방식을 확인하세요.')
-            handler.reply(200,cloud.verify_archive_target(service,kind,mode))
+            handler.reply(200,cloud.verify_archive_target(service,kind,mode,argument('date',None)))
         elif action=='archive-progress' and handler.command=='GET':
             handler.reply(200,cloud.archive_progress(argument('date'),argument('service'),argument('kind')))
         elif action=='archive-verify' and handler.command=='GET':
