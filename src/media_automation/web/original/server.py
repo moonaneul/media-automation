@@ -208,9 +208,11 @@ def make_server(store, port=0, password=None, bind_host="127.0.0.1", public_orig
                 with auth_lock:
                     return (not password and not supabase_auth) or sessions.get(session_token,0)>time.time()
             if parsed.path.startswith('/api/onedrive/'):
-                with cloud.lock:
-                    if handle_cloud(cloud,self,parsed,expected_origin,authenticated,token,cloud_session_valid):
-                        return
+                # Uploads can run for minutes. Do not hold cloud.lock across
+                # the HTTP response: it blocks status/diagnostics/retry from
+                # other threads. The OneDrive client protects its own state.
+                if handle_cloud(cloud,self,parsed,expected_origin,authenticated,token,cloud_session_valid):
+                    return
             if not authenticated:
                 return self.reply(401,{'error':'로그인 후 이용하세요.'})
             if parsed.path=='/api/bulletin-settings':
