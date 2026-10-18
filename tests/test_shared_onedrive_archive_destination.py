@@ -119,6 +119,9 @@ def test_shared_archive_upload_uses_remote_drive_without_changing_sources(cloud,
         written.append((parent,name,content,drive_id))
         return {'id':'uploaded','name':name,'size':len(content),'file':{}}
     monkeypatch.setattr(cloud,'upload_file',upload)
+    monkeypatch.setattr(cloud,'_find_exact_shared_file',lambda folder,item_id,name,size:
+                        {'id':item_id,'name':name,'size':size,'file':{},
+                         'parentReference':{'driveId':folder['drive_id'],'id':folder['id']}})
     result=cloud.archive(day,'sunday','pdf')
     assert len(written)==1
     assert written[0][0]=='created_bulletin'
