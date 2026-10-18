@@ -1012,4 +1012,6 @@ class OneDrive:
             db.execute('CREATE TABLE IF NOT EXISTS cloud_archives (file_id TEXT PRIMARY KEY,day TEXT,service TEXT,kind TEXT,item TEXT)')
             db.execute('INSERT OR REPLACE INTO cloud_archives VALUES (?,?,?,?,?)',(identifier,day,service,kind,json.dumps(public_item(item))))
         self._archive_step('완료',100)
-        return dict(item=public_item(item),work=saved)
+        return dict(item=public_item(item),work=saved,
+                    verified=bool(folder.get('drive_id')),target=folder['name'],
+                    itemUrl=self._safe_onedrive_url(item.get('webUrl')))
