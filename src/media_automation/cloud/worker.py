@@ -70,7 +70,8 @@ def execute(identifier, execution, backend, cloud, render=render_artifact):
             stage = 'render'
             pdf, verification = render(path, output, result)
             stage = 'upload'
-            folder = cloud.selected('archive')
+            # Use the same per-service folders as local archived outputs.
+            folder = cloud.archive_destination(snapshot['service'], output)
             prefix = snapshot['day'] + '-' + snapshot['service'] + '-' + UUID(identifier).hex
             artifact = upload_verified(cloud, path, folder, prefix + path.suffix, checkpoint=checkpoint)
             preview = artifact if pdf == path else upload_verified(cloud, pdf, folder, prefix + '.preview.pdf', checkpoint=checkpoint)

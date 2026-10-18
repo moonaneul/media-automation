@@ -29,12 +29,22 @@ class WorkStore:
         with self.connect() as db:
             rows=list(db.execute('SELECT slot,filename,digest FROM attachments WHERE day=? AND service=?', (day,service)))
         from .ppt_conversion import conversion_status
-        return [{'slot':r[0], 'filename':r[1], 'digest':r[2], 'archive_status':'pending_connection',**conversion_status(Path(self.path).with_suffix('.files')/r[2],r[1])} for r in rows]
+        def status(digest, filename):
+            source = Path(self.path).with_suffix('.files') / digest
+            if not source.is_file():
+                return {'conversion_status': 'missing',
+                        'conversion_message': '등록 정보만 있고 실제 원본 파일이 없습니다. 검수용 .files 저장소를 확인하세요.'}
+            return conversion_status(source, filename)
+        return [{'slot':r[0], 'filename':r[1], 'digest':r[2], 'archive_status':'pending_connection',
+                 **status(r[2],r[1])} for r in rows]
 
     def attach(self, day, service, slot, filename, content, song_id=None):
         self.validate(day, service)
         if not slot or len(slot)>200:raise ValueError('예배 항목을 확인하세요.')
         if song_id:
+            from .original_roles import song_candidate
+            if not song_candidate(filename):
+                raise ValueError('찬양 원본이 아닌 자료는 찬양으로 등록하지 않습니다.')
             with self.connect() as db:
                 if not db.execute('SELECT 1 FROM songs WHERE id=?',(song_id,)).fetchone():raise ValueError('등록 곡을 확인하세요.')
         digest, existed, target = self._store_file(filename, content)
@@ -65,6 +75,9 @@ class WorkStore:
         return digest, existed, target
 
     def attach_song_asset(self, song_id, filename, content, replace_digest=None):
+        from .original_roles import song_candidate
+        if not song_candidate(filename):
+            raise ValueError('주보·템플릿·표지 등 찬양 외 자료는 찬양 자료로 등록할 수 없습니다.')
         with self.connect() as db:
             if not db.execute('SELECT 1 FROM songs WHERE id=?',(song_id,)).fetchone():raise ValueError('등록 곡을 확인하세요.')
         digest, existed, target = self._store_file(filename, content)
@@ -101,6 +114,7 @@ class WorkStore:
                     row=db.execute('SELECT payload FROM asset_reviews WHERE song_id=? AND digest=?',(song['id'],asset['digest'])).fetchone()
                     asset['review']=json.loads(row[0]) if row else {'technical':False,'church':False,'permission':'unknown','note':''}
                     asset['eligible']=asset['review']['technical'] and asset['review']['church'] and asset['review']['permission']=='allowed'
+                    asset['local_file_present']=(Path(self.path).with_suffix('.files')/asset['digest']).is_file()
             return songs
 
     def review_asset(self, song_id, digest, data):

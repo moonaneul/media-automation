@@ -48,7 +48,9 @@ class OpenXmlSlideMerger:
             target.slide_height = max(target.slide_height, original.slide_height)
 
         package = target.part.package
-        names = {str(part.partname) for part in package.iter_parts()}
+        # OPC part names are case-insensitive: image1.PNG and image1.png
+        # are not distinct names in PowerPoint, even though ZIP entries are.
+        names = {str(part.partname).casefold() for part in package.iter_parts()}
         copied = {}
 
         def clone(part):
@@ -58,11 +60,11 @@ class OpenXmlSlideMerger:
             stem, extension = name.rsplit('.', 1)
             numbered = re.fullmatch(r'(.*?)(\d+)', stem)
             index = int(numbered.group(2)) if numbered else 1
-            while name in names:
+            while name.casefold() in names:
                 index += 1
                 name = (f"{numbered.group(1)}{index}.{extension}" if numbered
                         else f"{stem}_import{index}.{extension}")
-            names.add(name)
+            names.add(name.casefold())
             result = type(part).load(PackURI(name), part.content_type, package, part.blob)
             copied[part] = result  # layouts/masters and notes/slides contain cycles
             for rel in part.rels.values():

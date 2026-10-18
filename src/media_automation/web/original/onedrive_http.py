@@ -60,27 +60,55 @@ def handle(cloud, handler, parsed, origin, authenticated, session_token, session
             handler.reply(200,{'url':url})
         elif action=='disconnect' and handler.command=='POST':
             cloud.disconnect();handler.reply(200,cloud.status(origin))
+        elif action=='shared-archive' and handler.command=='POST':
+            handler.reply(200,cloud.select_shared_archive(body.get('url'), body.get('purpose')))
+        elif action=='clear-shared-archive' and handler.command=='POST':
+            cloud.clear_shared_archive(body.get('purpose'))
+            handler.reply(200,cloud.status(origin))
         elif action=='folders' and handler.command=='GET':
             handler.reply(200,{'items':[i for i in cloud.children(argument('id','root')) if 'folder' in i]})
         elif action=='folders' and handler.command=='POST':
             handler.reply(200,{'folders':cloud.select_folder(body.get('purpose'),body.get('id'))})
         elif action=='files' and handler.command=='GET':
             purpose=argument('purpose','source')
-            if purpose not in ('source','archive'):
+            if purpose not in ('source','source_video','archive', 'archive_wednesday','archive_friday_zoom','archive_friday_in_person','archive_sunday_ppt','archive_sunday_pdf'):
                 raise CloudError('자료 종류를 확인하세요.')
-            handler.reply(200,{'items':cloud.list_selected(purpose,argument('id') or None,argument('q'))})
+            items=cloud.list_selected(purpose,argument('id') or None,argument('q'))
+            if purpose=='source':
+                from .original_roles import original_role
+                items=[{**item,'source_role':original_role(item.get('name',''))}
+                       if 'file' in item else item for item in items]
+            handler.reply(200,{'items':items})
         elif action=='auto-connect' and handler.command=='POST':
             handler.reply(200,cloud.auto_connect())
         elif action=='import' and handler.command=='POST':
             handler.reply(201,cloud.import_song(body.get('id'),body.get('song_id')))
+        elif action=='import-to-slot' and handler.command=='POST':
+            handler.reply(201,cloud.import_for_service(body.get('id'),body.get('date'),
+                                                        body.get('service'),body.get('slot')))
         elif action=='upload-source' and handler.command=='POST':
             handler.reply(201,cloud.upload_song(body.get('song_id'),body.get('digest')))
+        elif action=='archive-check' and handler.command=='GET':
+            service=argument('service')
+            kind=argument('kind')
+            if service not in ('wednesday','friday','sunday') or kind not in ('ppt','pdf') or (kind=='pdf' and service!='sunday'):
+                raise CloudError('점검할 예배와 결과물을 확인하세요.')
+            mode=argument('mode','zoom') if service=='friday' else None
+            if mode not in (None,'zoom','in_person'):
+                raise CloudError('금요예배 진행 방식을 확인하세요.')
+            handler.reply(200,cloud.verify_archive_target(service,kind,mode))
+        elif action=='archive-progress' and handler.command=='GET':
+            handler.reply(200,cloud.archive_progress(argument('date'),argument('service'),argument('kind')))
         elif action=='archive' and handler.command=='POST':
             handler.reply(201,cloud.archive(body.get('date'),body.get('service'),body.get('kind')))
         elif action=='download' and handler.command=='GET':
-            item=cloud.item(argument('id'))
-            if not cloud.within(item,cloud.selected('archive')):
-                raise CloudError('완료본 폴더의 파일만 내려받을 수 있습니다.')
+            if (cloud.status(origin)['shared_archive']['enabled']
+                    or cloud.status(origin).get('shared_archives')):
+                item=cloud.shared_archive_item(argument('id'))
+            else:
+                item=cloud.item(argument('id'))
+                if not cloud.within(item,cloud.selected('archive')):
+                    raise CloudError('완료본 폴더의 파일만 내려받을 수 있습니다.')
             handler.reply(200,cloud._download(item),'application/octet-stream')
         else:
             handler.reply(404,{'error':'지원하지 않는 OneDrive 요청입니다.'})

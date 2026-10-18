@@ -57,6 +57,44 @@ function parseWednesday(raw){
  const date=raw.match(/수요\s*예배\s*\(\s*(\d+)\/(\d+)/);
  cleanPeople(fields);return {fields,unknown,dateLabel:date?Number(date[1])+'/'+Number(date[2]):null};
 }
+// Flattened .hwp text can still be unambiguously recovered when it matches
+// the church's full, labelled 4-column, two-week serving matrix exactly.
+// Do not guess values in partial/shifted tables; keep those for review.
+// When a corrected notice is imported, stale machine-imported values can be
+// updated automatically. A later explicit user override always wins.
+function shouldApplyImportedField(existing,imported,previousSource,manualOverride){
+ if(manualOverride)return false;
+ if(!existing||existing.state==='UNSET')return true;
+ if(!imported)return false;
+ if(existing.state===imported.state&&existing.value===imported.value)return false;
+ if(previousSource&&(existing.state!==previousSource.state||existing.value!==previousSource.value))return false;
+ if(existing.state==='NONE'&&imported.state==='VALUE')return true;
+ return !!previousSource&&existing.state===previousSource.state&&existing.value===previousSource.value;
+}
+function parseFlattenedServing(rows){
+ const text=rows.map(v=>String(v).normalize('NFKC').trim()).filter(Boolean);
+ const norm=v=>String(v).replace(/\s+/g,'').replace(/[：:]/g,'');
+ const headers=['구분','기도','봉헌기도','설거지','수요예배기도'];
+ if(text.length!==23||headers.some((name,i)=>norm(text[i])!==name))return null;
+ let pos=headers.length;const found={};
+ for(const [week,prefix]of [['이번주','이번 주'],['다음주','다음 주']]){
+  if(norm(text[pos++])!==week||norm(text[pos++])!=='1부')return null;
+  const first=text.slice(pos,pos+4);pos+=4;
+  if(norm(text[pos++])!=='2부')return null;
+  const second=text.slice(pos,pos+2);pos+=2;
+  if(first.length!==4||second.length!==2)return null;
+  const all=[...first,...second];
+  const heading=/^(?:구분|기도|봉헌기도|설거지|수요예배기도|1부|2부|이번주|다음주)$/;
+  if(all.some((v,i)=>!v||heading.test(norm(v))||(norm(v)==='인도자'&&i!==0)))return null;
+  const names=[
+   prefix+' 1부 기도',prefix+' 1부 봉헌기도',prefix+' 설거지',
+   prefix+' 수요예배 기도',week==='이번주'?'2부 기도 담당자':'다음 주 2부 기도',
+   week==='이번주'?'2부 봉헌기도 담당자':'다음 주 2부 봉헌기도'
+  ];
+  all.forEach((v,i)=>found[names[i]]=inputField(isPerson(names[i])?cleanPerson(v):v));
+ }
+ return pos===text.length?found:null;
+}
 function parseBulletinCore(raw){
  const fields={},unknown=[];const put=(k,v)=>fields[k]=inputField(v);const lines=raw.split(/\r?\n/).map(v=>v.normalize('NFKC').trim()).filter(Boolean);let section=null,body=[];
  const finish=()=>{if(section&&section!=='목장')put(section,body.join('\n'));body=[];section=null;};
@@ -68,12 +106,12 @@ function parseBulletinCore(raw){
  if(section&&/^[<〈《＜\[【]/.test(line)){finish();unknown.push(line);continue;}if(section){body.push(line);continue;}
  m=line.match(/^(?:cf\)\s*)?오후\s*예배\s*[:：]\s*(.*)$/);if(m){put('오후예배',m[1]);continue;}
  m=line.match(/^찬양\s*[:：]\s*(.*)$/);if(m){put('전달 주보 찬양 목록',m[1]);continue;}
- if(/^예배\/섬김[:：]?$/.test(heading)){let table=[];while(i+1<lines.length&&!lines[i+1].startsWith('*')&&!lines[i+1].startsWith('<')&&!/^주\s*일\s*오\s*전/.test(lines[i+1]))table.push(lines[++i]);put('전달 섬김표 원문',table.join('\n'));const compact=table.map(v=>v.replace(/\s/g,''));const a=compact.indexOf('이번주'),b=compact.indexOf('다음주');let valid=true;
- for(const [start,end,key]of [[a,b,'이번 주 섬김'],[b,table.length,'다음 주 섬김']]){if(start<0||end<=start){valid=false;continue;}const rows=table.slice(start+1,end),clean=rows.map(v=>v.replace(/\s/g,''));const one=clean.indexOf('1부'),two=clean.indexOf('2부');const first=rows.slice(one+1,two),second=rows.slice(two+1);if(one!==0||first.length!==4||second.length!==2){valid=false;continue;}put(key,'1부 기도: '+first[0]+'\n1부 봉헌기도: '+first[1]+'\n2부 기도: '+second[0]+'\n2부 봉헌기도: '+second[1]+'\n설거지: '+first[2]+'\n수요예배 기도: '+first[3]);if(key==='이번 주 섬김'){put('1부 예배 순서·담당자','기도: '+first[0]+' / 봉헌기도: '+first[1]);put('2부 기도 담당자',second[0]);put('2부 봉헌기도 담당자',second[1]);}}
- unknown.push(valid?'섬김표의 담당자를 자동 배정했습니다. 병합된 설거지·수요 기도 칸은 첨부 원본과 확인하세요.':'섬김표 구조가 달라 자동 배정하지 못했습니다. 원문을 확인하고 각 담당자를 입력하세요.');continue;}
+ if(/^예배\/섬김[:：]?$/.test(heading)){let table=[];while(i+1<lines.length&&!lines[i+1].startsWith('*')&&!lines[i+1].startsWith('<')&&!/^주\s*일\s*오\s*전/.test(lines[i+1]))table.push(lines[++i]);put('전달 섬김표 원문',table.join('\n'));const recognized=parseFlattenedServing(table);if(recognized)Object.assign(fields,recognized);else unknown.push('섬김표 형식이 일치하지 않아 담당자를 임의 배정하지 않았습니다. 원본 표를 확인하세요.');continue;}
  m=line.match(/^\*설교\s*중\s*읽을\s*말씀\s*[☞:：–—-]?\s*(.*)$/);if(m){put('추가 말씀',m[1]);continue;}
  m=line.match(/^\*1면\s*[–—-]\s*(.*)$/);if(m){put('표지 변경 사항',m[1]);continue;}
  if(line==='*'){unknown.push('이름 없는 빈 항목은 자동으로 배정하지 않았습니다.');continue;}
+ m=line.match(/^(?:주보\s*호수\s*[:：]\s*|주보\s+|제\s*)(\d{1,3}\s*[-–]\s*\d{1,3})\s*(?:호)?\s*$/);
+ if(m){put('확정 주보 호수',m[1].replace(/\s/g,'').replace('–','-'));continue;}
  if(/^\d{1,2}\/\d{1,2}$/.test(line)||/^주보\s+/.test(line))continue;unknown.push(line);
  }finish();const date=lines.find(v=>/^\d{1,2}\/\d{1,2}$/.test(v));
  cleanPeople(fields);return {fields,unknown,dateLabel:date||null};
@@ -96,15 +134,23 @@ function parseBulletin(raw,tables){
  if(reference.length)result.reference=reference.join('\n');delete result.fields['헌금 안내'];delete result.fields['기타 예배·모임 안내'];
  if(fields['주일 인도자'])result.fields['1부 예배 순서·담당자']={state:'VALUE',value:Object.entries(fields).filter(([k])=>/^1부|주일 인도자/.test(k)).map(([k,v])=>k+': '+v.value).join('\n')};
  for(const [key,prefix]of [['이번 주 섬김','이번 주'],['다음 주 섬김','다음 주']]){const text=result.fields[key]?.value;if(text)for(const line of text.split('\n')){const m=line.match(/^(.+?):\s*(.*)$/);if(!m)continue;const name=m[1]==='수요예배 기도'?'수요예배 기도':m[1];const label=prefix==='이번 주'&&/^2부 (기도|봉헌기도)$/.test(name)?name+' 담당자':prefix+' '+name;if(!result.fields[label])result.fields[label]={state:m[2]?'VALUE':'NONE',value:m[2]};}delete result.fields[key];}delete result.fields['전달 섬김표 원문'];delete result.fields['1부 예배 순서·담당자'];
- // Structured coordinates take precedence over all flattened serving guesses.
- if(Array.isArray(tables)){
-  result.unknown=result.unknown.filter(v=>!v.startsWith('섬김표의 담당자'));
+ // Use HWP cell coordinates when a real serving grid exists; otherwise
+ // keep the exact-schema flattened recovery even if unrelated HWP tables exist.
+ const servingTables=(tables||[]).filter(table=>{
+  const cells=table.cells||[],norm=v=>String(v||'').replace(/\s/g,'');
+  const headers=cells.filter(c=>c.row===0);
+  const has=name=>headers.some(c=>norm(c.text)===name);
+  return has('기도')&&has('봉헌기도')&&cells.some(c=>['이번주','다음주'].includes(norm(c.text)))&&cells.some(c=>['1부','2부'].includes(norm(c.text)));
+ });
+ if(servingTables.length){
+  let servingGridFound=false;
   for(const label of Object.keys(result.fields))if(/^(이번 주|다음 주) |^[12]부 (기도|봉헌기도) 담당자$/.test(label))delete result.fields[label];
   const norm=v=>String(v).replace(/\s/g,'');
-  for(const table of tables){
+  for(const table of servingTables){
    const cells=table.cells||[];const at=(r,c)=>cells.find(x=>r>=x.row&&r<x.row+x.rowspan&&c>=x.column&&c<x.column+x.colspan)?.text;
    const header=cells.filter(x=>x.row===0);const column=title=>header.find(x=>norm(x.text)===title)?.column;
    if(column('기도')===undefined||column('봉헌기도')===undefined)continue;
+   servingGridFound=true;
    const consumed=new Set(cells.flatMap(c=>String(c.text||'').split(/\r?\n/).map(norm)));
    result.unknown=result.unknown.filter(v=>!consumed.has(norm(v)));
    for(let row=1;row<table.rows;row++){
@@ -120,8 +166,7 @@ function parseBulletin(raw,tables){
     }
    }
   }
- }else{
-  for(const [label,f]of Object.entries(result.fields))if(isPerson(label)&&/^인도자$/.test(f.value.trim())){delete result.fields[label];result.unknown.push(label+': 인도자 이름 확인 필요');}
+  if(servingGridFound)result.unknown=result.unknown.filter(v=>!v.startsWith('섬김표 형식이 일치하지 않아'));
  }
  // A table heading is never a person's name, even when flattened cells shift.
  for(const [label,f]of Object.entries(result.fields))if(isPerson(label)&&/^(?:설거지|기도|봉헌기도|수요예배기도|1부|2부|이번주|다음주|구분)$/.test(normalize(f.value))){delete result.fields[label];result.unknown.push(label+': 표 제목이 인식되어 자동 반영하지 않았습니다. 원본 담당자를 확인하세요.');}
@@ -138,11 +183,11 @@ function parseTableFields(tables,allowed,aliases,service){
  for(const table of tables||[]){
   const cells=table.cells||[];
   // Serving matrices require their own week/service coordinate parser.
-  if(cells.some(c=>norm(c.text)==='이번주')&&cells.some(c=>norm(c.text)==='봉헌기도'))continue;
+  if(cells.some(c=>norm(c.text)==='기도')&&cells.some(c=>norm(c.text)==='봉헌기도'))continue;
   for(const cell of cells){
    const label=names.get(norm(cell.text));if(!label||conflicts.has(label))continue;
    const value=cells.find(c=>c.row===cell.row&&c.column===cell.column+(cell.colspan||1));
-   if(!value||names.has(norm(value.text)))continue;
+   if(!value||names.has(norm(value.text))||/^(?:설거지|봉헌기도|기도|수요예배기도|1부|2부|이번주|다음주|구분)$/.test(norm(value.text)))continue;
    const text=String(value.text||'').trim();
    if(fields[label]&&fields[label].value!==text){delete fields[label];conflicts.add(label);unknown.push(label+': 표에 서로 다른 값이 있어 직접 확인');continue;}
    fields[label]={state:text?'VALUE':'NONE',value:isPerson(label)?cleanPerson(text):text};consumed.push(String(cell.text||'').trim(),...text.split(/\r?\n/));
@@ -150,5 +195,5 @@ function parseTableFields(tables,allowed,aliases,service){
  }
  return {fields,unknown,consumed};
 }
-root.NoticeParser={parseCommon,cleanLine,parseFriday,parseWednesday,parseBulletin,parseTableFields,cleanPerson,isPerson};if(typeof module!=='undefined')module.exports=root.NoticeParser;
+root.NoticeParser={parseCommon,cleanLine,parseFriday,parseWednesday,parseBulletin,parseTableFields,cleanPerson,isPerson,shouldApplyImportedField};if(typeof module!=='undefined')module.exports=root.NoticeParser;
 })(typeof globalThis!=='undefined'?globalThis:this);

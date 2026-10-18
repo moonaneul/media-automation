@@ -1,0 +1,56 @@
+name: UI and OneDrive Source Safety
+
+on:
+  push:
+    branches:
+      - fix/ui-workflow-20261015
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  source-safety:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+      - name: Install test dependencies
+        run: python -m pip install -e '.[dev]'
+      - name: Run regression tests without private church assets or credentials
+        env:
+          PYTHONDONTWRITEBYTECODE: '1'
+        run: |
+          python -m pytest -q --tb=short \
+            tests/test_cloud_source_classification.py \
+            tests/test_cloud_catalog_audit.py \
+            tests/test_one_drive_lookup_ui.py \
+            tests/test_original_roles.py \
+            tests/test_onedrive.py \
+            tests/test_reclassify_non_song_catalog.py \
+            tests/test_audit_song_dependencies.py \
+            tests/test_cloud_worker_archive_paths.py \
+            tests/test_user_reported_media_regressions.py \
+            tests/test_diagnose_score_sources.py \
+            tests/test_restore_review_sources.py \
+            tests/test_onedrive_inline_worship_import.py \
+            tests/test_onedrive_folder_scopes_and_hymn_search.py \
+            tests/test_onedrive_picker_browser_js.py \
+            tests/test_download_feedback.py \
+            tests/test_original_streaming_download.py \
+            tests/test_reviewed_worship_completion.py \
+            tests/test_onedrive_archive_scopes.py \
+            tests/test_workflow_races.py \
+            tests/test_sunday_bulletin_import_guards.py \
+            tests/test_sunday_hwp_import_browser_flow.py
+      - name: Run entire repository suite (asset availability independently reported)
+        timeout-minutes: 12
+        env:
+          PYTHONDONTWRITEBYTECODE: '1'
+        run: python -m pytest -q --tb=short

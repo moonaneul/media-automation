@@ -13,7 +13,7 @@ from pathlib import Path
 CHUNK_SIZE = 1024 * 1024
 
 
-def send_download(handler, target: Path) -> None:
+def send_download(handler, target: Path, *, head_only: bool = False) -> None:
     """Send an already-authorized local artifact as a binary HTTP response."""
     path = Path(target)
     # Open first so the headers describe the same inode we actually serve.
@@ -30,6 +30,8 @@ def send_download(handler, target: Path) -> None:
         handler.send_header('Referrer-Policy', 'no-referrer')
         handler.send_header('Content-Security-Policy', "default-src 'self'; script-src 'self'; style-src 'self'; frame-ancestors 'none'; base-uri 'none'; object-src 'none'")
         handler.end_headers()
+        if head_only:
+            return
         while True:
             chunk = source.read(CHUNK_SIZE)
             if not chunk:

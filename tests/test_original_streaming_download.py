@@ -42,6 +42,11 @@ def test_current_download_streams_exact_bytes_after_auth(tmp_path, monkeypatch, 
         with urlopen(login, timeout=3) as response:
             cookie = response.headers['Set-Cookie'].split(';', 1)[0]
         headers = {'Cookie':cookie}
+        with urlopen(Request(base + route, headers=headers, method='HEAD'), timeout=3) as response:
+            assert response.status == 200
+            assert response.headers['Content-Type'] == mime
+            assert int(response.headers['Content-Length']) == len(content)
+            assert response.read() == b''
         with urlopen(Request(base + route, headers=headers), timeout=3) as response:
             assert response.headers['Content-Type'] == mime
             assert int(response.headers['Content-Length']) == len(content)

@@ -27,7 +27,7 @@ from .production_order import build_order, combine_friday_prayers
 from .bible_connection import resolve
 from .ppt_conversion import convert_original
 
-BUILD_VERSION = 'official-web-engine-v8-explicit-original-choice'
+BUILD_VERSION = 'official-web-engine-v10-case-insensitive-media-names'
 ROOT = Path(__file__).resolve().parents[4]
 
 def compatible_original(filename, service, mode, slot):
@@ -162,7 +162,10 @@ def generate(store, body):
                 try:asset = _asset(store, body, block) if block.get('state') == 'VALUE' else None
                 except OriginalConversionError as error:
                     asset=None
-                    connections[key]=dict(error.asset,status='conversion_failed',error=str(error))
+                    cause=error.__cause__
+                    explanation=str(cause) if isinstance(cause, RuntimeError) else '변환 도구 또는 원본 파일을 확인하세요.'
+                    connections[key]=dict(error.asset,status='conversion_failed',
+                                          error=explanation)
                 if asset:
                     source, suffix, metadata = asset
                     if metadata.get('selected_for_service') and not metadata.get('eligible'):
@@ -182,9 +185,13 @@ def generate(store, body):
                                 prs = Presentation(path)
                                 status = 'original_inserted'
                                 connections[key] = dict(metadata, status='connected')
-                            except ValueError:
+                            except ValueError as error:
                                 status = 'missing_song_asset'
-                                connections[key] = dict(metadata, status='canvas_mismatch')
+                                mismatch='화면 크기' in str(error)
+                                connections[key] = dict(metadata,
+                                    status='canvas_mismatch' if mismatch else 'merge_failed',
+                                    error='원본과 예배 PPT의 슬라이드 크기가 달라 삽입하지 않았습니다.' if mismatch
+                                          else '원본 슬라이드 병합을 완료하지 못했습니다.')
                     elif zoom and suffix == '.mp4':
                         slide = add_blank_slide(prs)
                         from media_automation.ppt.video_poster import video_poster
