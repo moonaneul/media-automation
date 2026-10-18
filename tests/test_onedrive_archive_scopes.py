@@ -67,8 +67,9 @@ def test_archive_retry_reports_failed_prerequisites():
     from pathlib import Path
     src=Path('src/media_automation/web/original/ui/onedrive.js').read_text()
     chunk=src[src.index('async function archiveCurrent('):src.index('async function syncOriginal(')]
-    assert 'state.shared_archives[role]' in chunk
-    assert 'state.shared_archive?.enabled||state.folders?.archive||state.folders?.[keyName]' in chunk
+    assert "if(!state.shared_archives?.[role])requireBeforeUpload(" in chunk
+    assert '개인 OneDrive에는 업로드하지 않습니다.' in chunk
+    assert "state.shared_archive?.enabled||state.folders?.archive||state.folders?.[keyName]" not in chunk
     assert 'status.textContent' in chunk
     assert 'button.disabled=false;' in chunk
     assert 'if(ticker!==null)clearInterval(ticker)' in chunk
