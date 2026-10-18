@@ -163,6 +163,9 @@ def test_reviewed_bulletin_archives_to_00_folder_without_creating_nested_directo
         uploaded.append((folder_id,name,data,drive_id))
         return {'id':'archived-item','name':name,'file':{},'size':len(data)}
     monkeypatch.setattr(cloud,'upload_file',upload)
+    monkeypatch.setattr(cloud,'_find_exact_shared_file',lambda folder,item_id,name,size:
+                        {'id':item_id,'name':name,'size':size,'file':{},
+                         'parentReference':{'driveId':folder['drive_id'],'id':folder['id']}})
     calls.clear()
     response=cloud.archive(day,'sunday','pdf')
     expected_folder,expected_drive,expected_id=names['archive_sunday_pdf']
