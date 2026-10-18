@@ -108,7 +108,8 @@ class OneDrive:
                         connected=bool(data.get('account')),
                         account=data.get('account'), folders=data.get('folders', {}),
                         shared_archive={'enabled':True,'name':data['shared_archive']['name']}
-                        if data.get('shared_archive') else {'enabled':False})
+                        if data.get('shared_archive') else {'enabled':False},
+                        shared_archives={key: {'name': entry['name']} for key, entry in data.get('shared_archives', {}).items()})
 
     def _app(self, data):
         import msal
@@ -157,6 +158,7 @@ class OneDrive:
             if data.get('account', {}).get('home_account_id') != account['home_account_id']:
                 data.pop('folders', None)
                 data.pop('shared_archive', None)
+                data.pop('shared_archives', None)
             data.update(account={'home_account_id': account['home_account_id'], 'username': account.get('username', '')},
                         cache=cache.serialize())
             self._write(data)
@@ -164,7 +166,7 @@ class OneDrive:
     def disconnect(self):
         with self.lock:
             data = self._read()
-            for key in ('cache', 'account', 'folders', 'shared_archive'):
+            for key in ('cache', 'account', 'folders', 'shared_archive', 'shared_archives'):
                 data.pop(key, None)
             self.pending.clear()
             self._write(data)
@@ -255,7 +257,24 @@ class OneDrive:
             raise CloudError('Microsoft OneDrive에서 복사한 HTTPS 공유 폴더 링크인지 확인하세요.')
         return 'u!' + base64.urlsafe_b64encode(link.strip().encode('utf-8')).decode('ascii').rstrip('=')
 
-    def select_shared_archive(self, link):
+    SHARED_DESTINATIONS = {
+        'archive_sunday_pdf': '00.주보',
+        'archive_sunday_ppt': '01.주일예배',
+        'archive_wednesday': '02.수요예배',
+        'archive_friday': '03.금요예배',
+    }
+
+    @classmethod
+    def shared_archive_role(cls, service, kind):
+        if service == 'wednesday' and kind == 'ppt':
+            return 'archive_wednesday'
+        if service == 'friday' and kind == 'ppt':
+            return 'archive_friday'
+        if service == 'sunday' and kind in ('ppt', 'pdf'):
+            return 'archive_sunday_pdf' if kind == 'pdf' else 'archive_sunday_ppt'
+        raise CloudError('해당 예배 완료본 종류를 확인하세요.')
+
+    def select_shared_archive(self, link, purpose=None):
         """Select ONLY a writable external folder for approved output artifacts.
 
         Do not change the source/Zoom folders or upload any actual file here.
@@ -273,16 +292,32 @@ class OneDrive:
         if 'folder' not in verified:
             raise CloudError('미디어팀 공유폴더에 접근할 수 없습니다. 편집 권한을 확인하세요.')
         shared = {'id':item_id, 'drive_id':drive_id, 'name':verified.get('name') or item.get('name') or '미디어팀 공유폴더'}
+        if purpose is not None:
+            expected = self.SHARED_DESTINATIONS.get(purpose)
+            if not expected:
+                raise CloudError('완료본의 예배 종류를 확인하세요.')
+            if shared['name'] != expected:
+                raise CloudError('선택한 폴더가 '+expected+'이(가) 아닙니다. 해당 공유폴더의 링크를 복사하세요.')
         with self.lock:
             data = self._read()
-            data['shared_archive'] = shared
+            if purpose is None:
+                data['shared_archive'] = shared
+            else:
+                data.setdefault('shared_archives', {})[purpose] = shared
             self._write(data)
         return {'enabled':True, 'name':shared['name']}
 
-    def clear_shared_archive(self):
+    def clear_shared_archive(self, purpose=None):
+        if purpose is not None and purpose not in self.SHARED_DESTINATIONS:
+            raise CloudError('완료본의 예배 종류를 확인하세요.')
         with self.lock:
             data = self._read()
-            data.pop('shared_archive', None)
+            if purpose is None:
+                data.pop('shared_archive', None)
+            else:
+                data.get('shared_archives', {}).pop(purpose, None)
+                if not data.get('shared_archives'):
+                    data.pop('shared_archives', None)
             self._write(data)
 
     SOURCE_PURPOSES = frozenset({'source', 'source_video'})
@@ -414,29 +449,50 @@ class OneDrive:
             item = self.graph('/drives/'+valid_id(expected_drive)+'/items/'+valid_id(parent_id))
         return False
 
-    def shared_archive_item(self, identifier):
-        """Fetch a file only when its ancestry belongs to the shared archive."""
+    def shared_archive_item(self, identifier, purpose=None):
+        """Read only items within one explicitly chosen shared completion folder."""
         with self.lock:
-            shared = self._read().get('shared_archive')
-        if not shared:
-            raise CloudError('미디어팀 공유 완료본 폴더가 지정되지 않았습니다.')
-        folder = {'id':shared['id'], 'drive_id':shared['drive_id']}
-        item = self.graph('/drives/'+valid_id(shared['drive_id'])+'/items/'+valid_id(identifier))
-        if not self._remote_archive_within(item, folder):
-            raise CloudError('미디어팀 완료본 공유폴더 안의 파일만 확인할 수 있습니다.')
-        return item
+            data = self._read()
+        shares = data.get('shared_archives') or {}
+        if shares:
+            if purpose:
+                role = 'archive_friday' if purpose in ('archive_friday_zoom','archive_friday_in_person') else purpose
+                candidates = [shares[role]] if role in shares else []
+            else:
+                candidates = list(shares.values())
+        else:
+            legacy = data.get('shared_archive')
+            candidates = [legacy] if legacy else []
+        if not candidates:
+            raise CloudError('해당 미디어팀 공유 완료본 폴더가 지정되지 않았습니다.')
+        for folder in candidates:
+            try:
+                item = self.graph('/drives/'+valid_id(folder['drive_id'])+'/items/'+valid_id(identifier))
+                if self._remote_archive_within(item, folder):
+                    return item
+            except CloudError:
+                # A target may have a different owner/drive, so try the next.
+                continue
+        raise CloudError('지정된 미디어팀 완료본 공유폴더 안의 파일만 확인할 수 있습니다.')
 
     def list_selected(self, purpose, identifier=None, query=''):
         with self.lock:
-            shared = self._read().get('shared_archive') if purpose in self.ARCHIVE_PURPOSES else None
-        if shared:
-            folder = {'id':shared['id'],'drive_id':shared['drive_id']}
+            data = self._read()
+            targets = data.get('shared_archives') or {}
+            legacy = data.get('shared_archive') if purpose in self.ARCHIVE_PURPOSES else None
+        if targets and purpose in self.ARCHIVE_PURPOSES:
+            role = 'archive_friday' if purpose in ('archive_friday_zoom','archive_friday_in_person') else purpose
+            shared = targets.get(role)
+            if not shared:
+                raise CloudError('미디어팀 '+self.SHARED_DESTINATIONS.get(role,'해당 예배')+' 공유폴더를 먼저 지정하세요.')
+            if identifier:
+                self.shared_archive_item(identifier, purpose)
+            return self.children(identifier or shared['id'], drive_id=shared['drive_id'])
+        if legacy and not targets:
+            folder = {'id':legacy['id'],'drive_id':legacy['drive_id']}
             if identifier:
                 self.shared_archive_item(identifier)
-            root = identifier or folder['id']
-            # Archive browsing never creates folders. It shows only the
-            # selected shared root and its descendants, never other drives.
-            return self.children(root, drive_id=shared['drive_id'])
+            return self.children(identifier or folder['id'], drive_id=legacy['drive_id'])
         folder = self.selected(purpose)
         if identifier and identifier != folder['id'] and not self.within(self.item(identifier), folder):
             raise CloudError('지정한 자료 폴더 안에서만 조회할 수 있습니다.')
@@ -671,8 +727,18 @@ class OneDrive:
                    ('archive_sunday_pdf' if kind == 'pdf' else 'archive_sunday_ppt'))
         with self.lock:
             settings = self._read()
+            targets = settings.get('shared_archives') or {}
             shared = settings.get('shared_archive')
             assigned = settings.get('folders', {}).get(purpose)
+        if targets:
+            role = self.shared_archive_role(service, kind)
+            target = targets.get(role)
+            if not target:
+                raise CloudError('미디어팀 '+self.SHARED_DESTINATIONS[role]+' 공유폴더 링크가 미설정입니다. 설정에서 연결하세요.')
+            # Do not create subfolders: these are already the church team's
+            # real shared directories. Each one may have a different owner.
+            return {'id':target['id'], 'name':target['name'],
+                    'drive_id':target['drive_id'], 'folder':{}}
         if shared:
             folder = {'id':shared['id'], 'name':shared['name'],
                       'drive_id':shared['drive_id'], 'folder':{}}
