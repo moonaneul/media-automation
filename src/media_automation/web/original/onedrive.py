@@ -796,6 +796,82 @@ class OneDrive:
                 'write_verified':False,
                 'message':'대상 폴더 조회 성공 · 쓰기 권한은 실제 검수 완료 파일 업로드로 확인합니다.'}
 
+    @staticmethod
+    def _safe_onedrive_url(value):
+        """Only return official Microsoft HTTPS links to the authenticated UI."""
+        if not isinstance(value,str) or len(value)>4096:
+            return None
+        try:
+            parts=urlsplit(value)
+            host=(parts.hostname or '').lower()
+            domains=('onedrive.live.com','1drv.ms','1drv.com','sharepoint.com')
+            if (parts.scheme!='https' or parts.username or parts.password
+                    or parts.port not in (None,443)
+                    or not any(host==domain or host.endswith('.'+domain) for domain in domains)):
+                return None
+        except ValueError:
+            return None
+        return value
+
+    def _find_exact_shared_file(self, folder, item_id, expected_name, expected_size):
+        """Read the target folder itself, not just the PUT success payload."""
+        base='/drives/'+valid_id(folder['drive_id'])+'/items/'
+        item=self.graph(base+valid_id(item_id))
+        parent=item.get('parentReference') or {}
+        if (item.get('id')!=item_id or item.get('name')!=expected_name
+                or item.get('size')!=expected_size or 'file' not in item):
+            raise CloudError('Microsoft의 파일 조회 결과가 생성본과 일치하지 않습니다. 보관 완료로 처리하지 않습니다.')
+        if (parent.get('driveId')!=folder['drive_id'] or parent.get('id')!=folder['id']):
+            raise CloudError('업로드 응답의 실제 저장 위치가 선택한 공유폴더와 다릅니다. 보관 완료로 처리하지 않습니다.')
+        entries=self.children(folder['id'],drive_id=folder['drive_id'])
+        if not any(entry.get('id')==item_id and entry.get('name')==expected_name
+                   and entry.get('size')==expected_size and 'file' in entry
+                   for entry in entries):
+            raise CloudError('Microsoft가 파일을 반환했지만 선택한 공유폴더 목록에는 없습니다. 보관 완료로 처리하지 않습니다.')
+        return item
+
+    def verify_saved_archive(self, day, service, kind):
+        """Check a previously claimed upload; no write or upload is performed."""
+        self.store.validate(day,service)
+        if kind not in ('ppt','pdf') or (kind=='pdf' and service!='sunday'):
+            raise CloudError('확인할 완료본 종류를 확인하세요.')
+        current=self.store.get(day,service)['data']
+        output=current.get('outputs',{}).get(kind,{})
+        identifier=output.get('fileId','')
+        if not re.fullmatch('[a-f0-9]{32}',identifier) or not output.get('complete'):
+            raise CloudError('검수 완료된 결과물이 없습니다.')
+        mode=current.get('fridayMode','zoom') if service=='friday' else None
+        folder=self.archive_destination(service,kind,mode)
+        if not folder.get('drive_id'):
+            raise CloudError('미디어팀 공유 완료본 폴더가 아직 지정되지 않았습니다.')
+        folder_base='/drives/'+valid_id(folder['drive_id'])+'/items/'+valid_id(folder['id'])
+        folder_info=self.graph(folder_base)
+        folder_link=self._safe_onedrive_url(folder_info.get('webUrl'))
+        extension='pdf' if kind=='pdf' else 'pptx'
+        filename=f'{day}_{service}_{kind}_{identifier}.{extension}'
+        stored=Path(self.store.path).with_suffix('.generated')/(identifier+'.'+extension)
+        if not stored.is_file():
+            raise CloudError('서버에서 승인한 완료본 파일을 찾지 못했습니다.')
+        size=stored.stat().st_size
+        remote=output.get('cloudItem') or {}
+        remote_id=remote.get('id')
+        if not remote_id:
+            return {'verified':False,'target':folder['name'],
+                    'targetUrl':folder_link,'status':'no_record',
+                    'message':'기존 OneDrive 업로드 기록이 없습니다. 공유폴더에서 아직 확인하지 못했습니다.'}
+        if not isinstance(remote_id,str) or not re.fullmatch(r'[A-Za-z0-9!_.-]{1,200}',remote_id):
+            raise CloudError('저장된 OneDrive 파일 ID가 올바르지 않습니다.')
+        try:
+            item=self._find_exact_shared_file(folder,remote_id,filename,size)
+        except CloudError as exc:
+            return {'verified':False,'target':folder['name'],
+                    'targetUrl':folder_link,'status':'not_in_target',
+                    'message':'기존 보관 완료 기록을 실제 공유폴더에서 검증하지 못했습니다: '+str(exc)}
+        return {'verified':True,'target':folder['name'],'targetUrl':folder_link,
+                'itemUrl':self._safe_onedrive_url(item.get('webUrl')),
+                'status':'confirmed',
+                'message':'공유폴더의 파일 ID·이름·크기·상위 폴더를 모두 다시 조회하여 확인했습니다.'}
+
     def archive_destination(self, service, kind, mode=None):
         """Use an explicit worship folder when chosen, otherwise existing hierarchy."""
         purpose = ('archive_wednesday' if service == 'wednesday' else
@@ -903,12 +979,32 @@ class OneDrive:
             item = self.upload_file(folder['id'],name,path.read_bytes(),drive_id=folder['drive_id'])
         else:
             item = self.upload_file(folder['id'],name,path.read_bytes())
-        self._archive_step('업로드 응답 수신 · 완료 상태 기록 중',100)
+        self._archive_step('업로드 응답 수신 · 공유폴더 실제 위치 재검증 중',95)
+        if folder.get('drive_id'):
+            # Graph upload success may refer to a different location or a
+            # same-size existing file. Verify ownership, parent, listing
+            # and byte count before persisting a success flag.
+            item_id=item.get('id','')
+            if not isinstance(item_id,str) or not re.fullmatch(r'[A-Za-z0-9!_.-]{1,200}',item_id):
+                raise CloudError('업로드 응답에 올바른 OneDrive 파일 ID가 없습니다.')
+            verified=None
+            for attempt in range(3):
+                try:
+                    verified=self._find_exact_shared_file(folder,item_id,name,path.stat().st_size)
+                    break
+                except CloudError:
+                    if attempt<2:
+                        time.sleep(1+attempt)
+                    else:
+                        raise
+            item=verified
+        self._archive_step('실제 공유폴더 조회 검증 완료 · 상태 기록 중',100)
         latest = self.store.get(day,service)
         latest_output = latest['data'].get('outputs',{}).get(kind,{})
         if (latest_output.get('fileId') == identifier and latest['revision'] == current['revision']
                 and latest_output.get('complete') and not latest_output.get('changed')):
-            latest_output.update(archiveStatus='uploaded',cloudItem=public_item(item))
+            latest_output.update(archiveStatus='uploaded',cloudVerified=bool(folder.get('drive_id')),
+                                 cloudItem=public_item(item))
             saved = self.store.save(day,service,latest['revision'],latest['data'])
         else:
             saved = latest
