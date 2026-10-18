@@ -336,17 +336,17 @@ def test_archive_ui_uses_actual_week_key_and_captures_requested_output():
     let sent,notice='',stored='',button={disabled:false};
     const work={'wednesday:2026-10-07':{outputs:{ppt:{complete:true}}}};
     const context={
-      key:()=> 'sunday:2026-10-11',state:{connected:true,folders:{archive:{id:'archive'}}},
+      key:()=> 'sunday:2026-10-11',state:{connected:true,shared_archives:{archive_wednesday:{name:'02.수요예배'}},folders:{archive:{id:'archive'}}},
       el:id=>id==='cloud-archive-current'?button:{set textContent(v){stored=v}},
-      refresh:async()=>{},api:async(a,b)=>{sent=b;return {item:{id:'new',name:'worship.pptx'},work:{data:work['wednesday:2026-10-07'],revision:2}}},
-      syncState:()=>({}),render:()=>{},msg:value=>notice=value,
+      refresh:async()=>{},api:async(a,b)=>{sent=b;return {verified:true,item:{id:'new',name:'worship.pptx'},work:{data:work['wednesday:2026-10-07'],revision:2}}},
+      syncState:()=>({}),render:()=>{},msg:value=>notice=value,setTargetLink:()=>{},
       app:{output:'pdf',records:work}
     };
     const archive=vm.runInNewContext('('+fn.trim()+')',context);
     archive('wednesday:2026-10-07','ppt').then(()=>console.log(JSON.stringify({sent,disabled:button.disabled,stored})));
     """
     data=json.loads(subprocess.check_output(['node','-e',code],text=True))
-    assert data['sent']=={'date':'2026-10-07','service':'wednesday','kind':'ppt'}
+    assert data['sent']=={'date':'2026-10-07','service':'wednesday','kind':'ppt','require_team_shared':True}
     assert data['disabled'] is False
     assert '보관 완료' in data['stored']
 
