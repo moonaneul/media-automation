@@ -196,6 +196,10 @@ class OneDrive:
         if parts.scheme != 'https' or parts.netloc != 'graph.microsoft.com' or not (own_drive or shared_lookup or remote_item):
             raise CloudError('허용되지 않은 OneDrive 요청입니다.')
         headers = {'Authorization': 'Bearer ' + self._token()}
+        if shared_lookup:
+            # A shared folder visible in the web UI may still need its
+            # sharing link redeemed before its drive/item ID is readable.
+            headers['Prefer'] = 'redeemSharingLinkIfNecessary'
         if content is not None:
             headers['Content-Type'] = 'application/octet-stream'
         try:
