@@ -147,9 +147,15 @@ def test_microsoft_graph_shared_path_guard(cloud, monkeypatch):
 def test_ui_has_separate_shared_archive_selector_and_no_browser_link_storage():
     source=Path('src/media_automation/web/original/ui/index.html').read_text(encoding='utf-8')
     script=Path('src/media_automation/web/original/ui/onedrive.js').read_text(encoding='utf-8')
-    assert 'id="cloud-apply-shared-archive"' in source
-    assert 'id="cloud-clear-shared-archive"' in source
-    assert "await api('shared-archive',{url:link})" in script
-    assert "el('cloud-shared-archive-link').value='';" in script
+    for purpose, folder in [
+        ('archive_sunday_pdf','00.주보'),('archive_sunday_ppt','01.주일예배'),
+        ('archive_wednesday','02.수요예배'),('archive_friday','03.금요예배')
+    ]:
+        assert f'id="cloud-set-{purpose}"' in source
+        assert f'id="cloud-unset-{purpose}"' in source
+        assert f'id="cloud-shared-{purpose}-link"' in source
+        assert folder in source
+    assert "await api('shared-archive',{url:link,purpose})" in script
+    assert "el('cloud-shared-'+purpose+'-link').value='';" in script
     assert 'localStorage.setItem' not in script
-    assert 'state.shared_archive?.enabled' in script
+    assert 'state.shared_archives' in script
