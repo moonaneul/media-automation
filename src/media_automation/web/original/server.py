@@ -499,6 +499,7 @@ def make_server(store, port=0, password=None, bind_host="127.0.0.1", public_orig
                             from .bible_review_cache import units_for_manual_confirmation
                             labels=[name for name in manual_reviews if name.endswith(':bible_review')]
                             blocks=[]
+                            matched_labels=[]
                             expected={}
                             for label in labels:
                                 slot=label[:-len(':bible_review')]
@@ -507,13 +508,14 @@ def make_server(store, port=0, password=None, bind_host="127.0.0.1", public_orig
                                     continue # supporting-prayer verse: no exact source receipt
                                 if not isinstance(stored,dict):raise ValueError()
                                 expected.update(stored)
+                                matched_labels.append(label)
                                 field=current['data']['fields'].get(slot,{})
                                 if field.get('state')!='VALUE' or not field.get('value'):
                                     raise ValueError()
                                 blocks.append(dict(kind='input',key=slot,state='VALUE',
                                                    content=field['value']))
                             if blocks:
-                                candidate=units_for_manual_confirmation(resolve(blocks),labels)
+                                candidate=units_for_manual_confirmation(resolve(blocks),matched_labels)
                                 if candidate!=expected:
                                     raise BulletinReviewBlocked(
                                         '검수할 성경 본문이 PPT 제작 시 사용한 원문과 달라졌습니다. 정확한 자료로 다시 제작하세요.')
