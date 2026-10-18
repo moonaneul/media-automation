@@ -56,7 +56,7 @@ def merge_stores(primary, supplemental, destination_directory, *, keep_primary_w
             new.execute('CREATE TABLE IF NOT EXISTS migration_work_history (source TEXT, day TEXT, service TEXT, revision INTEGER, payload TEXT, updated_at TEXT, PRIMARY KEY(source,day,service))')
             tables = list(old.execute("SELECT name,sql FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%'"))
             for table, schema in tables:
-                if table not in {'works','songs','attachments','song_assets','asset_reviews','bulletin_settings'}:
+                if table not in {'works','songs','attachments','song_assets','asset_reviews','bulletin_settings','bible_review_receipts'}:
                     raise ValueError('검토되지 않은 저장소 표: '+table)
                 new.execute(schema.replace('CREATE TABLE ', 'CREATE TABLE IF NOT EXISTS ', 1))
                 info = list(old.execute('PRAGMA table_info("'+table+'")'))
