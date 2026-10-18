@@ -48,7 +48,42 @@ class OneDrive:
         self.pending = {}
         self._archive_guard = threading.Lock()
         self._archive_inflight = set()
+        self._archive_status = {}
+        self._archive_thread = threading.local()
         self.http = requests.Session()
+
+    def _archive_step(self, stage, progress=None, error=None):
+        """Only sanitized stage metadata, never file contents, links or tokens."""
+        identifier=getattr(self._archive_thread,'file_id',None)
+        if not identifier:
+            return
+        status={'stage':stage,'elapsed':round(max(0,time.monotonic()-getattr(
+            self._archive_thread,'started',time.monotonic())),1)}
+        if progress is not None:
+            status['percent']=int(progress)
+        if error is not None:
+            status['error']=str(error)[:200]
+        with self._archive_guard:
+            self._archive_status[identifier]=status
+
+    def archive_progress(self, day, service, kind):
+        self.store.validate(day,service)
+        if kind not in ('pdf','ppt'):
+            raise CloudError('완료본 종류를 확인하세요.')
+        current=self.store.get(day,service)['data'].get('outputs',{}).get(kind,{})
+        identifier=current.get('fileId','')
+        if not re.fullmatch('[a-f0-9]{32}',identifier):
+            return {'stage':'no_file'}
+        with self._archive_guard:
+            report=dict(self._archive_status.get(identifier,{}))
+            active=identifier in self._archive_inflight
+        if not report:
+            report={'stage':'unknown'}
+        report['active']=active
+        report['complete']=bool(current.get('complete'))
+        report['archiveStatus']=current.get('archiveStatus','not_uploaded')
+        return report
+
 
     def _cipher(self):
         from cryptography.fernet import Fernet
@@ -370,7 +405,9 @@ class OneDrive:
         base = ('/drives/' + valid_id(drive_id) + '/items/' if drive_id else '/me/drive/items/')
         path=base+valid_id(folder_id)+':/'+quote(name,safe='')
         if len(content)<4*1024*1024:
+            self._archive_step('파일 직접 전송 중',0)
             return self.graph(path+':/content',method='PUT',content=content)
+        self._archive_step('공유폴더에 동일한 파일이 있는지 확인 중')
         folder_entries = self.children(folder_id, drive_id=drive_id) if drive_id else self.children(folder_id)
         existing=[item for item in folder_entries if item.get('name')==name]
         if existing:
@@ -380,6 +417,7 @@ class OneDrive:
             session_path=base+valid_id(existing[0]['id'])+'/createUploadSession'
         else:
             session_path=path+':/createUploadSession'
+        self._archive_step('대용량 파일 업로드 세션 생성 중',0)
         session=self.graph(session_path,method='POST',
                            body={})
         url=session.get('uploadUrl','');parts=urlsplit(url)
@@ -390,18 +428,21 @@ class OneDrive:
         chunk_size=5*1024*1024
         for start in range(0,len(content),chunk_size):
             chunk=content[start:start+chunk_size]
+            self._archive_step('대용량 파일 분할 전송 중',int(start*100/len(content)))
             try:
                 response=self.http.put(url,data=chunk,headers={'Content-Range':f'bytes {start}-{start+len(chunk)-1}/{len(content)}'},
                                        timeout=(10,120),allow_redirects=False)
             except requests.RequestException:
                 raise CloudError('파일 전송이 중단됐습니다. 다시 저장해 주세요.') from None
             if response.status_code in (200,201):
+                self._archive_step('업로드 확인 중',100)
                 item=response.json()
                 if start+len(chunk)!=len(content) or item.get('size')!=len(content):
                     raise CloudError('업로드 완료 파일의 크기를 확인하세요.')
                 return item
             if response.status_code!=202:
-                raise CloudError('OneDrive 분할 업로드에 실패했습니다. 다시 저장해 주세요.')
+                status_text={403:'공유폴더에 파일을 저장할 권한이 없습니다.',404:'공유폴더의 업로드 세션을 찾지 못했습니다.',507:'공유폴더 소유자의 저장 공간이 부족합니다.'}.get(response.status_code,'Microsoft 업로드 응답을 확인하세요.')
+                raise CloudError('분할 업로드 실패 · HTTP '+str(response.status_code)+' · '+status_text)
         raise CloudError('OneDrive 업로드 완료를 확인하지 못했습니다.')
 
     def upload_song(self, song_id, digest):
@@ -811,22 +852,34 @@ class OneDrive:
             if identifier in self._archive_inflight:
                 raise CloudError('이 완료본은 아직 OneDrive 업로드 중입니다. 완료될 때까지 기다린 뒤 대상 폴더를 확인하세요.')
             self._archive_inflight.add(identifier)
+        self._archive_thread.file_id=identifier
+        self._archive_thread.started=time.monotonic()
         try:
             return self._archive_once(day,service,kind,current,identifier,path)
+        except CloudError as exc:
+            self._archive_step('실패',error=str(exc))
+            raise
+        except Exception:
+            self._archive_step('실패',error='OneDrive 전송 중 처리 오류가 발생했습니다.')
+            raise
         finally:
+            self._archive_thread.file_id=None
             with self._archive_guard:
                 self._archive_inflight.discard(identifier)
 
     def _archive_once(self, day, service, kind, current, identifier, path):
         extension = 'pdf' if kind == 'pdf' else 'pptx'
+        self._archive_step('공유폴더 저장 경로 확인 중')
         folder = (self.archive_destination(service, kind, 'in_person')
                   if service == 'friday' and current['data'].get('fridayMode') == 'in_person'
                   else self.archive_destination(service, kind))
         name = f'{day}_{service}_{kind}_{identifier}.{extension}'
+        self._archive_step('Microsoft OneDrive 업로드 요청 중',0)
         if folder.get('drive_id'):
             item = self.upload_file(folder['id'],name,path.read_bytes(),drive_id=folder['drive_id'])
         else:
             item = self.upload_file(folder['id'],name,path.read_bytes())
+        self._archive_step('업로드 응답 수신 · 완료 상태 기록 중',100)
         latest = self.store.get(day,service)
         latest_output = latest['data'].get('outputs',{}).get(kind,{})
         if (latest_output.get('fileId') == identifier and latest['revision'] == current['revision']
@@ -838,4 +891,5 @@ class OneDrive:
         with self.store.connect() as db:
             db.execute('CREATE TABLE IF NOT EXISTS cloud_archives (file_id TEXT PRIMARY KEY,day TEXT,service TEXT,kind TEXT,item TEXT)')
             db.execute('INSERT OR REPLACE INTO cloud_archives VALUES (?,?,?,?,?)',(identifier,day,service,kind,json.dumps(public_item(item))))
+        self._archive_step('완료',100)
         return dict(item=public_item(item),work=saved)
