@@ -46,6 +46,8 @@ class OneDrive:
         self.folder = Path(store.path).with_suffix('.onedrive')
         self.lock = threading.RLock()
         self.pending = {}
+        self._archive_guard = threading.Lock()
+        self._archive_inflight = set()
         self.http = requests.Session()
 
     def _cipher(self):
@@ -800,6 +802,19 @@ class OneDrive:
         path = Path(self.store.path).with_suffix('.generated')/(identifier+'.'+extension)
         if not path.is_file() or not 0 < path.stat().st_size <= MAX_ARCHIVE_FILE:
             raise CloudError('완료 파일을 찾지 못했거나 512MB를 초과합니다.')
+        # Upload may take minutes. A browser refresh/timeout must not start
+        # a second upload of the same approved artifact while the first runs.
+        with self._archive_guard:
+            if identifier in self._archive_inflight:
+                raise CloudError('이 완료본은 아직 OneDrive 업로드 중입니다. 완료될 때까지 기다린 뒤 대상 폴더를 확인하세요.')
+            self._archive_inflight.add(identifier)
+        try:
+            return self._archive_once(day,service,kind,current,identifier,path)
+        finally:
+            with self._archive_guard:
+                self._archive_inflight.discard(identifier)
+
+    def _archive_once(self, day, service, kind, current, identifier, path):
         folder = (self.archive_destination(service, kind, 'in_person')
                   if service == 'friday' and current['data'].get('fridayMode') == 'in_person'
                   else self.archive_destination(service, kind))
