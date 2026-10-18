@@ -92,19 +92,19 @@ def test_archive_browser_separates_prerequisite_from_real_transfer_errors(tmp_pa
     let count=0,failRemote=false;
     const status={textContent:''},button={disabled:false};
     const el=id=>id==='storage-status'?status:id==='cloud-archive-current'?button:null;
-    const state={connected:true,folders:{archive:{id:'chosen'}}};
+    const state={connected:true,shared_archives:{archive_sunday_pdf:{name:'00.주보'}},folders:{archive:{id:'chosen'}}};
     const api=async(action,body)=>{
       if(action!=='archive')throw Error('unexpected request');
       count++;
       if(failRemote)throw Error('HTTP 403');
-      return {item:{id:'remote-id',name:'test.pdf'},
+      return {verified:true,item:{id:'remote-id',name:'test.pdf'},
               work:{data:app.records[k],revision:4}};
     };
     const refresh=async()=>{},key=()=>k,render=()=>{},persistDraft=()=>{},
           syncState=()=>({dirty:false,busy:false,revision:1}),msg=()=>{};
     const archiveCurrent=new Function('state','el','key','app','refresh',
-      'api','syncState','render','persistDraft','msg',part+';return archiveCurrent;')(
-      state,el,key,app,refresh,api,syncState,render,persistDraft,msg);
+      'api','syncState','render','persistDraft','msg','setTargetLink',part+';return archiveCurrent;')(
+      state,el,key,app,refresh,api,syncState,render,persistDraft,msg,()=>{});
     (async()=>{
       let blocked=false;
       try{await archiveCurrent(k,'pdf');}
