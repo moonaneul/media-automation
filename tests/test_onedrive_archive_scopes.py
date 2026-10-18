@@ -70,7 +70,8 @@ def test_archive_retry_reports_failed_prerequisites():
     assert 'state.shared_archives[role]' in chunk
     assert 'state.shared_archive?.enabled||state.folders?.archive||state.folders?.[keyName]' in chunk
     assert 'status.textContent' in chunk
-    assert 'finally{button.disabled=false;}' in chunk
+    assert 'button.disabled=false;' in chunk
+    assert 'if(ticker!==null)clearInterval(ticker)' in chunk
 
 
 def test_archive_browser_separates_prerequisite_from_real_transfer_errors(tmp_path):
