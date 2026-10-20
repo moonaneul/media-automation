@@ -126,6 +126,10 @@ def generate(store, body):
     zoom = service == 'friday' and data.get('fridayMode', 'zoom') == 'zoom'
     order = build_order(body['groups'], fields, service)
     bible = apply_review_receipts(store, resolve(order))
+    # Resolving a chapter address does NOT imply its texts exist in the
+    # private Bible JSON. Expose the first missing verse to the reviewer.
+    bible_errors={key:str(value['error']) for key,value in bible.items()
+                  if isinstance(value,dict) and value.get('error')}
     # Pending units are recorded with source-text fingerprints. A future
     # reviewer may attest them once, and only unchanged copies get reused.
     bible_review_digests={
@@ -328,11 +332,13 @@ def generate(store, body):
             unresolved=unresolved, connections=connections, complete=False, visual_review_pending=True,
             media_playback_review_pending=zoom, reference_layout_applied=reference_applied, background_music=background_music,
             render_configuration=render_configuration(data),
+            bible_errors=bible_errors,
             bible_review_digests=bible_review_digests,
             reused_manual_bible=reused_manual_bible)
         (directory / (identifier + '.json')).write_text(json.dumps(report, ensure_ascii=False))
         return dict(engine_version=BUILD_VERSION, typography_version=SUNDAY_TYPOGRAPHY_VERSION if service in ('sunday', 'wednesday') else FRIDAY_TYPOGRAPHY_VERSION if service == 'friday' else None, file_id=identifier, filename=f"{body['date']}-{service}-검수전.pptx",
             slide_count=len(prs.slides), unresolved=unresolved, complete=False,
+            bible_errors=bible_errors,
             reused_manual_bible=reused_manual_bible, visual_review_pending=True)
     except Exception:
         path.unlink(missing_ok=True)
