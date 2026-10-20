@@ -400,7 +400,7 @@ def make_server(store, port=0, password=None, bind_host="127.0.0.1", public_orig
                 return self.reply(200,{'slide_count':data['slide_count'],'mapping':[
                     {key:item.get(key) for key in ('key','kind','start','end','status')}
                     for item in data.get('mapping',[])], 'unresolved':data.get('unresolved',[]),
-                    'fields':data.get('fields',{}), 'date':data.get('date'),
+                    'fields':data.get('fields',{}), 'bible_errors':data.get('bible_errors',{}), 'date':data.get('date'),
                     'service':data.get('service'), 'connections':data.get('connections',[]),
                     'background_music':data.get('background_music',[]),
                     'complete':False, 'visual_review_pending':True})
