@@ -152,6 +152,7 @@ const CloudMedia=(()=>{
   const result=await api('import-to-slot',{id:itemId,date:day,service,slot});
   return result;
  }
+ let archiveView={purpose:null,id:null};
  async function archives(purpose=null,id=null){
   const root=el('cloud-archive-list');root.replaceChildren(text('p','보관 자료 불러오는 중…','hint'));
   try{
@@ -165,15 +166,22 @@ const CloudMedia=(()=>{
    ].filter(([role])=>configured[role==='archive_friday_zoom'?'archive_friday':role]);
    if(!purposes.length){root.replaceChildren(text('p','미디어팀 공유 OneDrive에서 예배별 완료본 폴더를 연결하세요. 개인 OneDrive의 완료본은 표시하지 않습니다.','empty'));return;}
    const chosen=purposes.some(([key])=>key===purpose)?purpose:purposes[0][0];
+   archiveView={purpose:chosen,id};
    const query='files?purpose='+encodeURIComponent(chosen)+(id?'&id='+encodeURIComponent(id):'');
    const items=(await api(query)).items;
    root.replaceChildren();
    if(purposes.length>1){
-    const chooser=text('div',undefined,'actions');
-    for(const [key,label] of purposes)chooser.append(button(label+(key===chosen?' · 선택됨':''),()=>archives(key)));
+    const chooser=text('div',undefined,'archive-picker');
+    chooser.setAttribute('aria-label','완료본 폴더 선택');
+    for(const [key,label] of purposes){
+     const tab=button(label,()=>archives(key));
+     tab.className='archive-tab'+(key===chosen?' active':'');
+     tab.setAttribute('aria-pressed',String(key===chosen));
+     chooser.append(tab);
+    }
     root.append(chooser);
    }
-   if(id)root.append(button('이전 폴더로',()=>archives(chosen)));
+   if(id){const back=button('← 이전 폴더',()=>archives(chosen));back.className='archive-back';root.append(back);}
    for(const item of items){
     const row=text('div',undefined,'asset-row');row.append(text('strong',item.name));
     if(item.folder)row.append(button('폴더 열기',()=>archives(chosen,item.id)));
@@ -183,7 +191,8 @@ const CloudMedia=(()=>{
      let address;
      try{address=new URL(item.webUrl||'');}catch{}
      if(address?.protocol==='https:'&&/\.((?:live\.com)|(?:1drv\.com)|(?:sharepoint\.com))$/i.test(address.hostname)){
-      const link=text('a','OneDrive에서 열기','cloud-download');
+      const link=text('a','열기 ↗','cloud-download');
+      link.setAttribute('aria-label',item.name+' OneDrive에서 열기');
       link.href=address.href;link.target='_blank';link.rel='noopener noreferrer';row.append(link);
      }
     }
@@ -314,7 +323,7 @@ const CloudMedia=(()=>{
   }
   el('cloud-folder-select').onclick=()=>saveFolder(folderStack.at(-1).id,folderStack.at(-1).name);
   el('cloud-auto-connect').onclick=()=>{if(confirm('OneDrive 전체 원본을 검색하고 정확히 일치하는 자료는 자동으로 연결합니다. 검수와 사용 허락은 별도이며, OneDrive 파일은 삭제하지 않습니다. 계속할까요?'))autoConnect().catch(e=>msg(e.message));};
-  el('cloud-library-search').onclick=sources;el('cloud-archive-refresh').onclick=()=>archives();el('cloud-archive-current').onclick=()=>archiveCurrent().catch(e=>msg(e.beforeUpload?e.message:'완료 표시는 유지됩니다. '+e.message));
+  el('cloud-library-search').onclick=sources;el('cloud-archive-refresh').onclick=()=>archives(archiveView.purpose,archiveView.id);el('cloud-archive-current').onclick=()=>archiveCurrent().catch(e=>msg(e.beforeUpload?e.message:'완료 표시는 유지됩니다. '+e.message));
   el('cloud-verify-current').onclick=async()=>{
    const button=el('cloud-verify-current'),status=el('storage-status');
    const [svc,date]=key().split(':'),kind=app.output;
