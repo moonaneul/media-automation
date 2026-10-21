@@ -27,6 +27,9 @@ def test_worship_web_root_serves_utf8_korean_html_with_no_codepage_dependency(tm
         assert "수요예배" in html
         assert "주보" in html
         assert "__ENGINE_VERSION__" not in html
+        assert "화면 시안입니다" not in html
+        assert "현재는 이 Mac에서 사용합니다" not in html
+        assert "서버에 연결된 입력 내용은 공동 작업 DB에 자동 저장됩니다." in html
     finally:
         server.shutdown()
         server.server_close()
