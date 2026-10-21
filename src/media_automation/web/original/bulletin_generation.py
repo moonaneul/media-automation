@@ -58,7 +58,7 @@ def generate_bulletin(store, body):
     with store.connect() as db:
         db.execute('CREATE TABLE IF NOT EXISTS bulletin_settings (id INTEGER PRIMARY KEY, revision INTEGER, payload TEXT)')
         row = db.execute('SELECT payload FROM bulletin_settings WHERE id=1').fetchone()
-    settings = json.loads(row[0]) if row else json.loads(Path(__file__).with_name('bulletin-base-reference.json').read_text())
+    settings = json.loads(row[0]) if row else json.loads(Path(__file__).with_name('bulletin-base-reference.json').read_text(encoding='utf-8'))
     annual, church = settings['annual'], settings['church']
     worship_leader = default_sunday_leader(fields, church)
     worship_preacher = default_sunday_preacher(fields, church)
@@ -108,7 +108,7 @@ def generate_bulletin(store, body):
         report=dict(layout_version=LAYOUT_VERSION,format='pdf',date=body['date'],service='sunday',fields=data.get('fields',{}),effective_fields=fields,unresolved=unresolved,
             complete=False,visual_review_pending=True,settings=settings,settings_revision=json.loads(row[0]) if row else None,
             derived_defaults=derived_defaults)
-        (directory/(ident+'.json')).write_text(json.dumps(report,ensure_ascii=False))
+        (directory/(ident+'.json')).write_text(json.dumps(report,ensure_ascii=False),encoding='utf-8')
         return dict(engine_version=BUILD_VERSION,layout_version=LAYOUT_VERSION,file_id=ident,format='pdf',filename=body['date']+'-주보-검수전.pdf',
             page_count=2,issue_number=value('확정 주보 호수'),unresolved=unresolved,complete=False,visual_review_pending=True)
     except Exception:
