@@ -66,7 +66,7 @@ def test_any_source_text_change_invalidates_prior_review(tmp_path):
         read_block(file,tmp_path/'none'),['성경 본문:bible_review'])
     store.record_bible_review_receipts(checked,date='2026-10-18',
                                        service='sunday',file_id='a'*32)
-    file.write_text(json.dumps({'요3:16':'검수 기능 시험 문장!'},ensure_ascii=False))
+    file.write_text(json.dumps({'요3:16':'검수 기능 시험 문장!'},ensure_ascii=False),encoding='utf-8')
     later=apply_review_receipts(store,read_block(file,tmp_path/'none'))
     assert later['성경 본문']['text_review_pending'] is True
 
@@ -148,7 +148,7 @@ def test_http_explicit_ppt_approval_records_only_matching_generated_source(
             'bible_review_digests':{'성경 본문':digests}}
     (directory/(ident+'.json')).write_text(json.dumps(report,ensure_ascii=False))
     if source_modified:
-        file.write_text(json.dumps({'요3:16':'조작되거나 수정된 시험 문장'},ensure_ascii=False))
+        file.write_text(json.dumps({'요3:16':'조작되거나 수정된 시험 문장'},ensure_ascii=False),encoding='utf-8')
     server=make_server(store,0)
     worker=threading.Thread(target=server.serve_forever,daemon=True)
     worker.start()
