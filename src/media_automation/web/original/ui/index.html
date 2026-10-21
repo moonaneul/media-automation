@@ -216,6 +216,17 @@ button+button{margin-inline-start:10px}
 .library-management{border-top:1px solid var(--line);margin-top:12px;padding-top:10px}
 .library-management>summary{cursor:pointer;font-size:13px;color:var(--muted)}
 @media(max-width:640px){.library-guide{padding:12px 18px}.library-type-label{flex-wrap:wrap}.library-advanced>summary{padding:12px 18px}}
+/* Archive file browser: show source and actions without redundant descriptions. */
+#archive-page>.panel .panel-head{gap:12px;flex-wrap:wrap}
+#cloud-archive-list{display:grid;gap:0}
+#cloud-archive-list .archive-picker{display:flex;flex-wrap:wrap;gap:8px;margin:0 0 14px}
+#cloud-archive-list .archive-tab{min-height:40px;padding:8px 13px;font-weight:500}
+#cloud-archive-list .archive-tab.active{background:#eef8d9;border-color:#cde7a0;color:#283518;font-weight:700}
+#cloud-archive-list .archive-back{width:fit-content;margin:0 0 10px;min-height:36px;padding:6px 11px}
+#cloud-archive-list .asset-row{min-width:0;padding:16px 12px;gap:12px}
+#cloud-archive-list .asset-row strong{min-width:0;overflow-wrap:anywhere;font-weight:600}
+#cloud-archive-list .asset-row .cloud-download{flex-shrink:0;font-size:14px}
+@media(max-width:640px){#cloud-archive-list .asset-row{flex-wrap:wrap;padding:14px 4px}#cloud-archive-list .asset-row .cloud-download{margin-left:auto}}
 </style>
 <style id="inline-source-picker-css">
 .inline-worship-source{width:100%;margin-top:14px;border-top:1px solid #e4e7ec;padding-top:12px}
@@ -277,7 +288,7 @@ button+button{margin-inline-start:10px}
  <p class="hint">기존 OneDrive 파일을 삭제하거나 이동하지 않습니다. 검수와 사용 허락 확인은 별도입니다.</p></div>
 </details>
 </section>
-<section id="archive-page" hidden><h1>보관 자료</h1><p class="hint">완료된 PPT·주보를 확인하고, 기존 찬양 악보와 영상 원본을 관리하는 곳입니다. 이번 예배에 쓸 파일은 각 찬양 항목에서 직접 검색·선택하세요.</p><div class="panel" style="margin-top:24px"><div class="panel-head"><h2>제작 완료본</h2></div><div class="panel-body"><button id="cloud-archive-refresh">OneDrive 보관 자료 새로고침</button><div id="cloud-archive-list"><p class="empty">설정에서 OneDrive 연결과 완료본 폴더를 지정하세요. 서버의 제작 파일은 이번 주 예배 → 결과에서도 확인할 수 있습니다.</p></div></div></div><section class="panel" style="margin-top:24px"><div class="panel-head"><h2>등록된 찬양 원본 관리</h2></div><div class="panel-body"><p class="hint">보관된 곡과 검수 상태를 관리합니다. 주간 예배에 사용할 악보는 해당 찬양 항목에서 연결하세요.</p><div class="search-row"><input id="archive-source-query" type="search" placeholder="곡명 또는 찬송가 번호" aria-label="보관 원본 검색"><select id="archive-source-kind" aria-label="원본 종류"><option value="score">악보 PPT</option><option value="media">금요 찬양 영상</option><option value="all">전체</option></select><button id="archive-source-search">등록된 원본 검색</button></div><div id="archive-library-manager"></div></div></section></section>
+<section id="archive-page" hidden><h1>보관 자료</h1><div class="panel" style="margin-top:24px"><div class="panel-head"><h2>OneDrive 완료본</h2><button id="cloud-archive-refresh" type="button">새로고침</button></div><div class="panel-body"><div id="cloud-archive-list"><p class="empty">표시할 파일이 없습니다.</p></div></div></div><section class="panel" style="margin-top:24px"><div class="panel-head"><h2>등록된 찬양 원본</h2></div><div class="panel-body"><div class="search-row"><input id="archive-source-query" type="search" placeholder="곡명 또는 찬송가 번호" aria-label="보관 원본 검색"><select id="archive-source-kind" aria-label="원본 종류"><option value="score">악보 PPT</option><option value="media">금요 찬양 영상</option><option value="all">전체</option></select><button id="archive-source-search">등록된 원본 검색</button></div><div id="archive-library-manager"></div></div></section></section>
 <section id="settings-page" hidden>
 <h1>설정</h1><p class="hint">매주 입력하는 내용과 별도로, 계속 사용할 기본값을 관리합니다.</p>
 <div class="settings-grid">
