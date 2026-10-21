@@ -13,8 +13,11 @@ def test_archive_browser_explains_source_in_heading_without_repeated_instruction
     section = html.split('<section id="archive-page" hidden>', 1)[1].split(
         '<section id="settings-page" hidden>', 1
     )[0]
-    assert "<h2>OneDrive 완료본</h2>" in section
+    assert "<h1>찬양 자료실</h1>" in section
+    assert '<details class="panel archive-history" id="archive-history">' in section
+    assert "과거 완료본 · 필요할 때만 열기" in section
     assert 'id="cloud-archive-refresh" type="button">새로고침</button>' in section
+    assert section.index("<h2>등록된 찬양 원본</h2>") < section.index("과거 완료본 · 필요할 때만 열기")
     assert "<h2>등록된 찬양 원본</h2>" in section
     assert "OneDrive 보관 자료 새로고침" not in section
     assert "완료된 PPT·주보를 확인하고" not in section
@@ -32,5 +35,6 @@ def test_archive_listing_stays_remote_and_selected_folder_survives_refresh():
     assert "tab.setAttribute('aria-pressed',String(key===chosen));" in archive_code
     assert "const link=text('a','열기 ↗','cloud-download');" in archive_code
     assert "archives(archiveView.purpose,archiveView.id)" in js
+    assert "if(el('archive-history').open)archives(archiveView.purpose,archiveView.id)" in js
     assert "api('import'" not in archive_code
     assert "api('download'" not in archive_code
