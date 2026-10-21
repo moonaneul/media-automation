@@ -302,7 +302,7 @@ def generate(store, body):
                 if not asset:
                     music=Path(os.environ.get('MEDIA_FRIDAY_MUSIC',str(ROOT/'assets/private/friday_zoom')))
                     manifest=music/'music.json'
-                    config=json.loads(manifest.read_text()) if manifest.is_file() else {}
+                    config=json.loads(manifest.read_text(encoding='utf-8')) if manifest.is_file() else {}
                     entry=config.get(role,{})
                     source=music/entry.get('filename','missing')
                     if entry.get('confirmed') is True and source.is_file() and source.suffix=='.mp3' and source.parent==music:
@@ -335,7 +335,7 @@ def generate(store, body):
             bible_errors=bible_errors,
             bible_review_digests=bible_review_digests,
             reused_manual_bible=reused_manual_bible)
-        (directory / (identifier + '.json')).write_text(json.dumps(report, ensure_ascii=False))
+        (directory / (identifier + '.json')).write_text(json.dumps(report, ensure_ascii=False),encoding='utf-8')
         return dict(engine_version=BUILD_VERSION, typography_version=SUNDAY_TYPOGRAPHY_VERSION if service in ('sunday', 'wednesday') else FRIDAY_TYPOGRAPHY_VERSION if service == 'friday' else None, file_id=identifier, filename=f"{body['date']}-{service}-검수전.pptx",
             slide_count=len(prs.slides), unresolved=unresolved, complete=False,
             bible_errors=bible_errors,
