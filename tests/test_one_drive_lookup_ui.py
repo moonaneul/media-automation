@@ -21,7 +21,7 @@ def test_navigating_library_never_triggers_mutating_auto_connect():
     js = (UI / 'onedrive.js').read_text()
     assert 'const query=el(\'library-search\').value.trim();if(!query)' in js
     assert 'if(b.dataset.page===\'library\')refresh()' in js
-    assert "else if(e.target.value==='library')refresh()" in js
+    assert "if(e.target.value==='library')refresh()" in js
     assert "if(confirm('OneDrive 전체 원본을 검색하고" in js
     assert "if(b.dataset.page==='library')autoConnect()" not in js
     assert "else if(e.target.value==='library')autoConnect()" not in js
