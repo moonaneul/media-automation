@@ -407,3 +407,30 @@ def test_auto_connect_still_links_existing_song_score(cloud, monkeypatch):
     result = cloud.auto_connect()
     assert result['linked'] == 1
     importer.assert_called_once_with('song', song['id'])
+
+
+@pytest.mark.parametrize('microsoft_result,explanation', [
+    ({'error':'invalid_client','error_description':'AADSTS7000215: PRIVATE-DIAGNOSTIC'}, '비밀 값(Value)'),
+    ({'error':'invalid_client','error_description':'AADSTS7000222: PRIVATE-DIAGNOSTIC'}, '비밀이 만료'),
+    ({'error':'invalid_request','error_description':'AADSTS50011: PRIVATE-DIAGNOSTIC'}, 'Web 반환 주소'),
+    ({'error':'access_denied','error_description':'PRIVATE-DIAGNOSTIC'}, '권한 승인'),
+    ({'error':'invalid_grant','error_description':'PRIVATE-DIAGNOSTIC'}, '로그인 코드'),
+    ({'error':'unauthorized_client','error_description':'PRIVATE-DIAGNOSTIC'}, '계정 유형'),
+    ({'error':'unknown_type','error_description':'PRIVATE-DIAGNOSTIC'}, '로그인이 완료되지'),
+])
+def test_oauth_failure_gives_safe_specific_guidance_without_disclosing_microsoft_response(
+    cloud, monkeypatch, microsoft_result, explanation
+):
+    prepare(cloud)
+    app, cache = fake_app()
+    app.acquire_token_by_auth_code_flow.return_value = microsoft_result
+    monkeypatch.setattr(cloud, '_app', lambda _: (app, cache))
+    cloud.begin('http://localhost:8769', 'browser-binding', 'server-session')
+    with pytest.raises(CloudError) as rejected:
+        cloud.finish({'state':'one-time-state','code':'PRIVATE-AUTH-CODE'},
+                     'browser-binding',lambda s:s=='server-session')
+    assert explanation in str(rejected.value)
+    assert 'PRIVATE-' not in str(rejected.value)
+    assert 'AADSTS' not in str(rejected.value)
+    assert 'cache' not in cloud._read()
+    assert cloud.pending == {}
