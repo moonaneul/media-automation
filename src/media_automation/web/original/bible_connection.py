@@ -43,7 +43,7 @@ def resolve(order, source_dir=None, provided_file=None):
     raw=json.loads(provided_file.read_text(encoding='utf-8-sig')) if use_provided and provided_file.is_file() else {}
     checked={}
     for path in sorted(source_dir.glob('*.yaml')):
-        source=yaml.safe_load(path.read_text())
+        source=yaml.safe_load(path.read_text(encoding='utf-8-sig'))
         if source.get('translation')!='개역개정' or source.get('validated') is not True:continue
         for passage in source.get('passages',{}).values():
             from media_automation.bible.json_source import parse_reference
