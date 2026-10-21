@@ -187,7 +187,26 @@ class OneDrive:
             app, cache = self._app({k:v for k,v in data.items() if k != 'cache'})
             result = app.acquire_token_by_auth_code_flow(attempt['flow'], query)
             if not result.get('access_token'):
-                raise CloudError('Microsoft 로그인이 완료되지 않았습니다. 반환 주소·비밀 만료일·권한 승인을 확인하세요.')
+                # Microsoft often returns an OAuth error without a token.
+                # Map only known error categories to safe guidance. Never echo
+                # error_description, auth codes, tokens, client secrets, or URLs.
+                oauth_error = str(result.get('error', ''))
+                description = str(result.get('error_description', ''))
+                if 'AADSTS7000222' in description:
+                    message = 'Microsoft 앱의 클라이언트 비밀이 만료됐습니다. 새 비밀의 Value를 서버 설정에 저장하고 다시 로그인하세요.'
+                elif 'AADSTS7000215' in description or oauth_error == 'invalid_client':
+                    message = 'Microsoft 앱의 클라이언트 ID와 비밀 값(Value)을 확인하세요. 비밀 ID는 사용할 수 없으며 만료 여부도 확인해야 합니다.'
+                elif 'AADSTS50011' in description:
+                    message = 'Microsoft 앱의 Web 반환 주소와 화면에 표시된 localhost 반환 주소가 일치하는지 확인하세요.'
+                elif oauth_error == 'access_denied':
+                    message = 'Microsoft 계정에서 앱 권한 승인이 거부되거나 취소됐습니다. 권한 동의 후 다시 로그인하세요.'
+                elif oauth_error == 'invalid_grant':
+                    message = 'Microsoft 로그인 코드가 만료됐거나 이미 사용됐습니다. OneDrive 연결 버튼에서 새 로그인을 시작하세요.'
+                elif oauth_error in ('unauthorized_client', 'invalid_request'):
+                    message = 'Microsoft 앱의 계정 유형, Web 반환 주소 및 권한 설정을 확인하세요.'
+                else:
+                    message = 'Microsoft 로그인이 완료되지 않았습니다. 반환 주소·비밀 만료일·권한 승인을 확인하세요.'
+                raise CloudError(message)
             accounts = app.get_accounts()
             if not accounts:
                 raise CloudError('로그인한 계정을 확인하지 못했습니다.')
