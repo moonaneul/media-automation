@@ -365,8 +365,8 @@ const CloudMedia=(()=>{
   };
   el('library-search').addEventListener('input',()=>{if(!el('cloud-library-tools').open||!state?.connected||!state.folders.source)return;clearTimeout(searchTimer);searchTimer=setTimeout(sources,600);});
   window.addEventListener('focus',refresh);
-  document.querySelectorAll('[data-page]').forEach(b=>b.addEventListener('click',()=>{if(b.dataset.page==='settings'||b.dataset.page==='library')refresh();}));
-  el('mobile-page').addEventListener('change',e=>{refresh();});
+  document.querySelectorAll('[data-page]').forEach(b=>b.addEventListener('click',()=>{if(b.dataset.page==='settings')refresh();if(b.dataset.page==='library')refresh();}));
+  el('mobile-page').addEventListener('change',e=>{if(e.target.value==='library')refresh();else refresh();});
   const connectionReturn=new URLSearchParams(location.search).get('onedrive');
   if(['connected','setup'].includes(connectionReturn)){
    history.replaceState(null,'','/');
