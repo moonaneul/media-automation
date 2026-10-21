@@ -323,7 +323,8 @@ const CloudMedia=(()=>{
   }
   el('cloud-folder-select').onclick=()=>saveFolder(folderStack.at(-1).id,folderStack.at(-1).name);
   el('cloud-auto-connect').onclick=()=>{if(confirm('OneDrive 전체 원본을 검색하고 정확히 일치하는 자료는 자동으로 연결합니다. 검수와 사용 허락은 별도이며, OneDrive 파일은 삭제하지 않습니다. 계속할까요?'))autoConnect().catch(e=>msg(e.message));};
-  el('cloud-library-search').onclick=sources;el('cloud-archive-refresh').onclick=()=>archives(archiveView.purpose,archiveView.id);el('cloud-archive-current').onclick=()=>archiveCurrent().catch(e=>msg(e.beforeUpload?e.message:'완료 표시는 유지됩니다. '+e.message));
+  el('cloud-library-search').onclick=sources;el('cloud-archive-refresh').onclick=()=>archives(archiveView.purpose,archiveView.id);
+  el('archive-history').addEventListener('toggle',()=>{if(el('archive-history').open)archives(archiveView.purpose,archiveView.id);});el('cloud-archive-current').onclick=()=>archiveCurrent().catch(e=>msg(e.beforeUpload?e.message:'완료 표시는 유지됩니다. '+e.message));
   el('cloud-verify-current').onclick=async()=>{
    const button=el('cloud-verify-current'),status=el('storage-status');
    const [svc,date]=key().split(':'),kind=app.output;
@@ -364,8 +365,8 @@ const CloudMedia=(()=>{
   };
   el('library-search').addEventListener('input',()=>{if(!el('cloud-library-tools').open||!state?.connected||!state.folders.source)return;clearTimeout(searchTimer);searchTimer=setTimeout(sources,600);});
   window.addEventListener('focus',refresh);
-  document.querySelectorAll('[data-page]').forEach(b=>b.addEventListener('click',()=>{if(b.dataset.page==='settings')refresh();if(b.dataset.page==='library')refresh();if(b.dataset.page==='archive')archives();}));
-  el('mobile-page').addEventListener('change',e=>{if(e.target.value==='archive')archives();else if(e.target.value==='library')refresh();else refresh();});
+  document.querySelectorAll('[data-page]').forEach(b=>b.addEventListener('click',()=>{if(b.dataset.page==='settings')refresh();if(b.dataset.page==='library')refresh();// Historical output browsing is opt-in, not an automatic folder scan.}));
+  el('mobile-page').addEventListener('change',e=>{refresh();});
   const connectionReturn=new URLSearchParams(location.search).get('onedrive');
   if(['connected','setup'].includes(connectionReturn)){
    history.replaceState(null,'','/');
