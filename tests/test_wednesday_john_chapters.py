@@ -75,7 +75,7 @@ def test_unsupported_chapter_cannot_guess_json_last_verse(tmp_path):
 
 def test_actual_wednesday_generation_has_one_slide_per_verse(tmp_path,monkeypatch):
     file=tmp_path/'provided.json'
-    file.write_text(json.dumps(synthetic_json(),ensure_ascii=False))
+    file.write_text(json.dumps(synthetic_json(),ensure_ascii=False),encoding='utf-8')
     monkeypatch.setenv('MEDIA_BIBLE_FILE',str(file))
     monkeypatch.setenv('MEDIA_BIBLE_SOURCES',str(tmp_path/'empty'))
     monkeypatch.setenv('MEDIA_WORSHIP_TEMPLATES',str(tmp_path/'templates'))
@@ -102,7 +102,7 @@ def test_actual_wednesday_generation_has_one_slide_per_verse(tmp_path,monkeypatc
 
 def test_missing_verse_yields_useful_production_report_and_no_partial_text(tmp_path,monkeypatch):
     file=tmp_path/'provided.json'
-    file.write_text(json.dumps(synthetic_json(missing='요2:25'),ensure_ascii=False))
+    file.write_text(json.dumps(synthetic_json(missing='요2:25'),ensure_ascii=False),encoding='utf-8')
     monkeypatch.setenv('MEDIA_BIBLE_FILE',str(file))
     monkeypatch.setenv('MEDIA_BIBLE_SOURCES',str(tmp_path/'empty'))
     monkeypatch.setenv('MEDIA_WORSHIP_TEMPLATES',str(tmp_path/'templates'))
