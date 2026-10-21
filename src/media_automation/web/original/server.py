@@ -88,7 +88,7 @@ def make_server(store, port=0, password=None, bind_host="127.0.0.1", public_orig
                 return self.reply(403, {'error':'접속 주소를 확인하세요.'})
             parsed = urlsplit(self.path)
             if self.command == 'GET' and parsed.path in ('/', '/index.html'):
-                html=(UI / 'index.html').read_text()
+                html=(UI / 'index.html').read_text(encoding='utf-8')
                 for marker,version in {'__ENGINE_VERSION__':BUILD_VERSION,'__SUNDAY_VERSION__':UI_SUNDAY_VERSION,'__FRIDAY_VERSION__':UI_FRIDAY_VERSION,'__BULLETIN_VERSION__':UI_BULLETIN_VERSION}.items():html=html.replace(marker,version)
                 if hosted is not None:
                     html=html.replace('</body>', '<script src="/cloud-runtime.js"></script></body>')
@@ -223,7 +223,7 @@ def make_server(store, port=0, password=None, bind_host="127.0.0.1", public_orig
                         db.execute('BEGIN IMMEDIATE')
                         row=db.execute('SELECT revision,payload FROM bulletin_settings WHERE id=1').fetchone()
                         revision=row[0] if row else 0
-                        data=json.loads(row[1]) if row else json.loads((UI.parent/'bulletin-base-reference.json').read_text())
+                        data=json.loads(row[1]) if row else json.loads((UI.parent/'bulletin-base-reference.json').read_text(encoding='utf-8'))
                         if self.command=='GET':return self.reply(200,{'revision':revision,'data':data})
                         size=int(self.headers.get('Content-Length','-1'))
                         if self.command!='POST' or self.headers.get('Content-Type')!='application/json' or not 0<size<=9*1024*1024:raise ValueError()
@@ -254,7 +254,7 @@ def make_server(store, port=0, password=None, bind_host="127.0.0.1", public_orig
                             if len(identifier)!=32 or any(c not in '0123456789abcdef' for c in identifier):continue
                             report_path=Path(store.path).with_suffix('.generated')/(identifier+'.json')
                             if not report_path.is_file():continue
-                            report=json.loads(report_path.read_text())
+                            report=json.loads(report_path.read_text(encoding='utf-8'))
                             if report.get('settings')==data:continue
                             output['changed']=True
                             db.execute("UPDATE works SET revision=?,payload=? WHERE date=? AND service='sunday'",(work_revision+1,json.dumps(work,ensure_ascii=False),day))
@@ -396,7 +396,7 @@ def make_server(store, port=0, password=None, bind_host="127.0.0.1", public_orig
                 report=directory/(identifier+'.json')
                 if not report.is_file() or not (directory/(identifier+'.pptx')).is_file():
                     return self.reply(404,{'error':'PPT 제작 결과를 찾지 못했습니다.'})
-                data=json.loads(report.read_text())
+                data=json.loads(report.read_text(encoding='utf-8'))
                 return self.reply(200,{'slide_count':data['slide_count'],'mapping':[
                     {key:item.get(key) for key in ('key','kind','start','end','status')}
                     for item in data.get('mapping',[])], 'unresolved':data.get('unresolved',[]),
@@ -454,7 +454,7 @@ def make_server(store, port=0, password=None, bind_host="127.0.0.1", public_orig
                     identifier=body['file_id']
                     if len(identifier)!=32 or any(c not in '0123456789abcdef' for c in identifier):raise ValueError()
                     directory=Path(store.path).with_suffix('.generated')
-                    report=json.loads((directory/(identifier+'.json')).read_text())
+                    report=json.loads((directory/(identifier+'.json')).read_text(encoding='utf-8'))
                     current=store.get(body['date'],body['service'])
                     if report.get('date')!=body['date'] or report.get('service')!=body['service']:raise ValueError()
                     if report['fields']!=current['data']['fields']:
@@ -473,7 +473,7 @@ def make_server(store, port=0, password=None, bind_host="127.0.0.1", public_orig
                             raise BulletinReviewBlocked('생성된 주보 PDF 파일이 없습니다. PDF를 다시 제작해 주세요.')
                         with store.connect() as db:
                             row=db.execute('SELECT payload FROM bulletin_settings WHERE id=1').fetchone()
-                        settings=json.loads(row[0]) if row else json.loads((UI.parent/'bulletin-base-reference.json').read_text())
+                        settings=json.loads(row[0]) if row else json.loads((UI.parent/'bulletin-base-reference.json').read_text(encoding='utf-8'))
                         if report.get('settings')!=settings:
                             raise BulletinReviewBlocked('주보 기본 설정이 PDF 제작 후 변경되었습니다. PDF를 다시 제작해 주세요.')
                     else:
