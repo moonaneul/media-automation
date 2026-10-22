@@ -215,7 +215,7 @@ def main() -> int:
     if args.json:
         print(json.dumps(state, ensure_ascii=False, indent=2))
     else:
-        print("WORKSPACE SPLIT — READ ONLY")
+        print("WORKSPACE SPLIT - READ ONLY")
         print("branch:", state["git"]["branch"])
         print("commit:", state["git"]["head_sha"][:12])
         print("local changes:", state["git"]["has_local_changes"],
