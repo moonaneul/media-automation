@@ -29,8 +29,8 @@ const CloudMedia=(()=>{
   const r=await fetch('/api/onedrive/'+action,init);
   // A static, UI-only preview serves an HTML 404 page instead of the API.
   // Never expose the raw JSON parser exception to church media volunteers.
-  const contentType=(r.headers.get('content-type')||'').toLowerCase();
-  if(!contentType.includes('json')){
+  const contentType=(r.headers?.get?.('content-type')||'').toLowerCase();
+  if(contentType && !contentType.includes('json')){
    throw Error('디자인 미리보기에서는 OneDrive 연결과 저장을 사용할 수 없습니다. 실제 제작실에서 확인하세요.');
   }
   let data;
