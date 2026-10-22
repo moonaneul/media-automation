@@ -48,7 +48,9 @@ def _git(root: Path, *args: str, check: bool = True) -> bytes:
 
 
 def _is_sensitive(path: str) -> bool:
-    cleaned = path.replace("\\", "/").lstrip("./")
+    cleaned = path.replace("\\", "/")
+    if cleaned.startswith("./"):
+        cleaned = cleaned[2:]
     return (
         cleaned.startswith(PRIVATE_PREFIXES)
         or cleaned == ".env"
