@@ -1,4 +1,4 @@
-## 2026-10-22 격리된 UI 전용 Cloud Run 프리뷰 (사용자 실행)
+> **2026-10-22 UI 미리보기 후속 개발:** 금요 진행 방식 버튼형 전환, OneDrive 미리보기 한국어 안내, 비공개 UI 프리뷰 전용 정적 이미지 및 GitHub Actions 조건부 자동배포 절차는 [ui_preview_auto_sync_20261022.md](ui_preview_auto_sync_20261022.md)를 참고. 기존 `sha256:ac748f...` 이미지는 이번 후속 UI 수정을 포함하지 않으므로 새 미리보기 검수에는 다시 빌드해야 한다. 작업 브랜치 코드는 수정되었으나 GitHub OIDC 설정/자동 배포 성공은 확인되지 않았다. 운영 웹·Job은 그대로 둔다.\n\n## 2026-10-22 격리된 UI 전용 Cloud Run 프리뷰 (사용자 실행)
 
 - 서비스 계정 `media-ui-preview-1022@church-media-511519.iam.gserviceaccount.com` 새로 생성. 별도의 Secret Manager 역할을 부여하지 않음.
 - **비공개 서비스** `media-ui-preview-1022`, 리비전 `media-ui-preview-1022-00001-9qz` 배포 성공. URL `https://media-ui-preview-1022-626807737784.asia-northeast3.run.app`.
