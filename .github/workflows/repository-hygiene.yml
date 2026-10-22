@@ -1,0 +1,50 @@
+name: Repository Layout and Weekly CLI
+
+on:
+  push:
+    branches: [fix/ui-workflow-20261015]
+    paths:
+      - "wednesday.py"
+      - "friday.py"
+      - "sunday.py"
+      - "src/media_automation/weekly_cli.py"
+      - "scripts/audit_repository_layout.py"
+      - "tests/test_weekly_cli_shared.py"
+      - "tests/test_repository_layout.py"
+      - "tests/test_friday_cli.py"
+      - "docs/repository_layout_20261022.md"
+      - ".github/workflows/repository-hygiene.yml"
+  workflow_dispatch:
+
+# Test-only job: no cloud auth, OIDC, application secrets or deployments.
+permissions:
+  contents: read
+
+concurrency:
+  group: repository-hygiene
+  cancel-in-progress: true
+
+jobs:
+  check:
+    name: Read-only layout and legacy CLI compatibility
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    env:
+      PYTHONDONTWRITEBYTECODE: '1'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+      - name: Install tests
+        run: python -m pip install -e '.[dev]'
+      - name: Confirm no tracked private files and no lost entrypoint
+        run: python scripts/audit_repository_layout.py --check
+      - name: Keep Wednesday, Friday and Sunday command compatibility
+        run: |
+          python -m pytest -q --tb=short \
+            tests/test_weekly_cli_shared.py \
+            tests/test_repository_layout.py \
+            tests/test_friday_cli.py \
+            tests/test_bulletin_cli.py
