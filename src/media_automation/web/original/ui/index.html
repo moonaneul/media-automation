@@ -244,6 +244,17 @@ button+button{margin-inline-start:10px}
 #shared-archive-config .shared-role-row .cloud-folder-info{width:100%}
 @media(max-width:860px){#archive-page .search-row{grid-template-columns:minmax(0,1fr) 170px}#archive-page .search-row button{grid-column:1/-1;justify-self:start}}
 @media(max-width:560px){#archive-page .search-row{grid-template-columns:minmax(0,1fr)}#archive-page .search-row button{width:100%}.cloud-advanced{padding:0 12px}#shared-archive-config .panel-body{padding:12px}}
+/* Production-first responsive safeguards: preserve JS-mounted elements and cloud configuration. */
+html,body{max-width:100%;overflow-x:clip}
+.shell,.workspace,.panel,.panel-body,.settings-grid,.settings-grid>.panel,.columns,.actions,.result-top{min-width:0}
+.panel-body input,.panel-body textarea,.panel-body select{max-width:100%}
+.cloud-folder-info,.cloud-folder-value,.status,.hint{overflow-wrap:anywhere}
+#settings-page .settings-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+#settings-page .settings-grid>.panel{min-width:0}
+#shared-archive-config .cloud-folder-row{flex-wrap:wrap}
+#shared-archive-config .cloud-folder-row>*{min-width:0}
+@media(max-width:960px){#settings-page .settings-grid{grid-template-columns:minmax(0,1fr)}}
+@media(max-width:640px){.settings-heading,.panel-head,.result-top{flex-wrap:wrap;min-width:0}.cloud-folder-row,.shared-role-row{min-width:0}.actions{flex-wrap:wrap}.actions>button{max-width:100%;min-width:0}#archive-page .search-row{grid-template-columns:minmax(0,1fr)}}
 </style>
 <style id="inline-source-picker-css">
 .inline-worship-source{width:100%;margin-top:14px;border-top:1px solid #e4e7ec;padding-top:12px}
@@ -307,7 +318,7 @@ button+button{margin-inline-start:10px}
 </section>
 <section id="archive-page" hidden><h1>찬양 자료실</h1>
 <section class="panel" style="margin-top:24px"><div class="panel-head"><h2>등록된 찬양 원본</h2></div><div class="panel-body"><div class="search-row"><input id="archive-source-query" type="search" placeholder="곡명 또는 찬송가 번호" aria-label="등록된 원본 검색"><select id="archive-source-kind" aria-label="원본 종류"><option value="score">악보 PPT</option><option value="media">금요 찬양 영상</option><option value="all">전체</option></select><button id="archive-source-search">검색</button></div><div id="archive-library-manager"></div></div></section>
-<details class="panel archive-history" id="archive-history"><summary>과거 완료본 · 필요할 때만 열기</summary><div class="panel-body"><button id="cloud-archive-refresh" type="button">새로고침</button><div id="cloud-archive-list"><p class="empty">과거 완료본은 OneDrive에서 직접 확인할 수 있습니다.</p></div></div></details>
+<details class="panel archive-history" id="archive-history" hidden><summary>과거 완료본 · 필요할 때만 열기</summary><div class="panel-body"><button id="cloud-archive-refresh" type="button">새로고침</button><div id="cloud-archive-list"><p class="empty">과거 완료본은 OneDrive에서 직접 확인할 수 있습니다.</p></div></div></details>
 </section>
 <section id="settings-page" hidden>
 <h1>설정</h1><p class="hint">매주 입력하는 내용과 별도로, 계속 사용할 기본값을 관리합니다.</p>
