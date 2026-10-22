@@ -1,0 +1,64 @@
+name: Offline Real Media Rendering
+
+on:
+  push:
+    branches: [fix/ui-workflow-20261015]
+    paths:
+      - tests/test_isolated_real_rendering.py
+      - src/media_automation/web/original/generation.py
+      - src/media_automation/web/original/bulletin_generation.py
+      - src/media_automation/bulletin/original_design.py
+      - src/media_automation/ppt/**
+      - src/media_automation/web/pptx_preview.py
+      - .github/workflows/offline-real-rendering.yml
+  workflow_dispatch:
+
+# This job has NO GCP OIDC token, API credentials, Supabase, OneDrive or prod IAM.
+permissions:
+  contents: read
+
+concurrency:
+  group: offline-real-media-rendering
+  cancel-in-progress: true
+
+jobs:
+  render:
+    name: Real local generators + native PDF previews (synthetic only)
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    env:
+      PYTHONDONTWRITEBYTECODE: '1'
+      MEDIA_GCP_PROJECT: offline-fixture-no-real-project
+      STAGING_SMOKE_OUTPUT_DIR: ${{ runner.temp }}/synthetic-previews
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+      - name: Verify isolated environment
+        run: |
+          test -z "${GOOGLE_APPLICATION_CREDENTIALS:-}"
+          test -z "${MEDIA_SUPABASE_URL:-}"
+          test -z "${MEDIA_SUPABASE_PUBLISHABLE_KEY:-}"
+          test -z "${MEDIA_JOB_ID:-}"
+          test -z "${MEDIA_WORKER_RESOURCE:-}"
+      - name: Install isolated document renderer and Korean test fonts
+        run: |
+          sudo apt-get update -qq
+          sudo DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends libreoffice-impress fonts-nanum
+          which soffice
+          test -f /usr/share/fonts/truetype/nanum/NanumGothic.ttf
+      - name: Install offline generation test dependencies
+        run: python -m pip install -e '.[dev]'
+      - name: Render actual PPTX and PDF outputs using only synthetic assets
+        run: |
+          python -m pytest -q --tb=short tests/test_isolated_real_rendering.py
+      - name: Upload short-lived synthetic preview thumbnails for human review
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: synthetic-rendered-thumbnails-not-for-worship
+          path: ${{ runner.temp }}/synthetic-previews/*.png
+          if-no-files-found: ignore
+          retention-days: 2
