@@ -23,7 +23,22 @@ const CloudMedia=(()=>{
  }
 
  const text=(tag,value,cls)=>{const n=document.createElement(tag);if(value!==undefined)n.textContent=value;if(cls)n.className=cls;return n;};
- async function api(action,body,options={}){const init=body===undefined?{}:{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)};if(options.signal)init.signal=options.signal;const r=await fetch('/api/onedrive/'+action,init);const data=await r.json();if(!r.ok)throw Error(data.error||'OneDrive 요청 실패');return data;}
+ async function api(action,body,options={}){
+  const init=body===undefined?{}:{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)};
+  if(options.signal)init.signal=options.signal;
+  const r=await fetch('/api/onedrive/'+action,init);
+  // A static, UI-only preview serves an HTML 404 page instead of the API.
+  // Never expose the raw JSON parser exception to church media volunteers.
+  const contentType=(r.headers.get('content-type')||'').toLowerCase();
+  if(!contentType.includes('json')){
+   throw Error('디자인 미리보기에서는 OneDrive 연결과 저장을 사용할 수 없습니다. 실제 제작실에서 확인하세요.');
+  }
+  let data;
+  try{data=await r.json();}
+  catch{throw Error('OneDrive 서버의 응답을 읽지 못했습니다. 잠시 후 다시 시도해 주세요.');}
+  if(!r.ok)throw Error(data?.error||'OneDrive 요청에 실패했습니다. 연결 상태를 확인해 주세요.');
+  return data;
+ }
  function button(label,action){const b=text('button',label);b.onclick=async()=>{b.disabled=true;try{await action();}catch(e){msg(e.message);}finally{b.disabled=false;}};return b;}
  async function refresh(strict=false){
   try{state=await api('status');}catch(e){state=null;el('cloud-status').textContent=e.message;if(strict)throw e;return;}
