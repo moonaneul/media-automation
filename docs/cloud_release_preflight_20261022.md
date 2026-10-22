@@ -1,3 +1,12 @@
+## 2026-10-22 운영 서비스 실행 정보 조회
+
+- 실측 실행 계정: `media-web@church-media-511519.iam.gserviceaccount.com`.
+- 설정된 **환경변수 이름만** 확인: `MEDIA_GCP_PROJECT`, `MEDIA_PUBLIC_ORIGIN`, `MEDIA_SUPABASE_PUBLISHABLE_KEY`, `MEDIA_SUPABASE_URL`, `MEDIA_WORKER_RESOURCE`. 직접 저장한 비밀키를 환경변수로 출력하지 않았다.
+- 실제 운영 웹 이미지: `runtime-hosted@sha256:31b6839e918a8e75636d19bd86376a4515614f4a0d3a4e91e92bf3b029fe3be5` (변경 없음).
+- 중요: 이미지의 `runtime_connection()`은 환경변수에 직접 표시되지 않는 **Secret Manager**의 `church-media-supabase`, `church-media-onedrive-key`를 읽는다. 환경변수 목록에 비밀이 없다는 사실로 새 서비스가 데이터에서 격리되었다고 판단할 수 없다.
+- 다음 안전 단계는 기존 이미지의 프론트엔드 자산만 사용하여 **개별 IAM 비공개·무권한 서비스 계정·API 부재** 형태의 UI 미리보기 검증이다. 이 UI-only 서비스는 저장/제작/로그인을 테스트하지 않으며, 독립 Supabase/OneDrive 테스트 환경이 준비되기 전까지 통합 스테이징으로 부르지 않는다.
+
+
 # 클라우드 통합 배포 전 읽기 전용 점검 (2026-10-22)
 
 ## 범위 및 현재 상태
