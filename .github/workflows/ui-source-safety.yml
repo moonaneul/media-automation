@@ -31,6 +31,8 @@ jobs:
             tests/test_cloud_source_classification.py \
             tests/test_cloud_catalog_audit.py \
             tests/test_one_drive_lookup_ui.py \
+            tests/test_production_first_ui.py \
+            tests/test_archive_browser_minimal_ui.py \
             tests/test_original_roles.py \
             tests/test_onedrive.py \
             tests/test_reclassify_non_song_catalog.py \
