@@ -93,3 +93,37 @@ Cloud Run에 새 이미지가 배포됐다고 해도 Supabase 팀원 로그인 �
 5. Mac 로컬 입력/검수 기록과 Supabase가 달라지지 않았는지 읽기 전용 비교 후 승인된 전환
 
 **현 단계에서는 기존 Mac 8876과 원본/DB를 보존하고 PR #14/#15를 병합하거나 운영 서비스를 갱신하지 않는다.**
+
+## 5. 소스 최소화 이미지 빌드 (운영 배포 전, Cloud Shell)
+
+> 승인된 별도 빌드 실행에만 사용. **Cloud Build와 Artifact Registry는 사용량에 따라 비용이 발생할 수 있다.** 빌드가 끝나도 Cloud Run 웹/Job 리비전과 트래픽은 변경하지 않는다.
+
+아래는 전체 로컬 폴더·`output/`·`sources/`·DB·토큰을 클라우드에 보내지 않는다. GitHub의 추적된 `pyproject.toml`, `src/`, `deploy/cloud/Dockerfile.runtime`만 최소 빌드 컨텍스트로 만든다. 새 임시 폴더를 사용해 기존 체크아웃을 수정하지 않는다.
+
+```bash
+set -o pipefail
+BUILD_ROOT="$(mktemp -d)"
+mkdir -p "$BUILD_ROOT/context"
+GIT_LFS_SKIP_SMUDGE=1 git clone --depth 1 --single-branch \
+  --branch fix/ui-workflow-20261015 \
+  https://github.com/moonaneul/media-automation.git "$BUILD_ROOT/repo"
+git -C "$BUILD_ROOT/repo" archive HEAD \
+  pyproject.toml src deploy/cloud/Dockerfile.runtime | \
+  tar -xf - -C "$BUILD_ROOT/context"
+cp "$BUILD_ROOT/context/deploy/cloud/Dockerfile.runtime" "$BUILD_ROOT/context/Dockerfile"
+SOURCE_SHA="$(git -C "$BUILD_ROOT/repo" rev-parse HEAD)"
+IMAGE_TAG="asia-northeast3-docker.pkg.dev/church-media-511519/church-media/runtime-hosted:review-${SOURCE_SHA:0:12}"
+printf 'Source SHA: %s\nBuild context: %s\nImage tag: %s\n' "$SOURCE_SHA" "$BUILD_ROOT/context" "$IMAGE_TAG"
+du -sh "$BUILD_ROOT/context"
+```
+
+컨텍스트 목록·커밋·이미지 태그가 올바른지 확인한 뒤에만 다음 빌드를 실행한다.
+
+```bash
+gcloud builds submit "$BUILD_ROOT/context" \
+  --project=church-media-511519 --region=asia-northeast3 \
+  --tag "$IMAGE_TAG"
+```
+
+성공하면 이미지 digest로 고정하여 검수한다. **그 뒤에도 `deploy/cloud/deploy-runtime.sh`는 실행하지 않는다.** 특히 태그별 검수 URL은 앱의 단일 `MEDIA_PUBLIC_ORIGIN` 검사 때문에 403이 날 수 있으므로 안전하게 검수할 별도 호스트와 검수 DB/권한을 준비하기 전까지 실제 사용자 트래픽을 변경하지 않는다.
+
