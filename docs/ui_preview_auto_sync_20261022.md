@@ -1,3 +1,5 @@
+> **OIDC 최소 권한 설치 안내(2026-10-22):** [github_ui_preview_wif_setup_20261022.md](github_ui_preview_wif_setup_20261022.md). Cloud Shell에서 GitHub용 Pool/Provider는 이미 생성됐고 Provider는 ACTIVE이지만, 새 배포 계정·전용 이미지 저장소·IAM 연결·GitHub variables는 아직 미확인. GitHub Actions 배포는 **Cloud Build 프로젝트 권한을 사용하지 않고** 독립된 `media-ui-preview` 저장소에 정적 UI 이미지만 직접 빌드·push하도록 수정됐다. 기존 운영 리소스는 유지한다.
+
 # UI 미리보기 자동 갱신 및 운영 보호 (2026-10-22)
 
 ## 목적
@@ -15,7 +17,7 @@ GitHub 검수 브랜치 `fix/ui-workflow-20261015`에서 UI를 수정하면 회�
 - `.github/workflows/ui-preview-sync.yml`은 검수 브랜치의 UI 파일·미리보기 Dockerfile·관련 테스트가 바뀌면 자동 실행되며, 회귀 테스트 후 미리보기 소스 아티팩트를 남기도록 작성했다.
 - **Google Cloud 자동 배포는 현재 연결 검증 전이다.** 배포 Job은 GitHub Actions repository variables `MEDIA_PREVIEW_WIF_PROVIDER`, `MEDIA_PREVIEW_DEPLOYER_SA`가 모두 설정된 경우에만 작동하게 제한했다. 두 변수가 없으면 자동 테스트/아티팩트 단계만 진행하고, 클라우드 배포는 건너뛴다.
 - Workload Identity Federation을 사용할 때는 비밀 서비스 계정 키를 GitHub에 저장하지 않는다. GCP에서 **정확한 GitHub 저장소 + `fix/ui-workflow-20261015` 브랜치 + 해당 workflow만** 허용하도록 provider attribute condition을 제한한다.
-- 배포용 서비스 계정은 미리보기 Cloud Run 서비스 업데이트, 해당 저장소에 미리보기 이미지 빌드/쓰기, `media-ui-preview-1022` 실행 계정 impersonation에 필요한 최소 역할만 승인한다. `roles/owner`, 프로젝트 전체 `roles/run.admin`, Secret Manager 읽기, 프로덕션 웹·Job 변경 권한은 부여하지 않는다. 실제 필요한 Cloud Build/Storage/Artifact Registry 권한은 설정 전 GCP에서 검토한다.
+- 배포용 서비스 계정은 미리보기 Cloud Run 서비스 업데이트, 해당 저장소에 미리보기 이미지 빌드/쓰기, `media-ui-preview-1022` 실행 계정 impersonation에 필요한 최소 역할만 승인한다. `roles/owner`, 프로젝트 전체 `roles/run.admin`, Secret Manager 읽기, 프로덕션 웹·Job 변경 권한은 부여하지 않는다. 배포용 아이덴티티에는 별도의 미리보기 이미지 Artifact Registry 저장소 권한만 부여한다. GitHub Actions는 Docker 빌드·push를 직접 수행하며 Cloud Build 프로젝트 역할을 사용하지 않는다.
 - 자동 배포 Job은 비공개 IAM 상태, 기존 미리보기용 실행 계정, **환경변수 없음**을 검사한 뒤 UI 파일만 골라 이미지로 만들고 `media-ui-preview-1022`만 업데이트한다. 조건 위반 시 중단한다.
 - 소스 브랜치 PR 병합, 운영 트래픽 전환, 실제 예배자료 제작·보관은 자동화하지 않는다.
 
@@ -54,7 +56,7 @@ Cloud Shell의 웹 미리보기에서 포트 8080을 확인한다. 로그인·�
 ## 현재 상태
 
 - 코드/UI 개선과 테스트, 자동 테스트 + 선택적 OIDC 배포 워크플로 및 수동 갱신 스크립트를 **검수 브랜치에 저장**했다.
-- 새 UI의 최신 Cloud Run 미리보기 재배포 및 Workload Identity 설정은 **아직 실제 완료 결과가 없다**.
+- 2026-10-22 정적 UI Cloud Run 미리보기 리비전 00002 배포는 확인됐다. GitHub Workload Identity Pool/Provider는 ACTIVE로 생성됐으나 OIDC 배포 계정 및 IAM 위임·GitHub variables 연결은 미확인이다.
 - 운영 Cloud Run은 기존 `runtime-hosted@sha256:31b6839e918a8e75636d19bd86376a4515614f4a0d3a4e91e92bf3b029fe3be5`를 유지해야 한다.
 
 ## 추가 검수 기록 (2026-10-22)
