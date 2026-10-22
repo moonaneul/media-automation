@@ -11,6 +11,13 @@ on:
       - "scripts/audit_repository_layout.py"
       - "tests/test_weekly_cli_shared.py"
       - "tests/test_repository_layout.py"
+      - "tests/test_shared_song_checklist.py"
+      - "tests/test_script_usage_audit.py"
+      - "scripts/audit_script_usage.py"
+      - "scripts/refresh_sunday_song_checklist.py"
+      - "scripts/refresh_wednesday_song_checklist.py"
+      - "src/media_automation/weekly_song_checklist.py"
+      - "scripts/README.md"
       - "tests/test_friday_cli.py"
       - "docs/repository_layout_20261022.md"
       - "docs/INDEX.md"
@@ -47,10 +54,14 @@ jobs:
         run: python -m pip install -e '.[dev]'
       - name: Confirm no tracked private files and no lost entrypoint
         run: python scripts/audit_repository_layout.py --check
+      - name: Audit script entrypoint relationships without changing user files
+        run: python scripts/audit_script_usage.py --check
       - name: Keep Wednesday, Friday and Sunday command compatibility
         run: |
           python -m pytest -q --tb=short \
             tests/test_weekly_cli_shared.py \
             tests/test_repository_layout.py \
+            tests/test_script_usage_audit.py \
+            tests/test_shared_song_checklist.py \
             tests/test_friday_cli.py \
             tests/test_bulletin_cli.py
