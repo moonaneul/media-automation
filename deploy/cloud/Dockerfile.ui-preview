@@ -1,0 +1,9 @@
+# Strictly static, read-only preview. No backend modules, credentials or database are shipped.
+# Reuse the project's already vetted Python runtime by immutable digest.
+FROM asia-northeast3-docker.pkg.dev/church-media-511519/church-media/runtime-cloud@sha256:8a94553f9259a798debc1c5bdb7aacd22cd4a8f3f7e8491cb9dcbaf2f2a325d4
+ENV PYTHONDONTWRITEBYTECODE=1 PYTHONUNBUFFERED=1 HOME=/tmp
+WORKDIR /srv
+COPY src/media_automation/web/original/ui ./ui
+USER 10001
+EXPOSE 8080
+ENTRYPOINT ["python", "-m", "http.server", "8080", "--bind", "0.0.0.0", "--directory", "/srv/ui"]
