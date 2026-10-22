@@ -208,7 +208,7 @@ def main() -> int:
     try:
         state = collect(args.root)
         if args.compare:
-            other = json.loads(args.compare.read_text(encoding="utf-8"))
+            other = json.loads(args.compare.read_text(encoding="utf-8-sig"))
             state["comparison"] = compare(state, other)
     except (OSError, ValueError, json.JSONDecodeError) as error:
         parser.error(str(error))
