@@ -5,6 +5,7 @@ on:
     branches: [fix/ui-workflow-20261015]
     paths:
       - tests/test_isolated_cloud_production.py
+      - tests/test_isolated_cloud_clients.py
       - tests/test_read_only_release_gate.py
       - deploy/cloud/read_only_release_gate.py
       - tests/test_cloud_worker_archive_paths.py
@@ -49,6 +50,7 @@ jobs:
         run: |
           python -m pytest -q --tb=short \
             tests/test_isolated_cloud_production.py \
+            tests/test_isolated_cloud_clients.py \
             tests/test_read_only_release_gate.py \
             tests/test_cloud_worker_archive_paths.py \
             tests/test_workflow_races.py \
