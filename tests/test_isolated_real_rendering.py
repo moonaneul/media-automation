@@ -153,7 +153,18 @@ def test_real_ppt_generation_and_rendering_with_synthetic_templates(
         assert all(page.rect.width > page.rect.height for page in rendered)
         # Ensure the native renderer drew real pixels, not only blank white sheets.
         assert any(len(page.get_text().strip()) > 2 for page in rendered)
-    _safe_output_copy(pdf, service + "-" + (mode or "standard"), 0)
+    # Representative generated content, not merely the synthetic opening slide.
+    entry_scripture = next(part for part in report["mapping"] if part["status"] == "bible_inserted")
+    entry_sermon = next(part for part in report["mapping"] if part["key"] == "설교 제목")
+    scripture_pages = entry_scripture["end"] - entry_scripture["start"] + 1
+    if not wide:
+        assert scripture_pages == 2, "4:3 requires one rendered slide per test verse"
+    else:
+        assert 1 <= scripture_pages <= 2, "Zoom may group two synthetic verses"
+    prefix = service + "-" + (mode or "standard")
+    _safe_output_copy(pdf, prefix + "-opening", 0)
+    _safe_output_copy(pdf, prefix + "-scripture", entry_scripture["start"] - 1)
+    _safe_output_copy(pdf, prefix + "-sermon", entry_sermon["start"] - 1)
 
 
 def test_real_bulletin_generator_and_a4_imposition_with_synthetic_template(
