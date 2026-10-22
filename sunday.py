@@ -7,7 +7,7 @@ import sys
 from datetime import datetime
 from pathlib import Path
 
-import yaml
+from media_automation.weekly_cli import weekly_token as token, load_optional_yaml as load_yaml
 from media_automation.bulletin.source import find_transfer
 
 
@@ -26,9 +26,6 @@ def run_script(name, *args, allow=(0,)):
         raise SystemExit(result.returncode)
     return result.returncode
 
-
-def token(date_value: str) -> str:
-    return date_value.replace("-", "").replace(".", "").strip()
 
 
 def intake_path(date_value: str) -> Path:
@@ -61,11 +58,6 @@ def registered_transfer(date_value: str) -> Path | None:
         or (transfer_text_path(date_value) if transfer_text_path(date_value).is_file() else None)
     )
 
-
-def load_yaml(path: Path):
-    if not path.exists():
-        return {}
-    return yaml.safe_load(path.read_text(encoding="utf-8-sig")) or {}
 
 
 def clipboard_command() -> list[str]:
