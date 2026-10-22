@@ -38,6 +38,7 @@ def test_preview_dockerfile_static_only_and_no_cloud_server_startup():
     docker = (UI.parents[4] / "deploy/cloud/Dockerfile.ui-preview").read_text(
         encoding="utf-8"
     )
+    assert "FROM python:3.12-slim-bookworm" in docker
     assert "COPY src/media_automation/web/original/ui ./ui" in docker
     assert 'USER 10001' in docker
     assert 'ENTRYPOINT ["python", "-m", "http.server"' in docker
@@ -59,7 +60,7 @@ def test_preview_sync_remains_private_and_never_touches_production():
         assert "media-production" not in text
         assert "--no-allow-unauthenticated" not in text
         assert "allAuthenticatedUsers" in text and "allUsers" in text
-        assert "media-ui-preview:branch-" in text
+        assert "/media-ui-preview/media-ui-preview:branch-" in text
         assert "Dockerfile.ui-preview" in text
         assert "ui-preview-context" in text or 'git archive HEAD' in text
     assert "vars.MEDIA_PREVIEW_WIF_PROVIDER != ''" in workflow
@@ -67,3 +68,8 @@ def test_preview_sync_remains_private_and_never_touches_production():
     assert "google-github-actions/auth@v2" in workflow
     assert "id-token: write" in workflow
     assert "git archive HEAD" in script
+    assert "gcloud builds submit" not in workflow
+    assert "docker build --pull" in workflow
+    assert "docker push" in workflow
+    assert "/church-media/media-ui-preview:" not in workflow
+    assert "gcloud run deploy media-automation" not in workflow
