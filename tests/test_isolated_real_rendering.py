@@ -136,7 +136,7 @@ def test_real_ppt_generation_and_rendering_with_synthetic_templates(
     all_text = "\n".join(texts)
     assert SYNTHETIC_TITLE in all_text
     assert "침례" in all_text and "세례" not in all_text
-    assert "실제 개역개정 성경 원문이 아닙니다" in re.sub(r"\\s+", " ", all_text)
+    assert "실제 개역개정 성경 원문이 아닙니다" in re.sub(r"\s+", " ", all_text)
     assert "시작 찬양 1:score_asset" in result["unresolved"]
     assert result["complete"] is False
     assert result["visual_review_pending"] is True
