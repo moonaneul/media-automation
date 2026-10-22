@@ -8,6 +8,7 @@
 |---|---|---|
 | 현재 실행 파일과 폴더가 왜 여러 개인가? | [저장소 폴더 구조](repository_layout_20261022.md) | 현재 앱, 과거 스냅샷, 복구 실행기, 보호할 원본 구분 |
 | `scripts/`의 명령어 중 무엇을 사용하고 주의해야 하나? | [스크립트 사용 안내](../scripts/README.md) | 자동 관계 분류, 수요·주일 악보 검사 공통화, 민감한 수동 도구 |
+| 기존 Windows 두 폴더를 하나의 활성 프로젝트로 바꾸려면? | [단일 작업 폴더 전환](single_workspace_adoption_20261022.md) | 기존 Git 추적 자료 보존·복사 후보 확인·마지막 이름 변경 절차 |
 | Mac·Windows·GitHub에 있는 코드와 DB는 어떻게 분리하나? | [다중 기기 코드·데이터 관리](multi_device_workflow_20261022.md) | 읽기 전용 상태 점검 및 두 기기의 코드 버전 비교, 안전한 수동 Git 갱신 |
 | Mac·Windows 실제 작업 폴더를 어떻게 보존하나? | [Windows 인수인계](windows_review_handoff_20261022.md) · [로컬 통합 기준](local_consolidation_20261013.md) | DB 덮어쓰기·강제 reset·무단 정리 금지 |
 | 검수용 UI 자동 배포는 어떻게 연결됐나? | [UI 미리보기 자동 갱신](ui_preview_auto_sync_20261022.md) · [WIF 설정 기록](github_ui_preview_wif_setup_20261022.md) | 운영 Cloud Run과 별도 |
