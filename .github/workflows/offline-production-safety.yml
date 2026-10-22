@@ -1,0 +1,54 @@
+name: Offline Production Safety Gate
+
+on:
+  push:
+    branches: [fix/ui-workflow-20261015]
+    paths:
+      - tests/test_isolated_cloud_production.py
+      - tests/test_cloud_worker_archive_paths.py
+      - tests/test_workflow_races.py
+      - tests/test_reviewed_worship_completion.py
+      - .github/workflows/offline-production-safety.yml
+  workflow_dispatch:
+
+# This workflow intentionally has no cloud credentials, WIF tokens,
+# secrets, environments, Cloud Run deployment or OneDrive access.
+permissions:
+  contents: read
+
+concurrency:
+  group: offline-production-safety
+  cancel-in-progress: true
+
+jobs:
+  simulate:
+    name: Offline staged media production
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      PYTHONDONTWRITEBYTECODE: '1'
+      MEDIA_GCP_PROJECT: offline-fixture-not-a-project
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+      - name: Install local dependencies
+        run: python -m pip install -e '.[dev]'
+      - name: Verify offline environment and test-only inputs
+        run: |
+          test -z "${GOOGLE_APPLICATION_CREDENTIALS:-}"
+          test -z "${MEDIA_SUPABASE_URL:-}"
+          test -z "${MEDIA_SUPABASE_PUBLISHABLE_KEY:-}"
+          test -z "${MEDIA_JOB_ID:-}"
+          test -z "${MEDIA_WORKER_RESOURCE:-}"
+      - name: Run isolated production, concurrency and review regression tests
+        run: |
+          python -m pytest -q --tb=short \
+            tests/test_isolated_cloud_production.py \
+            tests/test_cloud_worker_archive_paths.py \
+            tests/test_workflow_races.py \
+            tests/test_reviewed_worship_completion.py \
+            tests/test_cloud_catalog_audit.py \
+            tests/test_cloud_source_classification.py
