@@ -42,3 +42,10 @@ python -m pytest -q --tb=short \
 2. 서버/Job과 **완전히 분리된 테스트 Supabase 프로젝트·테스트 Microsoft 저장소**를 사용할 경우 필요한 권한/비용/보존 정책을 먼저 설계. 단순히 기존 Secret Manager 값을 새 서비스에 연결하지 않는다.
 3. 그 뒤 실제 템플릿/성경/악보 원본을 사용하지 않는 독립 시험부터 진행하고, 예배용 출력을 만들 때는 실제 담당자 안내·개역개정·자산 사용 허락·사람 눈으로 렌더 검수한다.
 4. 실제 운영 전 복구 지점으로 기존 웹 리비전·Job digest·Supabase 백업/복구 경로를 기록하고 *변경 없는 사전 검수*와 명시적 배포 승인을 받는다.
+
+## GitHub 자동 검수 실행 실적 (2026-10-22)
+
+- [Offline Production Safety Gate #1](https://github.com/moonaneul/media-automation/actions/runs/39725536521): **75 passed in 8.45s** (worker, 오프라인 제작/실패, 기존 회귀).
+- [Offline Production Safety Gate #3](https://github.com/moonaneul/media-automation/actions/runs/39726040841): **85 passed in 9.35s** (합성 Supabase API를 통한 공동 편집/응답 손실 회복 + 읽기 전용 운영 버전 확인 테스트 추가).
+- 위 테스트 모두 **GitHub 호스팅 CI의 가짜 데이터·임시 파일**에서 수행했다. 별도 GCP/OneDrive/Supabase 리소스를 생성하거나 운영 웹·Worker 이미지를 갱신하지 않았다.
+- 실 서비스와 Job의 사전 배포 상태는 `python deploy/cloud/read_only_release_gate.py --live`로 **조회만** 할 수 있다. 이 스크립트는 현재 운영 버전이 2026-10-22의 확인된 baseline과 같은지 검사하고, 검사에 통과해도 `authorized_for_production_deployment=false`를 고정 반환한다.
