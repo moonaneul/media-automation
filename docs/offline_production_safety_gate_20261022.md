@@ -49,3 +49,13 @@ python -m pytest -q --tb=short \
 - [Offline Production Safety Gate #3](https://github.com/moonaneul/media-automation/actions/runs/39726040841): **85 passed in 9.35s** (합성 Supabase API를 통한 공동 편집/응답 손실 회복 + 읽기 전용 운영 버전 확인 테스트 추가).
 - 위 테스트 모두 **GitHub 호스팅 CI의 가짜 데이터·임시 파일**에서 수행했다. 별도 GCP/OneDrive/Supabase 리소스를 생성하거나 운영 웹·Worker 이미지를 갱신하지 않았다.
 - 실 서비스와 Job의 사전 배포 상태는 `python deploy/cloud/read_only_release_gate.py --live`로 **조회만** 할 수 있다. 이 스크립트는 현재 운영 버전이 2026-10-22의 확인된 baseline과 같은지 검사하고, 검사에 통과해도 `authorized_for_production_deployment=false`를 고정 반환한다.
+
+## 테스트용 Microsoft 계정 없이 OneDrive 전송 검수 (2026-10-22)
+
+- 별도 OneDrive 테스트 계정이 준비되지 않아 실제 Microsoft 접근을 시작하지 않고 `tests/test_isolated_onedrive_transfers.py`를 추가했다.
+- 가짜 Microsoft Graph 업로드 세션·가짜 폴더·메모리 저장소를 사용하지만 **실제 `upload_verified`/`download_verified` 함수**를 실행한다.
+- 업로드 → 즉시 다운로드·SHA-256 검증, 같은 이름의 기존 파일 덮어쓰기 차단, 악성 외부 URL 거부, 잘못된 드라이브/크기·손상 다운로드 거부 및 임시 파일 제거, 완료되지 않은 업로드 상태, 중단 후 부분 원격 파일이 남을 수 있다는 점을 검증한다.
+- `socket.socket.connect/connect_ex`를 막아 네트워크 연결 시 테스트가 실패하도록 했다. 실제 계정, 운영 OneDrive 파일, Supabase, Cloud Run을 읽거나 쓰지 않았다.
+- [GitHub Actions Offline Production Safety Gate #4](https://github.com/moonaneul/media-automation/actions/runs/39727716143): **95 passed in 8.87s**, 모든 단계 성공.
+- **미검증:** 진짜 Microsoft OAuth 로그인, Graph API 네트워크 요청, 원격 드라이브 권한, 실제 한글 파일/미디어 재생, 운영/별도 계정에 대한 복구·삭제 정책. 실제 중단된 업로드에서 고아 원격 파일이 남으면 수동 확인 전 삭제/덮어쓰기 금지.
+- 다음 단계는 이미 구비된 합성·자체제작 자료로 로컬 파일 생성/렌더를 검수하는 것이며, 테스트용 Microsoft 계정이 없는 동안에는 실제 OneDrive 쓰기 테스트를 수행하지 않는다.
