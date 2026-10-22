@@ -99,3 +99,14 @@ python -m pytest -q \
 3. `docs/` 과거 기록은 중요한 이력이다. 내용을 합치며 상충된 상태를 단정하지 않고 최신 상태와 문서 작성 당시를 별도 표기한다.
 4. `sources/`, `input/`, `output/`, `assets/private/`, `data/private/`를 정리하려면 **각 Mac/Windows 작업 폴더의 Git status·DB·첨부·사용자 원본 검수**가 선행되어야 하며 GitHub 기록만 보고 삭제를 지시할 수 없다.
 5. 금요 대면·Zoom, 주일·수요 PPT 디자인은 사용자 요청이 없는 한 통일하지 않는다. 실제 제작·미디어 재생 검수는 나중에 진행한다.
+
+
+## 2차 스크립트 명령어 분류 및 중복 처리 (2026-10-22)
+
+- [스크립트 사용 안내](../scripts/README.md)에서 루트 수요·금요·주일·주보 명령어, 직접/간접 참조된 하위 스크립트, 보관본, 수동 실행 시 주의할 명령어를 구분했다.
+- `scripts/audit_script_usage.py`로 Git의 `scripts/` 내 Python 파일을 정적 연결만 기준으로 분류한다. **코드 실행/파일 정리 없음**.
+- `scripts/refresh_sunday_song_checklist.py`와 `scripts/refresh_wednesday_song_checklist.py`의 정확한 파일명 검사 로직을 `src/media_automation/weekly_song_checklist.py`로 공통화했다. CLI 경로·옵션·출력 문구·누락 종료 상태는 유지했다.
+- [Repository Layout and Weekly CLI #4](https://github.com/moonaneul/media-automation/actions/runs/39732522778): 저장소/스크립트 관계/악보 체크리스트 관련 **31 tests passed**.
+- 73개의 정식 scripts Python 중 31개가 루트 명령어 참조 체인에 등장하고, 8개는 GitHub Actions에 명시되며, 36개는 정적 관계가 아직 확인되지 않았다. 분류가 겹칠 수 있고, **미참조가 곧 미사용·삭제 승인이 아니다.**
+- 민감한 `sync_workspace.py push`(`git add --all`), `upload_missing_sources.py`(OneDrive 전송), 연결정보 내보내기/가져오기는 현재 작업에서 실행하지 않았다.
+- 실제 예배 결과물 제작 및 육안 검수, 실 Microsoft 로그인, 클라우드 운영 배포는 계속 보류한다.
