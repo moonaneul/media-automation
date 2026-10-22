@@ -13,7 +13,7 @@ from media_automation.weekly_song_checklist import refresh_exact_song_files
 ROOT = Path(__file__).resolve().parents[1]
 
 
-def _item(name, *, filename=None, existing="previous-week-score.pptx"):
+def _item(name, *, filename=None, existing="manually-registered-score.pptx"):
     return {
         "field": name,
         "title": "합성 테스트 곡",
@@ -39,8 +39,8 @@ def test_refresh_exact_checklist_never_inherits_stale_file_or_guesses_similar_na
     items = refresh_exact_song_files(data, song_dir)
     assert items[0]["file"] == str(song_dir / "actual.pptx")
     assert items[1]["file"] is None
-    # An unspecified filename preserves the existing policy and is not guessed.
-    assert items[2]["file"] == "previous-week-score.pptx"
+    # An unspecified filename preserves the explicitly registered choice; do not guess.
+    assert items[2]["file"] == "manually-registered-score.pptx"
     assert data["extra"] == old["extra"]
     assert all((song_dir / item).exists() for item in ("actual.pptx", "similar.pptx"))
 
