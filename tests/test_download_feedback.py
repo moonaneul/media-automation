@@ -9,7 +9,7 @@ import pytest
     ('ppt', 200, 'pptx'), ('pdf', 200, 'pdf'), ('ppt', 404, 'pptx')
 ])
 def test_download_preflights_then_uses_browser_stream(kind, status, expected_format):
-    html = Path('src/media_automation/web/original/ui/index.html').read_text()
+    html = Path('src/media_automation/web/original/ui/index.html').read_text(encoding='utf-8')
     source = html[html.index('async function downloadOutput()'):html.index("$('download').onclick=downloadOutput;")]
     driver = r'''
     const output=process.argv[1],status=Number(process.argv[2]);
@@ -24,7 +24,7 @@ def test_download_preflights_then_uses_browser_stream(kind, status, expected_for
     ''' + source + '''
     downloadOutput().then(()=>console.log(JSON.stringify({requested,method,message,clicked,disabled:button.disabled})));
     '''
-    result = json.loads(subprocess.check_output(['node', '-e', driver, kind, str(status)], text=True))
+    result = json.loads(subprocess.check_output(['node', '-e', driver, kind, str(status)], text=True, encoding='utf-8'))
     assert result['requested'].endswith('format=' + expected_format)
     assert result['method'] == 'HEAD'
     assert result['disabled'] is False
@@ -37,7 +37,7 @@ def test_download_preflights_then_uses_browser_stream(kind, status, expected_for
 
 
 def test_download_does_not_allocate_browser_blob():
-    source = Path('src/media_automation/web/original/ui/index.html').read_text()
+    source = Path('src/media_automation/web/original/ui/index.html').read_text(encoding='utf-8')
     handler = source[source.index('async function downloadOutput()'):source.index("$('download').onclick=downloadOutput;")]
     assert "method:'HEAD'" in handler
     assert 'response.blob()' not in handler
