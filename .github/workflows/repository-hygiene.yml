@@ -74,6 +74,7 @@ jobs:
             tests/test_script_usage_audit.py \
             tests/test_workspace_split.py \
             tests/test_prepare_single_workspace.py \
+            tests/test_device_transfer.py \
             tests/test_shared_song_checklist.py \
             tests/test_friday_cli.py \
             tests/test_bulletin_cli.py
