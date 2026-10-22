@@ -43,6 +43,8 @@ jobs:
             tests/test_cloud_catalog_audit.py \
             tests/test_workflow_races.py \
             tests/test_reviewed_worship_completion.py
+      - name: Check OneDrive browser script syntax before deploying
+        run: node --check src/media_automation/web/original/ui/onedrive.js
       - name: Pack inspectable UI-only source artifact
         run: |
           tar -czf "$RUNNER_TEMP/ui-preview-source.tgz" \
