@@ -101,7 +101,7 @@ Cloud Run에 새 이미지가 배포됐다고 해도 Supabase 팀원 로그인 �
 아래는 전체 로컬 폴더·`output/`·`sources/`·DB·토큰을 클라우드에 보내지 않는다. GitHub의 추적된 `pyproject.toml`, `src/`, `deploy/cloud/Dockerfile.runtime`만 최소 빌드 컨텍스트로 만든다. 새 임시 폴더를 사용해 기존 체크아웃을 수정하지 않는다.
 
 ```bash
-set -o pipefail
+set -euo pipefail
 BUILD_ROOT="$(mktemp -d)"
 mkdir -p "$BUILD_ROOT/context"
 GIT_LFS_SKIP_SMUDGE=1 git clone --depth 1 --single-branch \
