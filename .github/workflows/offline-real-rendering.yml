@@ -29,7 +29,7 @@ jobs:
     env:
       PYTHONDONTWRITEBYTECODE: '1'
       MEDIA_GCP_PROJECT: offline-fixture-no-real-project
-      STAGING_SMOKE_OUTPUT_DIR: ${{ runner.temp }}/synthetic-previews
+      STAGING_SMOKE_OUTPUT_DIR: /tmp/media-automation-synthetic-previews
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -59,6 +59,6 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: synthetic-rendered-thumbnails-not-for-worship
-          path: ${{ runner.temp }}/synthetic-previews/*.png
+          path: /tmp/media-automation-synthetic-previews/*.png
           if-no-files-found: ignore
           retention-days: 2
