@@ -7,7 +7,7 @@ UI = ROOT / 'src/media_automation/web/original/ui'
 
 
 def test_one_drive_lookup_is_primary_and_advanced_import_is_collapsed():
-    html = (UI / 'index.html').read_text()
+    html = (UI / 'index.html').read_text(encoding='utf-8')
     assert '<h1>OneDrive 원본 찾기</h1>' in html
     assert html.count('id="cloud-library-search"') == 1
     assert html.count('id="cloud-library-list"') == 1
@@ -18,7 +18,7 @@ def test_one_drive_lookup_is_primary_and_advanced_import_is_collapsed():
 
 
 def test_navigating_library_never_triggers_mutating_auto_connect():
-    js = (UI / 'onedrive.js').read_text()
+    js = (UI / 'onedrive.js').read_text(encoding='utf-8')
     assert 'const query=el(\'library-search\').value.trim();if(!query)' in js
     assert 'if(b.dataset.page===\'library\')refresh()' in js
     assert "if(e.target.value==='library')refresh()" in js
