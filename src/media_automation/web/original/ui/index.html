@@ -268,6 +268,54 @@ html,body{max-width:100%;overflow-x:clip}
 #shared-archive-config .cloud-folder-row>*{min-width:0}
 @media(max-width:960px){#settings-page .settings-grid{grid-template-columns:minmax(0,1fr)}}
 @media(max-width:640px){.settings-heading,.panel-head,.result-top{flex-wrap:wrap;min-width:0}.cloud-folder-row,.shared-role-row{min-width:0}.actions{flex-wrap:wrap}.actions>button{max-width:100%;min-width:0}#archive-page .search-row{grid-template-columns:minmax(0,1fr)}}
+
+/* Settings layout: one shared card column with consistent gaps and notice alignment. */
+#settings-page .settings-grid{
+  display:grid;
+  grid-template-columns:minmax(0,1fr);
+  gap:24px;
+  width:100%;
+  margin-top:24px;
+}
+#settings-page .settings-grid>.panel{
+  min-width:0;
+  width:100%;
+  margin:0;
+}
+#settings-page .settings-grid>.panel>.panel-body{padding:24px}
+#settings-page .settings-grid .settings-heading{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  flex-wrap:wrap;
+  gap:10px 16px;
+  min-width:0;
+}
+#settings-page .settings-grid .settings-heading+.hint{
+  font-size:14px;
+  line-height:1.7;
+  margin:10px 0 0;
+}
+#settings-page .settings-grid .settings-heading+.hint+.actions{margin-top:16px}
+#settings-page .settings-notice-row{margin-top:16px;min-width:0}
+#settings-page .settings-notice-row #cloud-status{
+  display:block;
+  width:100%;
+  max-width:100%;
+  padding:12px 16px;
+  border-radius:9px;
+  font-size:13px;
+  line-height:1.65;
+  white-space:normal;
+  overflow-wrap:anywhere;
+}
+#settings-page .settings-notice-row+.settings-group{margin-top:16px}
+#settings-page #cloud-storage-settings>.panel-body>.settings-group{margin-top:16px}
+@media(max-width:640px){
+  #settings-page .settings-grid{gap:16px}
+  #settings-page .settings-grid>.panel>.panel-body{padding:18px}
+  #settings-page .settings-notice-row #cloud-status{padding:12px}
+}
 </style>
 <style id="inline-source-picker-css">
 .inline-worship-source{width:100%;margin-top:14px;border-top:1px solid #e4e7ec;padding-top:12px}
@@ -337,8 +385,7 @@ html,body{max-width:100%;overflow-x:clip}
 <h1>설정</h1><p class="hint">매주 입력하는 내용과 별도로, 계속 사용할 기본값을 관리합니다.</p>
 <div class="settings-grid">
 <div class="panel" id="bulletin-base-settings"><div class="panel-body"><div class="settings-heading"><h2>주보 기본 설정</h2><span class="tag">연간 · 계절별</span></div><p class="hint">표어, 계절 표지 사진, 교회 정보와 예배 시간을 변경합니다. 저장 후 새로 만드는 주보에 적용됩니다.</p><div class="actions"><button id="edit-bulletin-settings" class="primary">주보 기본 설정 편집</button></div><div id="bulletin-settings-editor" hidden></div></div></div>
-</div>
-<div class="panel"><div class="panel-body"><div class="settings-heading"><h2>OneDrive · 자료 저장</h2><span id="cloud-status" class="status warning">연결 상태 확인 중</span></div><p class="hint">이 OneDrive 연결에서 악보·찬양 영상 원본을 가져옵니다. 검수 완료된 PPT·주보는 아래 별도의 미디어팀 공유폴더로만 업로드합니다.</p><details class="settings-group"><summary>처음 연결할 때 · Microsoft 앱 설정</summary><p class="hint">Microsoft 앱의 Authentication → Add a platform → Web에 아래 반환 주소를 등록하세요. SPA나 모바일 플랫폼을 선택하지 않습니다. 로컬 로그인은 Microsoft가 허용하는 localhost 주소로 이동해 진행합니다.</p><code id="cloud-redirect" style="display:block;overflow-wrap:anywhere"></code><button id="cloud-copy-redirect" type="button">반환 주소 복사</button><p class="hint">Certificates &amp; secrets → New client secret에서 비밀을 만들고 아래에 Value를 입력하세요. Secret ID와는 다릅니다. 암호·비밀 값은 채팅으로 보내지 마세요. 비밀 만료 전에 갱신해야 합니다.</p><div class="setting-row"><label for="cloud-client-id">애플리케이션(클라이언트) ID</label><input id="cloud-client-id" autocomplete="off"></div><div class="setting-row"><label for="cloud-secret">클라이언트 비밀 값 · 서버에 암호화하여 저장</label><input id="cloud-secret" type="password" autocomplete="new-password" placeholder="Microsoft에서 만든 Value 입력"></div><button id="cloud-save-config">연결 설정 저장</button><p class="hint">Files.ReadWrite 권한 자체는 개인 파일 전체에 적용됩니다. 사이트에서는 지정된 원본·완료본 폴더만 사용하며 원격 원본 파일은 삭제하지 않습니다.</p></details><div class="actions"><button id="cloud-connect" class="primary" disabled>OneDrive 연결</button><button id="cloud-disconnect" hidden>연결 해제</button></div><details class="settings-group cloud-advanced" id="storage-advanced"><summary>원본·완료본 폴더 변경</summary><div class="cloud-advanced-body"><div class="setting-row cloud-folder-row"><div class="cloud-folder-info"><h3 id="cloud-source-label">대면예배 악보 원본 폴더</h3><span id="cloud-source-folder" class="cloud-folder-value">폴더 미지정</span></div><button id="cloud-pick-source" aria-describedby="cloud-source-folder" disabled>악보 PPT 폴더 선택</button></div><div class="setting-row cloud-folder-row"><div class="cloud-folder-info"><h3>금요 Zoom 찬양 영상·기도 음원 폴더</h3><span id="cloud-source_video-folder" class="cloud-folder-value">폴더 미지정</span></div><button id="cloud-pick-source_video" aria-describedby="cloud-source_video-folder" disabled>Zoom 영상 폴더 선택</button></div><div id="shared-archive-config" class="panel">
+<div class="panel" id="cloud-storage-settings"><div class="panel-body"><div class="settings-heading"><h2>OneDrive · 자료 저장</h2></div><p class="hint">이 OneDrive 연결에서 악보·찬양 영상 원본을 가져옵니다. 검수 완료된 PPT·주보는 아래 별도의 미디어팀 공유폴더로만 업로드합니다.</p><div class="settings-notice-row" role="status" aria-live="polite"><span id="cloud-status" class="status warning">연결 상태 확인 중</span></div><details class="settings-group"><summary>처음 연결할 때 · Microsoft 앱 설정</summary><p class="hint">Microsoft 앱의 Authentication → Add a platform → Web에 아래 반환 주소를 등록하세요. SPA나 모바일 플랫폼을 선택하지 않습니다. 로컬 로그인은 Microsoft가 허용하는 localhost 주소로 이동해 진행합니다.</p><code id="cloud-redirect" style="display:block;overflow-wrap:anywhere"></code><button id="cloud-copy-redirect" type="button">반환 주소 복사</button><p class="hint">Certificates &amp; secrets → New client secret에서 비밀을 만들고 아래에 Value를 입력하세요. Secret ID와는 다릅니다. 암호·비밀 값은 채팅으로 보내지 마세요. 비밀 만료 전에 갱신해야 합니다.</p><div class="setting-row"><label for="cloud-client-id">애플리케이션(클라이언트) ID</label><input id="cloud-client-id" autocomplete="off"></div><div class="setting-row"><label for="cloud-secret">클라이언트 비밀 값 · 서버에 암호화하여 저장</label><input id="cloud-secret" type="password" autocomplete="new-password" placeholder="Microsoft에서 만든 Value 입력"></div><button id="cloud-save-config">연결 설정 저장</button><p class="hint">Files.ReadWrite 권한 자체는 개인 파일 전체에 적용됩니다. 사이트에서는 지정된 원본·완료본 폴더만 사용하며 원격 원본 파일은 삭제하지 않습니다.</p></details><div class="actions"><button id="cloud-connect" class="primary" disabled>OneDrive 연결</button><button id="cloud-disconnect" hidden>연결 해제</button></div><details class="settings-group cloud-advanced" id="storage-advanced"><summary>원본·완료본 폴더 변경</summary><div class="cloud-advanced-body"><div class="setting-row cloud-folder-row"><div class="cloud-folder-info"><h3 id="cloud-source-label">대면예배 악보 원본 폴더</h3><span id="cloud-source-folder" class="cloud-folder-value">폴더 미지정</span></div><button id="cloud-pick-source" aria-describedby="cloud-source-folder" disabled>악보 PPT 폴더 선택</button></div><div class="setting-row cloud-folder-row"><div class="cloud-folder-info"><h3>금요 Zoom 찬양 영상·기도 음원 폴더</h3><span id="cloud-source_video-folder" class="cloud-folder-value">폴더 미지정</span></div><button id="cloud-pick-source_video" aria-describedby="cloud-source_video-folder" disabled>Zoom 영상 폴더 선택</button></div><div id="shared-archive-config" class="panel">
   <div class="panel-body">
     <h3>미디어팀 공유 OneDrive · 예배별 완료본 폴더</h3>
     <p class="hint">폴더가 변경된 경우에만 수정하세요. 금요 Zoom·대면은 같은 완료본 폴더를 사용합니다.</p>
@@ -384,7 +431,8 @@ html,body{max-width:100%;overflow-x:clip}
   </div>
 </div>
 </div></details></div></div>
-<div class="panel"><div class="panel-body"><div class="settings-heading"><h2>팀원 외부 접속</h2><span class="status neutral">배포 준비</span></div><p class="hint">현재는 이 컴퓨터에서 로컬로 사용합니다. 팀원들의 외부 접속은 별도의 서버 배포와 로그인 설정이 필요합니다.</p></div></div>
+<div class="panel" id="team-access-settings"><div class="panel-body"><div class="settings-heading"><h2>팀원 외부 접속</h2><span class="status neutral">배포 준비</span></div><p class="hint">현재는 이 컴퓨터에서 로컬로 사용합니다. 팀원들의 외부 접속은 별도의 서버 배포와 로그인 설정이 필요합니다.</p></div></div>
+</div>
 </section>
 <div id="message" class="toast" role="status" aria-live="polite"></div>
 </main></div></div>
