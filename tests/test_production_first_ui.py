@@ -29,7 +29,7 @@ def test_rare_storage_paths_and_history_collapsed_with_existing_connectors():
     html = (UI / "index.html").read_text(encoding="utf-8")
     assert 'id="storage-advanced"' in html
     assert '<summary>원본·완료본 폴더 변경</summary>' in html
-    assert '<details class="panel archive-history" id="archive-history">' in html
+    assert '<details class="panel archive-history" id="archive-history" hidden>' in html
     assert 'id="cloud-shared-archive_sunday_pdf-link"' in html
     assert 'id="cloud-shared-archive_sunday_ppt-link"' in html
     assert 'id="cloud-shared-archive_wednesday-link"' in html
@@ -38,7 +38,9 @@ def test_rare_storage_paths_and_history_collapsed_with_existing_connectors():
     # No secrets, hardcoded tenant paths, or destructive cloud file actions.
     assert 'type="password" autocomplete="new-password"' in html
     assert 'id="cloud-disconnect"' in html
-    assert 'data-page="archive">찬양 자료실</button>' in html
+    assert '<button data-page="archive" hidden>찬양 자료실</button>' in html
+    assert '<option value="archive" hidden>찬양 자료실</option>' in html
+    assert '#archive-page{display:none!important}' in html
 
 
 def test_archive_source_search_does_not_collapse_on_narrow_windows():
