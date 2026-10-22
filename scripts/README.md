@@ -54,6 +54,8 @@ python scripts/audit_script_usage.py --json
 
 위 표는 사전 주의 목록이지 다른 스크립트가 자동으로 안전하다는 증명이 아니다. 원본 삭제·덮어쓰기와 새 예배 결과 생성은 명시적으로 요청받기 전에는 하지 않는다.
 
+기존 Windows 두 작업 폴더 사이에 누락된 원본만 안전하게 복사할 필요가 있으면 [단일 작업 폴더 전환 가이드](../docs/single_workspace_adoption_20261022.md)와 `scripts/prepare_single_workspace.py`를 참고한다. 명시적인 `--copy`가 없으면 **읽기 전용 예비 검사**만 수행한다. 기존 데이터·완성본을 삭제하거나 덮어쓰지 않는다.
+
 ## Mac·Windows에서 코드와 자료가 분리되어 있는지 확인
 
 `python scripts/check_workspace_split.py`은 체크아웃의 현재 브랜치/커밋, 미커밋 코드 유무, Git의 비공개 파일 추적 여부, 로컬 DB 존재 여부 **만** 확인한다. `--json --compare`로 다른 기기의 안전 요약과 코드 버전을 비교할 수 있지만 DB 내용은 비교하지 않는다. 사용 절차는 [다중 기기 코드·데이터 관리](../docs/multi_device_workflow_20261022.md)를 따른다.
