@@ -96,13 +96,15 @@ jobs:
           cp -a src/media_automation/web/original/ui "$build_dir/src/media_automation/web/original/"
           cp deploy/cloud/Dockerfile.ui-preview "$build_dir/Dockerfile"
           short_sha="$(git rev-parse --short=12 HEAD)"
-          image_tag="asia-northeast3-docker.pkg.dev/church-media-511519/church-media/media-ui-preview:branch-$short_sha"
-          gcloud builds submit "$build_dir" --project=church-media-511519 \
-            --region=asia-northeast3 --tag="$image_tag"
+          # Separate repository: this identity cannot push or read production images.
+          image_tag="asia-northeast3-docker.pkg.dev/church-media-511519/media-ui-preview/media-ui-preview:branch-$short_sha"
+          gcloud auth configure-docker asia-northeast3-docker.pkg.dev --quiet
+          docker build --pull --file "$build_dir/Dockerfile" --tag "$image_tag" "$build_dir"
+          docker push "$image_tag"
           image_digest="$(gcloud artifacts docker images describe "$image_tag" \
             --format='value(image_summary.fully_qualified_digest)')"
           case "$image_digest" in
-            asia-northeast3-docker.pkg.dev/church-media-511519/church-media/media-ui-preview@sha256:*) ;;
+            asia-northeast3-docker.pkg.dev/church-media-511519/media-ui-preview/media-ui-preview@sha256:*) ;;
             *) echo 'Unexpected preview image digest' >&2; exit 1 ;;
           esac
           echo "PREVIEW_IMAGE_DIGEST=$image_digest" >> "$GITHUB_ENV"
