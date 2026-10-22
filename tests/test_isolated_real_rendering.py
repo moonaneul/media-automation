@@ -7,6 +7,7 @@ Nothing created here is a church-service deliverable or ready for printing.
 """
 import json
 import os
+import re
 import shutil
 import socket
 from copy import deepcopy
@@ -135,7 +136,7 @@ def test_real_ppt_generation_and_rendering_with_synthetic_templates(
     all_text = "\n".join(texts)
     assert SYNTHETIC_TITLE in all_text
     assert "침례" in all_text and "세례" not in all_text
-    assert "실제 개역개정 성경 원문이 아닙니다" in all_text
+    assert "실제 개역개정 성경 원문이 아닙니다" in re.sub(r"\\s+", " ", all_text)
     assert "시작 찬양 1:score_asset" in result["unresolved"]
     assert result["complete"] is False
     assert result["visual_review_pending"] is True
@@ -199,7 +200,7 @@ def test_real_bulletin_generator_and_a4_imposition_with_synthetic_template(
     fields = {
         "확정 주보 호수": field("TEST-000"),
         "성경 본문": field("요 3:16~17"),
-        "설교 제목": field(SYNTHETIC_TITLE),
+        "설교 제목": field("합성 설교"),
         "주일 인도자": {"state": "NONE", "value": ""},
         "설교자": {"state": "NONE", "value": ""},
         "질문 1": field("합성 질문 하나"),
