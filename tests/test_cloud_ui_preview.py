@@ -27,8 +27,8 @@ def test_preview_one_drive_errors_never_expose_raw_html_json_exception():
     api = js.split(" async function api(", 1)[1].split(
         "\n function button(", 1
     )[0]
-    assert "r.headers.get('content-type')" in api
-    assert "if(!contentType.includes('json'))" in api
+    assert "r.headers?.get?.('content-type')" in api
+    assert "if(contentType && !contentType.includes('json'))" in api
     assert "디자인 미리보기에서는 OneDrive 연결과 저장을 사용할 수 없습니다." in api
     assert "try{data=await r.json();}" in api
     assert "if(!r.ok)throw Error(data?.error||" in api
