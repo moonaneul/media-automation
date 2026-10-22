@@ -35,16 +35,22 @@ git pull --ff-only origin fix/ui-workflow-20261015
 ```bash
 gcloud run services describe media-automation \
   --project=church-media-511519 --region=asia-northeast3 \
-  --format='json(status.url,status.latestReadyRevisionName,status.traffic,spec.template.spec.containers)'
+  --format='json(status.url,status.latestReadyRevisionName,status.traffic)'
+gcloud run services describe media-automation \
+  --project=church-media-511519 --region=asia-northeast3 \
+  --format='value(spec.template.spec.containers[0].image)'
 
 gcloud run jobs describe media-production \
   --project=church-media-511519 --region=asia-northeast3 \
-  --format='json(metadata.name,status.conditions,spec.template.spec.template.spec.containers)'
+  --format='json(metadata.name,status.conditions)'
+gcloud run jobs describe media-production \
+  --project=church-media-511519 --region=asia-northeast3 \
+  --format='value(spec.template.spec.template.spec.containers[0].image)'
 ```
 
 출력에서 **서비스 주소, 현재 Ready revision, 실제 트래픽 대상 revision, 웹·Job 이미지**가 일치하는지 확인한다. 웹과 Job이 서로 다른 코드/이미지로 되어 있다면 배포 전 중단한다.
 
-> 위 출력을 공유해야 한다면 이미지 주소·revision·상태만 남기고 환경변수, 액세스 토큰, OAuth 비밀, 이메일, 파일 ID 등은 가린다. 출력 전체를 무심코 채팅이나 GitHub에 복사하지 않는다.
+> 위 명령은 환경변수 목록을 출력하지 않도록 필요한 필드만 요청한다. 그래도 공유 전에 토큰·OAuth 비밀·이메일·파일 ID 등 민감 정보가 없는지 확인한다.
 
 ## 3. 외부 웹 읽기 전용 확인
 
