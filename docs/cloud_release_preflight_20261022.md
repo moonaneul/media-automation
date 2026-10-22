@@ -1,3 +1,12 @@
+## 2026-10-22 격리된 UI 전용 Cloud Run 프리뷰 (사용자 실행)
+
+- 서비스 계정 `media-ui-preview-1022@church-media-511519.iam.gserviceaccount.com` 새로 생성. 별도의 Secret Manager 역할을 부여하지 않음.
+- **비공개 서비스** `media-ui-preview-1022`, 리비전 `media-ui-preview-1022-00001-9qz` 배포 성공. URL `https://media-ui-preview-1022-626807737784.asia-northeast3.run.app`.
+- 빌드 digest `sha256:ac748f5854e2dfabb7f3f4c0cae13d9966991f32d46d797e4735b95cbe2b2e74`를 사용했으며 `python -m http.server 8080 --bind 0.0.0.0 --directory /app/src/media_automation/web/original/ui`로 웹 프로세스를 **정적 파일 서버로 치환**. 원래 `media_automation.cloud.server` 엔트리포인트는 시작하지 않으므로 운영 인증·저장·제작 API는 작동하지 않는 것이 의도다.
+- 리비전에서 `100 percent of traffic`으로 보이는 것은 **프리뷰 서비스의 트래픽**이다. 운영 `media-automation` 서비스는 변경하지 않았다.
+- 다음 검사: `gcloud run services proxy media-ui-preview-1022 --region asia-northeast3 --project church-media-511519 --port 8080` 로 인증된 로컬 프록시 실행, Cloud Shell Web Preview 포트 8080에서 UI 시각 확인. 프록시 사용 시 권한 문제를 서비스 공개로 우회하지 않는다.
+- 주의: 이 UI-only 미리보기는 **Cloud Run 통합 앱 동작 증명이 아니라 정적 UI 확인**만 가능. 실제 login/DB/미디어 생성/업로드 검증으로 간주하지 않는다. 검수 후 임시 서비스·서비스 계정 정리 여부 결정.
+
 ## 2026-10-22 운영 서비스 실행 정보 조회
 
 - 실측 실행 계정: `media-web@church-media-511519.iam.gserviceaccount.com`.
