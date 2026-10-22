@@ -84,3 +84,5 @@ gcloud run jobs update media-production \
 
 이는 **운영 환경을 읽기만 한 실제 상태 검사**이며 이번 검수 브랜치의 새로운 실제 제작 기능 인증·승인으로 해석하지 않는다.
 
+
+> **다음 실행 전 필독:** [독립 스테이징 설계](isolated_live_staging_plan_20261022.md). 웹/Job 시작 코드가 `MEDIA_GCP_PROJECT` 기본값으로 운영 프로젝트를 선택하고 고정 Secret Manager 이름을 읽기 때문에, 리비전/서비스 이름만 바꾼 복제는 격리 환경이 아니다. 실제 새 Supabase/OneDrive 계정과 별도 프로젝트를 준비하고 적합성을 확인하기 전에는 Cloud Run 제작 Job 실행과 새 운영 배포를 하지 않는다.
