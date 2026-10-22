@@ -8,6 +8,16 @@
 - #15는 기존 자료실 화면을 숨기고 제작 화면의 찬양 원본 선택을 유지한다. 단지 로컬 UI가 정상이라는 이유로 클라우드 제작을 승인하지 않는다.
 - 호스팅 웹은 `src/media_automation/cloud/server.py`에서 `web.original.server.make_server`를 사용하므로 빌드된 이미지 안의 `web/original/ui/index.html`이 UI 버전을 결정한다.
 
+## 2026-10-22 Cloud Shell 실측 결과 (읽기 전용)
+
+- 현재 웹 revision: `media-automation-00004-hrt`; Cloud Run 트래픽 100%.
+- 웹과 제작 Job은 동일한 배포 이미지 `runtime-hosted@sha256:31b6839e918a8e75636d19bd86376a4515614f4a0d3a4e91e92bf3b029fe3be5` 사용.
+- 제작 Job `Ready=True`, 웹 `/api/mode`는 허용된 아래 주소에서 HTTP 200이며 `hosted=true`, `shared=true`.
+- 서버가 허용한 `MEDIA_PUBLIC_ORIGIN`: `https://media-automation-626807737784.asia-northeast3.run.app`. Cloud Run `status.url`에서 표시한 `https://media-automation-vdlt6fszqa-du.a.run.app`는 같은 서비스를 가리켜도 앱의 엄격한 Host 검사 때문에 HTTP 403.
+- 외부 실제 HTML 메뉴는 `work`, `library`, `archive`, `settings` 네 개 모두 `hidden=False`로 검증됨. **현재 배포 이미지가 #15 최신 UI를 담고 있지 않음이 확인됐다.**
+- `deploy/cloud/deploy-runtime.sh`를 그대로 실행하지 않는다. 이 스크립트는 `--no-allow-unauthenticated`를 적용하고 웹·Job을 곧바로 재배포하므로 이미 접속 가능한 공개 로그인 화면을 바꾸거나 사용자 트래픽에 영향을 줄 수 있다.
+- 최신 UI 로컬·Windows 코드 테스트 통과 확인 → 기존 배포 및 리비전 복구 정보 보존 → 변경 없는 staging/무트래픽 리비전 검증 → 명시적 승인 후 트래픽 전환. 새 클라우드 작업 시작/기존 OneDrive 내용 수정 금지.
+
 ## 1. GitHub 최신 코드 테스트 (Windows PowerShell)
 
 Windows의 **검수용 폴더**에서 실행. 기존 `media-automation` 폴더, `main`, DB에는 아무것도 덮어쓰지 않는다.
