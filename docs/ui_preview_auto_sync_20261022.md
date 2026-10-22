@@ -61,3 +61,11 @@ Cloud Shell의 웹 미리보기에서 포트 8080을 확인한다. 로그인·�
 
 - Windows 검수 체크아웃을 `c61b3cd`까지 fast-forward한 후 `tests/test_cloud_ui_preview.py`, `tests/test_one_drive_lookup_ui.py`, `tests/test_production_first_ui.py`, `tests/test_archive_browser_minimal_ui.py`, `tests/test_download_feedback.py`를 실행하여 **17 passed in 0.23s** 확인.
 - 이는 클라우드 자동 배포나 운영 서비스 적용 성공을 뜻하지 않는다. Cloud Run 프리뷰 갱신과 실화면 검수는 별도로 수행해야 한다.
+
+## Cloud Shell 미리보기 실제 배포 성공 기록 (2026-10-22)
+
+- 실측 소스 커밋: `55c5e920ca48ff5626a093b3df2e49e90fdc0f4e`.
+- `deploy/cloud/sync-ui-preview.sh` 실행 시 비공개 서비스 계정 및 빈 환경변수 검사 성공.
+- 새 정적 UI 이미지: `asia-northeast3-docker.pkg.dev/church-media-511519/church-media/media-ui-preview@sha256:85067cc61065c3b7b10f1b79ffa126b64262f05f7ce06d02ba5812763092ccea`.
+- Cloud Build `9f5f97fe-a4e3-4bd2-8ec3-78fe45398fa6` SUCCESS; Cloud Run **미리보기 서비스만** 리비전 `media-ui-preview-1022-00002-dh9`로 갱신 성공.
+- 아직 브라우저 육안 검수/자동 OIDC 연결은 미확인. 기존 `media-automation` 웹 및 `media-production` 제작 Job 배포 명령은 실행하지 않았다.
