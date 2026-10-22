@@ -72,3 +72,15 @@ gcloud run jobs update media-production \
 현재까지 실행한 오프라인 안전 검수는 GitHub Actions #3 기준 **85 passed**이다. 이 테스트는 더미 데이터와 mocked cloud를 사용하므로 실제 로그인/원본/제작/업로드가 정상이라는 주장을 뒷받침하지 못한다.
 
 **운영 승격 및 롤백 명령은 이번 단계에서 실제로 실행되지 않았다.**
+
+## 2026-10-22 Cloud Shell 운영 점검 결과
+
+사용자가 `python3 deploy/cloud/read_only_release_gate.py --live`를 Cloud Shell에서 실행하여 다음 실제 상태를 공유했다.
+
+- 운영 웹: `media-automation-00004-hrt` / `runtime-hosted@sha256:31b6839e918a8e75636d19bd86376a4515614f4a0d3a4e91e92bf3b029fe3be5`; 기존 baseline과 일치.
+- 제작 Job: 동일한 `runtime-hosted@sha256:31b6839e918a8e75636d19bd86376a4515614f4a0d3a4e91e92bf3b029fe3be5`; 기존 baseline과 일치.
+- 비공개 UI 미리보기: `media-ui-preview-1022-00005-gws` / `media-ui-preview@sha256:1f196679e75080c37b7a73d87c2ade563923208e35bfddfb11aeeeff2a276c0a`; 별도 실행 계정, 환경변수 없음, 정적 UI-only 이미지 확인.
+- 보고서 `unexpected_operational_change=false`, `live_supabase_and_onedrive_integration_verified=false`, `manual_visual_review_verified=false`, `authorized_for_production_deployment=false`. 뒷부분 3개 false는 검사 범위와 미승인 상태를 정확히 반영한다.
+
+이는 **운영 환경을 읽기만 한 실제 상태 검사**이며 이번 검수 브랜치의 새로운 실제 제작 기능 인증·승인으로 해석하지 않는다.
+
