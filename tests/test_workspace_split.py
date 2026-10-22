@@ -1,5 +1,6 @@
 """Local/Windows/GitHub boundaries: synthetic Git checkouts, no real user DB."""
 from importlib.util import module_from_spec, spec_from_file_location
+import os
 import json
 import subprocess
 import sys
@@ -157,3 +158,20 @@ def test_script_read_only_check_passes_on_clean_synthetic_checkout(checkout):
     report = json.loads(result.stdout)
     assert report["files_written_or_deleted"] is False
     assert report["git"]["tracked_private_entries"] == 0
+
+
+@pytest.mark.parametrize("tracked_private", [False, True])
+def test_workspace_check_prints_on_windows_cp949_stdout(checkout, tracked_private):
+    """Windows redirected stdout must not crash on an unencodable em dash."""
+    if tracked_private:
+        (checkout / ".env").write_text("SYNTHETIC", encoding="utf-8")
+        git(checkout, "add", "-f", ".env")
+    env = dict(os.environ)
+    env["PYTHONIOENCODING"] = "cp949"
+    result = subprocess.run(
+        [sys.executable, str(SCRIPT), "--root", str(checkout), "--check"],
+        cwd=ROOT, capture_output=True, env=env, timeout=15, check=False,
+    )
+    assert result.returncode == (2 if tracked_private else 0), result.stderr
+    assert b"WORKSPACE SPLIT - READ ONLY" in result.stdout
+    assert b"UnicodeEncodeError" not in result.stderr
