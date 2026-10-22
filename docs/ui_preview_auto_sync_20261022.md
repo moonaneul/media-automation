@@ -56,3 +56,8 @@ Cloud Shell의 웹 미리보기에서 포트 8080을 확인한다. 로그인·�
 - 코드/UI 개선과 테스트, 자동 테스트 + 선택적 OIDC 배포 워크플로 및 수동 갱신 스크립트를 **검수 브랜치에 저장**했다.
 - 새 UI의 최신 Cloud Run 미리보기 재배포 및 Workload Identity 설정은 **아직 실제 완료 결과가 없다**.
 - 운영 Cloud Run은 기존 `runtime-hosted@sha256:31b6839e918a8e75636d19bd86376a4515614f4a0d3a4e91e92bf3b029fe3be5`를 유지해야 한다.
+
+## 추가 검수 기록 (2026-10-22)
+
+- Windows 검수 체크아웃을 `c61b3cd`까지 fast-forward한 후 `tests/test_cloud_ui_preview.py`, `tests/test_one_drive_lookup_ui.py`, `tests/test_production_first_ui.py`, `tests/test_archive_browser_minimal_ui.py`, `tests/test_download_feedback.py`를 실행하여 **17 passed in 0.23s** 확인.
+- 이는 클라우드 자동 배포나 운영 서비스 적용 성공을 뜻하지 않는다. Cloud Run 프리뷰 갱신과 실화면 검수는 별도로 수행해야 한다.
