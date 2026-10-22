@@ -94,6 +94,15 @@ Cloud Run에 새 이미지가 배포됐다고 해도 Supabase 팀원 로그인 �
 
 **현 단계에서는 기존 Mac 8876과 원본/DB를 보존하고 PR #14/#15를 병합하거나 운영 서비스를 갱신하지 않는다.**
 
+## 2026-10-22 최신 이미지 빌드 실측 기록
+
+- Cloud Build ID: `bda11545-5c01-4436-8304-196e4b194262`; **STATUS SUCCESS**; 빌드 37초.
+- 빌드 소스 Git SHA: `1013c00fcfb435303f1712be29e71245be0b6e3e`; 최소화 컨텍스트 `1.7M`. 이후의 문서 기록 커밋과 이미지 원본 SHA는 구별한다.
+- 이미지 태그: `asia-northeast3-docker.pkg.dev/church-media-511519/church-media/runtime-hosted:review-1013c00fcfb4`
+- **고정 digest:** `asia-northeast3-docker.pkg.dev/church-media-511519/church-media/runtime-hosted@sha256:ac748f5854e2dfabb7f3f4c0cae13d9966991f32d46d797e4735b95cbe2b2e74`
+- 기존 운영 이미지 digest `31b6839e918a8e75636d19bd86376a4515614f4a0d3a4e91e92bf3b029fe3be5`와 다름. Artifact Registry 업로드 성공일 뿐, 운영 Cloud Run 및 worker 배포는 아직 하지 않았다.
+- 다음 검사: Cloud Shell에서 이미지 digest 조회 후 로컬 Docker `--network none`로 패키지 내 HTML 탐색·서버/worker 모듈 import; 비밀정보, 운영 Supabase 및 OneDrive 접속 없음. Google Cloud 프로젝트의 리소스·권한·트래픽 변경 없이 실행한다.
+
 ## 5. 소스 최소화 이미지 빌드 (운영 배포 전, Cloud Shell)
 
 > 승인된 별도 빌드 실행에만 사용. **Cloud Build와 Artifact Registry는 사용량에 따라 비용이 발생할 수 있다.** 빌드가 끝나도 Cloud Run 웹/Job 리비전과 트래픽은 변경하지 않는다.
