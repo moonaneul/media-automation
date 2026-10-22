@@ -103,6 +103,14 @@ Cloud Run에 새 이미지가 배포됐다고 해도 Supabase 팀원 로그인 �
 - 기존 운영 이미지 digest `31b6839e918a8e75636d19bd86376a4515614f4a0d3a4e91e92bf3b029fe3be5`와 다름. Artifact Registry 업로드 성공일 뿐, 운영 Cloud Run 및 worker 배포는 아직 하지 않았다.
 - 다음 검사: Cloud Shell에서 이미지 digest 조회 후 로컬 Docker `--network none`로 패키지 내 HTML 탐색·서버/worker 모듈 import; 비밀정보, 운영 Supabase 및 OneDrive 접속 없음. Google Cloud 프로젝트의 리소스·권한·트래픽 변경 없이 실행한다.
 
+## 2026-10-22 이미지 내부 점검 (사용자 Cloud Shell 실행)
+
+- `gcloud artifacts docker images describe`에서 고정 digest `sha256:ac748f5854e2dfabb7f3f4c0cae13d9966991f32d46d797e4735b95cbe2b2e74` 등록 확인.
+- 해당 이미지를 `docker run --rm --network none`으로 실행했고 `media_automation.cloud.server`, `media_automation.cloud.worker` 모듈 import 성공.
+- 설치된 `ui/index.html`에 대해 6개 확인 전부 PASS: 제작 메뉴, 자료실 메뉴 숨김, 자료실 화면 숨김, 검색 UI 유지, 원본 목록 유지, 설정 메뉴 유지.
+- 위 검사에는 운영 접속·Supabase 로그인·PPT/PDF 생성·OneDrive 업로드가 포함되지 않는다. 기존 웹·제작 Job의 새 이미지 배포는 아직 하지 않았다.
+- **스테이징 격리 제약:** 클라우드 웹 서버는 시작 시 `runtime_connection()`을 호출하고 기존 프로젝트의 `church-media-supabase` 및 `church-media-onedrive-key` Secret Manager 항목을 읽어 생산용 Supabase/OneDrive 클라이언트를 구성한다. 같은 이미지를 같은 프로젝트에 새 서비스 이름만 바꾸어 배포하고 운영 비밀 접근 권한을 주면 **격리된 스테이징이 아니다.** 프로덕션 권한을 복제해서 배포하면 안 된다. 별도 계정/백엔드를 격리하거나, 자격증명 불필요한 UI-only 미리보기임을 명시해 제한적인 화면 검수만 해야 한다.
+
 ## 5. 소스 최소화 이미지 빌드 (운영 배포 전, Cloud Shell)
 
 > 승인된 별도 빌드 실행에만 사용. **Cloud Build와 Artifact Registry는 사용량에 따라 비용이 발생할 수 있다.** 빌드가 끝나도 Cloud Run 웹/Job 리비전과 트래픽은 변경하지 않는다.
