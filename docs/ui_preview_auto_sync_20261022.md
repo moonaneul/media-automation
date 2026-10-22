@@ -71,3 +71,13 @@ Cloud Shell의 웹 미리보기에서 포트 8080을 확인한다. 로그인·�
 - 새 정적 UI 이미지: `asia-northeast3-docker.pkg.dev/church-media-511519/church-media/media-ui-preview@sha256:85067cc61065c3b7b10f1b79ffa126b64262f05f7ce06d02ba5812763092ccea`.
 - Cloud Build `9f5f97fe-a4e3-4bd2-8ec3-78fe45398fa6` SUCCESS; Cloud Run **미리보기 서비스만** 리비전 `media-ui-preview-1022-00002-dh9`로 갱신 성공.
 - 아직 브라우저 육안 검수/자동 OIDC 연결은 미확인. 기존 `media-automation` 웹 및 `media-production` 제작 Job 배포 명령은 실행하지 않았다.
+
+## 2026-10-22 설정 화면 정렬 수정과 자동 배포 검증
+
+- 스크린샷에서 `주보 기본 설정` 카드만 반 너비로 표시되는 원인은 `settings-grid`가 첫 카드만 포함하는 2열 구조였기 때문임.
+- `#settings-page .settings-grid` 안에 주보, OneDrive, 팀원 외부 접속 세 카드를 함께 배치하고 한 열로 정렬. 카드 간격 24px(640px 이하 16px), 카드 패딩 24px(모바일 18px).
+- `cloud-status`는 제목 옆에서 설명 다음의 `settings-notice-row`로 이동. OneDrive JavaScript가 업데이트하는 `id="cloud-status"`는 유지.
+- HTML 파서 기반 구조·반응형 간격·접근성 상태 영역을 검증하는 회귀 테스트 추가.
+- GitHub Actions [Safe UI Preview Sync #10](https://github.com/moonaneul/media-automation/actions/runs/39722999921): UI 테스트 및 배포 Job 모두 **success**, 소스 커밋 `ee16c48a7096e2eb7d63da241a7b0ead92e9ce21`.
+- 전용 미리보기 이미지 `media-ui-preview@sha256:1f196679e75080c37b7a73d87c2ade563923208e35bfddfb11aeeeff2a276c0a`가 `media-ui-preview-1022-00005-gws`로 배포 성공 (미리보기 서비스 트래픽 100%).
+- 운영용 `media-automation` 웹과 `media-production` Job 배포 작업은 수행하지 않음. 사용자 브라우저에서 간격이 의도대로 보이는지는 별도 육안 확인 필요.
