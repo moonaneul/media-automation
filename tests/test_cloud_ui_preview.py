@@ -43,3 +43,27 @@ def test_preview_dockerfile_static_only_and_no_cloud_server_startup():
     assert 'ENTRYPOINT ["python", "-m", "http.server"' in docker
     assert "media_automation.cloud.server" not in docker
     assert "COPY src ./src" not in docker
+
+
+def test_preview_sync_remains_private_and_never_touches_production():
+    root = UI.parents[4]
+    workflow = (root / ".github/workflows/ui-preview-sync.yml").read_text(
+        encoding="utf-8"
+    )
+    script = (root / "deploy/cloud/sync-ui-preview.sh").read_text(
+        encoding="utf-8"
+    )
+    for text in (workflow, script):
+        assert "media-ui-preview-1022" in text
+        assert "media-automation --" not in text
+        assert "media-production" not in text
+        assert "--no-allow-unauthenticated" not in text
+        assert "allAuthenticatedUsers" in text and "allUsers" in text
+        assert "media-ui-preview:branch-" in text
+        assert "Dockerfile.ui-preview" in text
+        assert "ui-preview-context" in text or 'git archive HEAD' in text
+    assert "vars.MEDIA_PREVIEW_WIF_PROVIDER != ''" in workflow
+    assert "vars.MEDIA_PREVIEW_DEPLOYER_SA != ''" in workflow
+    assert "google-github-actions/auth@v2" in workflow
+    assert "id-token: write" in workflow
+    assert "git archive HEAD" in script
