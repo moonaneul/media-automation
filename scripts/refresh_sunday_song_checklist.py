@@ -5,6 +5,8 @@ from pathlib import Path
 
 import yaml
 
+from media_automation.weekly_song_checklist import refresh_exact_song_files
+
 
 def load(path: Path):
     return yaml.safe_load(path.read_text(encoding="utf-8-sig")) or {}
@@ -21,14 +23,7 @@ def main():
     song_dir.mkdir(parents=True, exist_ok=True)
 
     data = load(checklist_path)
-    items = data.get("items", [])
-
-    for item in items:
-        expected = item.get("expected_filename")
-        if not expected:
-            continue
-        candidate = song_dir / expected
-        item["file"] = str(candidate) if candidate.is_file() else None
+    items = refresh_exact_song_files(data, song_dir)
 
     checklist_path.write_text(
         yaml.safe_dump(data, allow_unicode=True, sort_keys=False),
