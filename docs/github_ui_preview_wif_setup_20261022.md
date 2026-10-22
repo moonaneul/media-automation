@@ -49,6 +49,17 @@ gcloud iam service-accounts add-iam-policy-binding "$RUNTIME" \
 
 여기서 사용한 서비스 계정/아티팩트 저장소는 새로 생성되는 별도 자원이며 프로젝트 요금에 영향을 줄 수 있다. 이미 생성되어 있다는 오류가 발생하면 그대로 실행을 반복하지 말고 실제 상태를 조회한다.
 
+## Cloud Shell 실제 설정 결과 (2026-10-22)
+
+- `media-preview-deployer@church-media-511519.iam.gserviceaccount.com` 생성 성공.
+- `media-ui-preview` Docker Artifact Registry 별도 저장소 생성 성공.
+- `roles/iam.workloadIdentityUser`는 GitHub 저장소 ID 1394499062의 WIF principalSet에 배포 계정 단위로 부여됨.
+- `roles/artifactregistry.writer`는 **새 `media-ui-preview` 저장소에만** 부여됨.
+- `roles/run.developer`는 **`media-ui-preview-1022` 서비스에만** 부여됨.
+- `roles/iam.serviceAccountUser`는 **`media-ui-preview-1022` 실행 계정에만** 부여됨.
+- 위 4개 IAM 정책 업데이트는 사용자가 Cloud Shell 출력으로 완료 확인. 운영 서비스/제작 Job IAM 변경을 실행한 기록은 없음.
+- 남은 단계: GitHub 저장소의 repository Actions Variables 2개 등록, 배포 Job 실실행 로그 검증. 첫 GitHub 자동 배포 실패 시 무작정 권한 확대하지 말고 필요한 특정 권한만 조사한다.
+
 ## GitHub Actions repository Variables
 
 GitHub 저장소 `moonaneul/media-automation` → **Settings → Secrets and variables → Actions → Variables → New repository variable**에서 다음 이름/값을 등록한다. 공개 가능한 GCP 리소스 이름들이지만 이 값 자체는 비밀번호가 아니다.
