@@ -25,9 +25,10 @@ from media_automation.ppt.sunday_typography import apply_sunday_typography, VERS
 from media_automation.ppt.friday_typography import apply_friday_typography, VERSION as FRIDAY_TYPOGRAPHY_VERSION
 from .production_order import build_order, combine_friday_prayers
 from .bible_connection import resolve
+from .bible_review_cache import apply_review_receipts, units_for_manual_confirmation
 from .ppt_conversion import convert_original
 
-BUILD_VERSION = 'official-web-engine-v8-explicit-original-choice'
+BUILD_VERSION = 'official-web-engine-v10-case-insensitive-media-names'
 ROOT = Path(__file__).resolve().parents[4]
 
 def compatible_original(filename, service, mode, slot):
@@ -124,7 +125,21 @@ def generate(store, body):
     service = body['service']
     zoom = service == 'friday' and data.get('fridayMode', 'zoom') == 'zoom'
     order = build_order(body['groups'], fields, service)
-    bible = resolve(order)
+    bible = apply_review_receipts(store, resolve(order))
+    # Resolving a chapter address does NOT imply its texts exist in the
+    # private Bible JSON. Expose the first missing verse to the reviewer.
+    bible_errors={key:str(value['error']) for key,value in bible.items()
+                  if isinstance(value,dict) and value.get('error')}
+    # Pending units are recorded with source-text fingerprints. A future
+    # reviewer may attest them once, and only unchanged copies get reused.
+    bible_review_digests={
+        key:units_for_manual_confirmation(bible,[key+':bible_review'])
+        for key, entry in bible.items()
+        if entry.get('units') and entry.get('text_review_pending')
+    }
+    reused_manual_bible=[
+        key for key, entry in bible.items() if entry.get('previous_manual_review')
+    ]
     if service == 'friday': order = combine_friday_prayers(order, bible, include_personal=zoom)
     directory = Path(store.path).with_suffix('.generated')
     directory.mkdir(parents=True, exist_ok=True)
@@ -162,7 +177,10 @@ def generate(store, body):
                 try:asset = _asset(store, body, block) if block.get('state') == 'VALUE' else None
                 except OriginalConversionError as error:
                     asset=None
-                    connections[key]=dict(error.asset,status='conversion_failed',error=str(error))
+                    cause=error.__cause__
+                    explanation=str(cause) if isinstance(cause, RuntimeError) else '변환 도구 또는 원본 파일을 확인하세요.'
+                    connections[key]=dict(error.asset,status='conversion_failed',
+                                          error=explanation)
                 if asset:
                     source, suffix, metadata = asset
                     if metadata.get('selected_for_service') and not metadata.get('eligible'):
@@ -182,9 +200,13 @@ def generate(store, body):
                                 prs = Presentation(path)
                                 status = 'original_inserted'
                                 connections[key] = dict(metadata, status='connected')
-                            except ValueError:
+                            except ValueError as error:
                                 status = 'missing_song_asset'
-                                connections[key] = dict(metadata, status='canvas_mismatch')
+                                mismatch='화면 크기' in str(error)
+                                connections[key] = dict(metadata,
+                                    status='canvas_mismatch' if mismatch else 'merge_failed',
+                                    error='원본과 예배 PPT의 슬라이드 크기가 달라 삽입하지 않았습니다.' if mismatch
+                                          else '원본 슬라이드 병합을 완료하지 못했습니다.')
                     elif zoom and suffix == '.mp4':
                         slide = add_blank_slide(prs)
                         from media_automation.ppt.video_poster import video_poster
@@ -280,7 +302,7 @@ def generate(store, body):
                 if not asset:
                     music=Path(os.environ.get('MEDIA_FRIDAY_MUSIC',str(ROOT/'assets/private/friday_zoom')))
                     manifest=music/'music.json'
-                    config=json.loads(manifest.read_text()) if manifest.is_file() else {}
+                    config=json.loads(manifest.read_text(encoding='utf-8')) if manifest.is_file() else {}
                     entry=config.get(role,{})
                     source=music/entry.get('filename','missing')
                     if entry.get('confirmed') is True and source.is_file() and source.suffix=='.mp3' and source.parent==music:
@@ -309,10 +331,15 @@ def generate(store, body):
             fields=fields, attachments=store.attachments(body['date'],service), format='pptx', slide_count=len(prs.slides), mapping=mapping,
             unresolved=unresolved, connections=connections, complete=False, visual_review_pending=True,
             media_playback_review_pending=zoom, reference_layout_applied=reference_applied, background_music=background_music,
-            render_configuration=render_configuration(data))
-        (directory / (identifier + '.json')).write_text(json.dumps(report, ensure_ascii=False))
+            render_configuration=render_configuration(data),
+            bible_errors=bible_errors,
+            bible_review_digests=bible_review_digests,
+            reused_manual_bible=reused_manual_bible)
+        (directory / (identifier + '.json')).write_text(json.dumps(report, ensure_ascii=False),encoding='utf-8')
         return dict(engine_version=BUILD_VERSION, typography_version=SUNDAY_TYPOGRAPHY_VERSION if service in ('sunday', 'wednesday') else FRIDAY_TYPOGRAPHY_VERSION if service == 'friday' else None, file_id=identifier, filename=f"{body['date']}-{service}-검수전.pptx",
-            slide_count=len(prs.slides), unresolved=unresolved, complete=False, visual_review_pending=True)
+            slide_count=len(prs.slides), unresolved=unresolved, complete=False,
+            bible_errors=bible_errors,
+            reused_manual_bible=reused_manual_bible, visual_review_pending=True)
     except Exception:
         path.unlink(missing_ok=True)
         raise

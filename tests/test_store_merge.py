@@ -63,3 +63,24 @@ def test_friday_title_and_scripture_share_screen_and_numbers_stay_explicit():
     assert prayers[0]['supporting_review_pending']
     assert not any('내용' in b['key'] for b in folded)
     assert folded[-1]['key']=='개인 기도'
+
+
+def test_merge_preserves_distinct_human_bible_checks_without_text(tmp_path):
+    a,b=stores(tmp_path)
+    a.record_bible_review_receipts({'요3:16':'a'*64},date='2026-10-11',service='sunday',file_id='a'*32)
+    b.record_bible_review_receipts({'요3:17':'b'*64},date='2026-10-09',service='friday',file_id='b'*32)
+    output,report=merge_stores(a.path,b.path,tmp_path/'merged',
+                               keep_primary_works=[('2026-10-11','sunday')])
+    result=WorkStore(output)
+    assert result.bible_review_receipts(['요3:16','요3:17'])=={'요3:16':'a'*64,'요3:17':'b'*64}
+    assert report['imported']['bible_review_receipts']==1
+
+
+def test_merge_never_chooses_one_conflicting_human_bible_check(tmp_path):
+    a,b=stores(tmp_path)
+    a.record_bible_review_receipts({'요3:16':'a'*64},date='2026-10-11',service='sunday',file_id='a'*32)
+    b.record_bible_review_receipts({'요3:16':'b'*64},date='2026-10-09',service='friday',file_id='b'*32)
+    with pytest.raises(ValueError,match='충돌'):
+        merge_stores(a.path,b.path,tmp_path/'merged',
+                     keep_primary_works=[('2026-10-11','sunday')])
+    assert not (tmp_path/'merged').exists()

@@ -23,18 +23,59 @@ class WorkStore:
             db.execute('CREATE TABLE IF NOT EXISTS asset_reviews (song_id TEXT, digest TEXT, payload TEXT NOT NULL, PRIMARY KEY(song_id,digest))')
             db.execute('CREATE TABLE IF NOT EXISTS song_assets (song_id TEXT, digest TEXT, filename TEXT, PRIMARY KEY(song_id,digest))')
             db.execute('CREATE TABLE IF NOT EXISTS attachments (day TEXT, service TEXT, slot TEXT, filename TEXT, digest TEXT, PRIMARY KEY(day,service,slot))')
+            db.execute('CREATE TABLE IF NOT EXISTS bible_review_receipts (reference TEXT PRIMARY KEY, digest TEXT NOT NULL, approved_at TEXT NOT NULL, evidence_date TEXT NOT NULL, evidence_service TEXT NOT NULL, evidence_file_id TEXT NOT NULL)')
+
+    def bible_review_receipts(self, references):
+        """Content-bound prior human approvals; never a claimed external source."""
+        if not references:
+            return {}
+        if any(not isinstance(ref,str) or len(ref)>120 for ref in references):
+            raise ValueError('성경 구절 참조 형식이 잘못되었습니다.')
+        placeholders=','.join('?' for _ in references)
+        with self.connect() as db:
+            rows=db.execute(
+                'SELECT reference,digest FROM bible_review_receipts WHERE reference IN ('+
+                placeholders+')',tuple(references)).fetchall()
+        return dict(rows)
+
+    def record_bible_review_receipts(self, approvals, *, date, service, file_id):
+        """Called only after server accepts explicit human PPT review."""
+        self.validate(date,service)
+        if not isinstance(file_id,str) or len(file_id)!=32 or any(
+                char not in '0123456789abcdef' for char in file_id):
+            raise ValueError('확인한 PPT 파일 ID가 잘못되었습니다.')
+        if any(not isinstance(reference,str) or len(reference)>120 or
+               not isinstance(digest,str) or len(digest)!=64 or any(
+                   char not in '0123456789abcdef' for char in digest)
+               for reference,digest in approvals.items()):
+            raise ValueError('성경 확인 기록이 올바르지 않습니다.')
+        stamped=datetime.now(timezone.utc).isoformat(timespec='seconds')
+        with self.connect() as db:
+            for reference,digest in approvals.items():
+                db.execute('INSERT INTO bible_review_receipts (reference,digest,approved_at,evidence_date,evidence_service,evidence_file_id) VALUES (?,?,?,?,?,?) ON CONFLICT(reference) DO UPDATE SET digest=excluded.digest,approved_at=excluded.approved_at,evidence_date=excluded.evidence_date,evidence_service=excluded.evidence_service,evidence_file_id=excluded.evidence_file_id',
+                           (reference,digest,stamped,date,service,file_id))
 
     def attachments(self, day, service):
         self.validate(day, service)
         with self.connect() as db:
             rows=list(db.execute('SELECT slot,filename,digest FROM attachments WHERE day=? AND service=?', (day,service)))
         from .ppt_conversion import conversion_status
-        return [{'slot':r[0], 'filename':r[1], 'digest':r[2], 'archive_status':'pending_connection',**conversion_status(Path(self.path).with_suffix('.files')/r[2],r[1])} for r in rows]
+        def status(digest, filename):
+            source = Path(self.path).with_suffix('.files') / digest
+            if not source.is_file():
+                return {'conversion_status': 'missing',
+                        'conversion_message': '등록 정보만 있고 실제 원본 파일이 없습니다. 검수용 .files 저장소를 확인하세요.'}
+            return conversion_status(source, filename)
+        return [{'slot':r[0], 'filename':r[1], 'digest':r[2], 'archive_status':'pending_connection',
+                 **status(r[2],r[1])} for r in rows]
 
     def attach(self, day, service, slot, filename, content, song_id=None):
         self.validate(day, service)
         if not slot or len(slot)>200:raise ValueError('예배 항목을 확인하세요.')
         if song_id:
+            from .original_roles import song_candidate
+            if not song_candidate(filename):
+                raise ValueError('찬양 원본이 아닌 자료는 찬양으로 등록하지 않습니다.')
             with self.connect() as db:
                 if not db.execute('SELECT 1 FROM songs WHERE id=?',(song_id,)).fetchone():raise ValueError('등록 곡을 확인하세요.')
         digest, existed, target = self._store_file(filename, content)
@@ -65,6 +106,9 @@ class WorkStore:
         return digest, existed, target
 
     def attach_song_asset(self, song_id, filename, content, replace_digest=None):
+        from .original_roles import song_candidate
+        if not song_candidate(filename):
+            raise ValueError('주보·템플릿·표지 등 찬양 외 자료는 찬양 자료로 등록할 수 없습니다.')
         with self.connect() as db:
             if not db.execute('SELECT 1 FROM songs WHERE id=?',(song_id,)).fetchone():raise ValueError('등록 곡을 확인하세요.')
         digest, existed, target = self._store_file(filename, content)
@@ -101,6 +145,7 @@ class WorkStore:
                     row=db.execute('SELECT payload FROM asset_reviews WHERE song_id=? AND digest=?',(song['id'],asset['digest'])).fetchone()
                     asset['review']=json.loads(row[0]) if row else {'technical':False,'church':False,'permission':'unknown','note':''}
                     asset['eligible']=asset['review']['technical'] and asset['review']['church'] and asset['review']['permission']=='allowed'
+                    asset['local_file_present']=(Path(self.path).with_suffix('.files')/asset['digest']).is_file()
             return songs
 
     def review_asset(self, song_id, digest, data):

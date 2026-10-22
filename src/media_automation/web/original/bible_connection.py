@@ -13,9 +13,14 @@ SOURCES=Path(__file__).resolve().parents[4] / 'data/private/bible_sources'
 
 PROVIDED=Path(__file__).resolve().parents[4] / 'data/private/bible_fixed.json'
 
-# Explicit chapter endpoints. Never infer a chapter's end from the last verse
-# present in a possibly incomplete local file.
-CHAPTER_ENDS={('행',27):44,('행',28):31}
+# Explicit, independently known chapter endpoints (verse counts), not the
+# highest verse found in the potentially incomplete private Bible JSON.
+# John 1-3: 51, 25, 36 verses. Keep unsupported chapters explicit until
+# their true endpoints have been separately established.
+CHAPTER_ENDS={
+    ('행',27):44, ('행',28):31,
+    ('요',1):51, ('요',2):25, ('요',3):36,
+}
 
 def expand_chapter_reference(reference):
     match=re.fullmatch(r'([가-힣]+)\s*(\d+)\s*(?:[~～–—-]\s*(\d+))?\s*장',reference)
@@ -38,7 +43,7 @@ def resolve(order, source_dir=None, provided_file=None):
     raw=json.loads(provided_file.read_text(encoding='utf-8-sig')) if use_provided and provided_file.is_file() else {}
     checked={}
     for path in sorted(source_dir.glob('*.yaml')):
-        source=yaml.safe_load(path.read_text())
+        source=yaml.safe_load(path.read_text(encoding='utf-8-sig'))
         if source.get('translation')!='개역개정' or source.get('validated') is not True:continue
         for passage in source.get('passages',{}).values():
             from media_automation.bible.json_source import parse_reference

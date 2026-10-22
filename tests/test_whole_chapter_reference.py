@@ -29,4 +29,4 @@ def test_incomplete_chapter_is_not_silently_truncated(missing,tmp_path):
 
 def test_unknown_chapter_endpoint_requires_explicit_verses():
     with pytest.raises(ValueError,match='마지막 절'):
-        expand_chapter_reference('요 3장')
+        expand_chapter_reference('요 4장')

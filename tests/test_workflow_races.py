@@ -84,11 +84,11 @@ def test_save_acknowledgment_keeps_newer_input_and_pending_draft(fault):
 def test_actual_cloud_module_uses_live_app_bridge_and_preserves_edits(dirty):
     code=r"""
     const fs=require('fs'),vm=require('vm'),dirty=process.argv[1]==='True';
-    const k='wednesday:2026-10-07',records={[k]:{title:'edited'}},st={revision:2,dirty};let sent,persisted=false;
+    const k='wednesday:2026-10-07',records={[k]:{title:'edited',outputs:{ppt:{complete:true}}}},st={revision:2,dirty};let sent,persisted=false;
     const app={key:()=>k,output:'ppt',records,syncState:()=>st,msg:()=>{},render:()=>{},persistDraft:()=>{persisted=true},refreshSongs:async()=>{},songCaption:()=>'',assets:()=>{},page:()=>{}};
     const elements={};const ctx={window:{MediaApp:app},document:{readyState:'loading',addEventListener:()=>{},getElementById:id=>elements[id]??={}},
-      fetch:async(url,options)=>({ok:true,json:async()=>{if(url.endsWith('/status'))return {connected:true,account:{},folders:{source:{},archive:{}},configured:true};
-        sent=JSON.parse(options.body);return {work:{revision:3,data:{title:'server old'}}}}})};
+      fetch:async(url,options)=>({ok:true,json:async()=>{if(url.endsWith('/status'))return {connected:true,account:{},folders:{source:{},archive:{}},shared_archives:{archive_wednesday:{name:'02.수요예배'}},configured:true};
+        sent=JSON.parse(options.body);return {verified:true,item:{id:'uploaded',name:'test.pptx'},work:{revision:3,data:{title:'server old'}}}}})};
     vm.createContext(ctx);const cloud=vm.runInContext(fs.readFileSync('src/media_automation/web/original/ui/onedrive.js','utf8')+';CloudMedia',ctx);
     cloud.archiveCurrent().then(()=>{if(sent.date!=='2026-10-07'||sent.service!=='wednesday')throw Error('wrong target');
       if(records[k].title!==(dirty?'edited':'server old')||persisted!==dirty)throw Error('input overwritten');console.log('ok');}).catch(e=>{console.error(e);process.exitCode=1});

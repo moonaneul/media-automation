@@ -1,0 +1,124 @@
+name: Safe UI Preview Sync
+
+on:
+  push:
+    branches: [fix/ui-workflow-20261015]
+    paths:
+      - src/media_automation/web/original/ui/**
+      - deploy/cloud/Dockerfile.ui-preview
+      - tests/test_cloud_ui_preview.py
+      - .github/workflows/ui-preview-sync.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ui-preview-sync
+  cancel-in-progress: true
+
+jobs:
+  check-ui:
+    name: Test preview-only UI
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+      - name: Install test environment
+        run: python -m pip install -e '.[dev]'
+      - name: Validate UI, source picker, download and review guards
+        run: |
+          python -m pytest -q --tb=short \
+            tests/test_cloud_ui_preview.py \
+            tests/test_one_drive_lookup_ui.py \
+            tests/test_production_first_ui.py \
+            tests/test_archive_browser_minimal_ui.py \
+            tests/test_cloud_worker_archive_paths.py \
+            tests/test_download_feedback.py \
+            tests/test_cloud_source_classification.py \
+            tests/test_cloud_catalog_audit.py \
+            tests/test_workflow_races.py \
+            tests/test_reviewed_worship_completion.py
+      - name: Check OneDrive browser script syntax before deploying
+        run: node --check src/media_automation/web/original/ui/onedrive.js
+      - name: Pack inspectable UI-only source artifact
+        run: |
+          tar -czf "$RUNNER_TEMP/ui-preview-source.tgz" \
+            deploy/cloud/Dockerfile.ui-preview src/media_automation/web/original/ui
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ui-preview-source
+          path: ${{ runner.temp }}/ui-preview-source.tgz
+          retention-days: 7
+
+  deploy-ui-preview:
+    name: Update ONLY private media-ui-preview-1022
+    needs: check-ui
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    # No repository -> Google Cloud permission is configured yet.
+    # Deployment stays skipped until explicit, narrow OIDC setup is completed.
+    if: github.ref == 'refs/heads/fix/ui-workflow-20261015' && vars.MEDIA_PREVIEW_WIF_PROVIDER != '' && vars.MEDIA_PREVIEW_DEPLOYER_SA != ''
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@v4
+      - name: Exchange GitHub OIDC for a preview-only Google identity
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ vars.MEDIA_PREVIEW_WIF_PROVIDER }}
+          service_account: ${{ vars.MEDIA_PREVIEW_DEPLOYER_SA }}
+      - uses: google-github-actions/setup-gcloud@v2
+      - name: Check isolated private preview identity BEFORE deployment
+        shell: bash
+        run: |
+          set -euo pipefail
+          svc=media-ui-preview-1022
+          project=church-media-511519
+          region=asia-northeast3
+          identity=$(gcloud run services describe "$svc" --project="$project" --region="$region" \
+            --format='value(spec.template.spec.serviceAccountName)')
+          test "$identity" = 'media-ui-preview-1022@church-media-511519.iam.gserviceaccount.com'
+          # Never convert preview into an unauthenticated/public service.
+          gcloud run services get-iam-policy "$svc" --project="$project" --region="$region" --format=json | \
+            python3 -c 'import json,sys; d=json.load(sys.stdin); assert not any(m in ("allUsers","allAuthenticatedUsers") for b in d.get("bindings",[]) for m in b.get("members",[])), "Preview IAM must remain private"'
+          gcloud run services describe "$svc" --project="$project" --region="$region" --format=json | \
+            python3 -c 'import json,sys; d=json.load(sys.stdin); c=d["spec"]["template"]["spec"]["containers"]; assert len(c)==1; assert not c[0].get("env"), "Preview must not contain production environment variables or secrets"'
+      - name: Build ONLY static UI from allowlisted paths
+        shell: bash
+        run: |
+          set -euo pipefail
+          build_dir="$RUNNER_TEMP/ui-preview-context"
+          mkdir -p "$build_dir/src/media_automation/web/original"
+          cp -a src/media_automation/web/original/ui "$build_dir/src/media_automation/web/original/"
+          cp deploy/cloud/Dockerfile.ui-preview "$build_dir/Dockerfile"
+          short_sha="$(git rev-parse --short=12 HEAD)"
+          # Separate repository: this identity cannot push or read production images.
+          image_tag="asia-northeast3-docker.pkg.dev/church-media-511519/media-ui-preview/media-ui-preview:branch-$short_sha"
+          gcloud auth configure-docker asia-northeast3-docker.pkg.dev --quiet
+          docker build --pull --file "$build_dir/Dockerfile" --tag "$image_tag" "$build_dir"
+          docker push "$image_tag"
+          image_digest="$(gcloud artifacts docker images describe "$image_tag" \
+            --format='value(image_summary.fully_qualified_digest)')"
+          case "$image_digest" in
+            asia-northeast3-docker.pkg.dev/church-media-511519/media-ui-preview/media-ui-preview@sha256:*) ;;
+            *) echo 'Unexpected preview image digest' >&2; exit 1 ;;
+          esac
+          echo "PREVIEW_IMAGE_DIGEST=$image_digest" >> "$GITHUB_ENV"
+      - name: Update ONLY static preview; never deploy production web or worker
+        shell: bash
+        run: |
+          set -euo pipefail
+          gcloud run services update media-ui-preview-1022 \
+            --project=church-media-511519 --region=asia-northeast3 \
+            --image="$PREVIEW_IMAGE_DIGEST" \
+            --command=python \
+            --args="-m,http.server,8080,--bind,0.0.0.0,--directory,/srv/ui"
+          gcloud run services describe media-ui-preview-1022 \
+            --project=church-media-511519 --region=asia-northeast3 \
+            --format='value(status.latestReadyRevisionName,status.traffic[0].percent)'

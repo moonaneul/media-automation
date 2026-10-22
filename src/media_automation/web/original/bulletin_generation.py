@@ -17,6 +17,31 @@ def bulletin_hymn_label(text):
     return match[1]+'장' if match else text
 
 
+def _sunday_pastor_default(fields, label, church):
+    """Use church settings for usual Sunday roles; never inherit weekly people.
+
+    Current-week VALUE always takes priority. Explicit NONE remains absent.
+    Missing / UNSET alone falls back to the church's configured pastor.
+    """
+    selected = fields.get(label, {})
+    if selected.get('state') == 'NONE':
+        return None
+    if selected.get('state') == 'VALUE':
+        return selected.get('value') or None
+    pastor = str(church.get('담임목사') or '').strip()
+    if not pastor:
+        return None
+    return pastor if pastor.endswith('목사') else pastor + ' 목사'
+
+
+def default_sunday_leader(fields, church):
+    return _sunday_pastor_default(fields, '주일 인도자', church)
+
+
+def default_sunday_preacher(fields, church):
+    return _sunday_pastor_default(fields, '설교자', church)
+
+
 def generate_bulletin(store, body):
     if body['service'] != 'sunday': raise ValueError('주보는 주일 작업에서 제작합니다.')
     data = current_input(store, body)
@@ -33,12 +58,19 @@ def generate_bulletin(store, body):
     with store.connect() as db:
         db.execute('CREATE TABLE IF NOT EXISTS bulletin_settings (id INTEGER PRIMARY KEY, revision INTEGER, payload TEXT)')
         row = db.execute('SELECT payload FROM bulletin_settings WHERE id=1').fetchone()
-    settings = json.loads(row[0]) if row else json.loads(Path(__file__).with_name('bulletin-base-reference.json').read_text())
+    settings = json.loads(row[0]) if row else json.loads(Path(__file__).with_name('bulletin-base-reference.json').read_text(encoding='utf-8'))
     annual, church = settings['annual'], settings['church']
+    worship_leader = default_sunday_leader(fields, church)
+    worship_preacher = default_sunday_preacher(fields, church)
+    derived_defaults = {
+        label: person for label, person in (
+            ('주일 인도자', worship_leader), ('설교자', worship_preacher))
+        if person and fields.get(label, {}).get('state', 'UNSET') == 'UNSET'
+    }
     unresolved = [label for label in ('확정 주보 호수', '성경 본문', '설교 제목', '목장 본문', '목장 제목', *['질문 '+str(n) for n in range(1,5)]) if not value(label)]
     unresolved += [label for label in ('주일 인도자','설교자','1부 찬양 인도자','2부 찬양 인도자','폐회 기도 담당자','별도 찬송','봉헌 찬송','결단 찬송', '이번 주 1부 기도','2부 기도 담당자','이번 주 1부 봉헌기도','2부 봉헌기도 담당자',
         '이번 주 설거지','이번 주 수요예배 기도','다음 주 1부 기도','다음 주 2부 기도',
-        '다음 주 1부 봉헌기도','다음 주 2부 봉헌기도','다음 주 설거지','다음 주 수요예배 기도') if fields.get(label,{}).get('state','UNSET')=='UNSET']
+        '다음 주 1부 봉헌기도','다음 주 2부 봉헌기도','다음 주 설거지','다음 주 수요예배 기도') if fields.get(label,{}).get('state','UNSET')=='UNSET' and label not in derived_defaults]
     if settings.get('reference_year') != date.fromisoformat(body['date']).year:
         raise ValueError('해당 연도의 표어를 확인하고 설정을 갱신하세요.')
     if settings.get('status') != 'confirmed': unresolved.append('표어·고정 정보:확인 필요')
@@ -51,7 +83,10 @@ def generate_bulletin(store, body):
         next_week_first_service_prayer='다음 주 1부 기도',next_week_second_service_prayer='다음 주 2부 기도',
         next_week_first_service_offering_prayer='다음 주 1부 봉헌기도',next_week_second_service_offering_prayer='다음 주 2부 봉헌기도',
         next_week_dishwashing='다음 주 설거지',next_week_wednesday_prayer='다음 주 수요예배 기도')
-    worship = BulletinWorshipPage(**{k:bulletin_hymn_label(value(v)) if k in ('separate_hymn','offering_hymn','decision_hymn') else value(v) for k,v in mapping.items()})
+    worship = BulletinWorshipPage(**{k:worship_leader if k == 'leader' else
+        worship_preacher if k == 'preacher' else
+        bulletin_hymn_label(value(v)) if k in ('separate_hymn','offering_hymn','decision_hymn') else value(v)
+        for k,v in mapping.items()})
     schedule = []
     for line in (value('월간 사역 일정') or '').splitlines():
         parts = re.split(r'\s*[:：]\s*',line,maxsplit=1)
@@ -71,8 +106,9 @@ def generate_bulletin(store, body):
     try:
         render_original_bulletin(document,file,cover_static=cover,news_static=news,cover_photo=settings.get('cover_photo'))
         report=dict(layout_version=LAYOUT_VERSION,format='pdf',date=body['date'],service='sunday',fields=data.get('fields',{}),effective_fields=fields,unresolved=unresolved,
-            complete=False,visual_review_pending=True,settings=settings,settings_revision=json.loads(row[0]) if row else None)
-        (directory/(ident+'.json')).write_text(json.dumps(report,ensure_ascii=False))
+            complete=False,visual_review_pending=True,settings=settings,settings_revision=json.loads(row[0]) if row else None,
+            derived_defaults=derived_defaults)
+        (directory/(ident+'.json')).write_text(json.dumps(report,ensure_ascii=False),encoding='utf-8')
         return dict(engine_version=BUILD_VERSION,layout_version=LAYOUT_VERSION,file_id=ident,format='pdf',filename=body['date']+'-주보-검수전.pdf',
             page_count=2,issue_number=value('확정 주보 호수'),unresolved=unresolved,complete=False,visual_review_pending=True)
     except Exception:

@@ -332,14 +332,23 @@ def test_archive_ui_uses_actual_week_key_and_captures_requested_output():
     code=r"""
     const fs=require('fs'),vm=require('vm');
     const source=fs.readFileSync('src/media_automation/web/original/ui/onedrive.js','utf8');
-    const fn=source.match(/async function archiveCurrent[^\n]+/)[0];
-    let sent;const context={key:()=> 'sunday:2026-10-11',output:'pdf',state:{connected:true,folders:{archive:{}}},refresh:async()=>{},api:async(a,b)=>{sent=b;return {work:{data:{},revision:2}}},records:{},syncState:()=>({}),render:()=>{},msg:()=>{}};
-    context.app={output:context.output,records:context.records};
-    const archive=vm.runInNewContext('('+fn+')',context);
-    archive('wednesday:2026-10-07','ppt').then(()=>console.log(JSON.stringify(sent)));
+    const fn=source.slice(source.indexOf('async function archiveCurrent('),source.indexOf('async function syncOriginal('));
+    let sent,notice='',stored='',button={disabled:false};
+    const work={'wednesday:2026-10-07':{outputs:{ppt:{complete:true}}}};
+    const context={
+      key:()=> 'sunday:2026-10-11',state:{connected:true,shared_archives:{archive_wednesday:{name:'02.수요예배'}},folders:{archive:{id:'archive'}}},
+      el:id=>id==='cloud-archive-current'?button:{set textContent(v){stored=v}},
+      refresh:async()=>{},api:async(a,b)=>{sent=b;return {verified:true,item:{id:'new',name:'worship.pptx'},work:{data:work['wednesday:2026-10-07'],revision:2}}},
+      syncState:()=>({}),render:()=>{},msg:value=>notice=value,setTargetLink:()=>{},
+      app:{output:'pdf',records:work}
+    };
+    const archive=vm.runInNewContext('('+fn.trim()+')',context);
+    archive('wednesday:2026-10-07','ppt').then(()=>console.log(JSON.stringify({sent,disabled:button.disabled,stored})));
     """
     data=json.loads(subprocess.check_output(['node','-e',code],text=True))
-    assert data=={'date':'2026-10-07','service':'wednesday','kind':'ppt'}
+    assert data['sent']=={'date':'2026-10-07','service':'wednesday','kind':'ppt','require_team_shared':True}
+    assert data['disabled'] is False
+    assert '파일 실제 존재 확인 완료' in data['stored']
 
 
 def test_large_completed_ppt_uses_archive_limit(cloud,monkeypatch):
@@ -359,3 +368,69 @@ def test_large_completed_ppt_uses_archive_limit(cloud,monkeypatch):
     with path.open('wb') as f:f.truncate(MAX_ARCHIVE_FILE+1)
     with pytest.raises(CloudError,match='512MB'):cloud.archive('2026-10-09','friday','ppt')
     assert len(uploaded)==1
+
+
+def test_auto_connect_never_registers_non_song_files(cloud, monkeypatch):
+    prepare(cloud)
+    names = [
+        'bulletin-runtime-original-design.pdf',
+        'cover.pptx',
+        'community-prayer.mp3',
+        'worship-template.pptx',
+        '교회여 일어나라.mp4',
+    ]
+    files = []
+    for i, name in enumerate(names):
+        entry = item(str(i))
+        entry['name'] = name
+        files.append(entry)
+    monkeypatch.setattr(cloud, 'children', lambda _: files)
+    importer = Mock()
+    monkeypatch.setattr(cloud, 'import_song', importer)
+    result = cloud.auto_connect()
+    assert cloud.store.songs() == []
+    assert result['linked'] == 0
+    # The unregistered video is reported for a manual song selection,
+    # never silently registered with an unverified title.
+    assert [choice['name'] for choice in result['choices']] == ['교회여 일어나라.mp4']
+    importer.assert_not_called()
+
+
+def test_auto_connect_still_links_existing_song_score(cloud, monkeypatch):
+    prepare(cloud)
+    song = cloud.store.register_song({'title': '찬양 테스트'})
+    original = item('song')
+    original['name'] = '찬양 테스트.pptx'
+    monkeypatch.setattr(cloud, 'children', lambda _: [original])
+    importer = Mock(return_value={'digest': 'a' * 64})
+    monkeypatch.setattr(cloud, 'import_song', importer)
+    result = cloud.auto_connect()
+    assert result['linked'] == 1
+    importer.assert_called_once_with('song', song['id'])
+
+
+@pytest.mark.parametrize('microsoft_result,explanation', [
+    ({'error':'invalid_client','error_description':'AADSTS7000215: PRIVATE-DIAGNOSTIC'}, '비밀 값(Value)'),
+    ({'error':'invalid_client','error_description':'AADSTS7000222: PRIVATE-DIAGNOSTIC'}, '비밀이 만료'),
+    ({'error':'invalid_request','error_description':'AADSTS50011: PRIVATE-DIAGNOSTIC'}, 'Web 반환 주소'),
+    ({'error':'access_denied','error_description':'PRIVATE-DIAGNOSTIC'}, '권한 승인'),
+    ({'error':'invalid_grant','error_description':'PRIVATE-DIAGNOSTIC'}, '로그인 코드'),
+    ({'error':'unauthorized_client','error_description':'PRIVATE-DIAGNOSTIC'}, '계정 유형'),
+    ({'error':'unknown_type','error_description':'PRIVATE-DIAGNOSTIC'}, '로그인이 완료되지'),
+])
+def test_oauth_failure_gives_safe_specific_guidance_without_disclosing_microsoft_response(
+    cloud, monkeypatch, microsoft_result, explanation
+):
+    prepare(cloud)
+    app, cache = fake_app()
+    app.acquire_token_by_auth_code_flow.return_value = microsoft_result
+    monkeypatch.setattr(cloud, '_app', lambda _: (app, cache))
+    cloud.begin('http://localhost:8769', 'browser-binding', 'server-session')
+    with pytest.raises(CloudError) as rejected:
+        cloud.finish({'state':'one-time-state','code':'PRIVATE-AUTH-CODE'},
+                     'browser-binding',lambda s:s=='server-session')
+    assert explanation in str(rejected.value)
+    assert 'PRIVATE-' not in str(rejected.value)
+    assert 'AADSTS' not in str(rejected.value)
+    assert 'cache' not in cloud._read()
+    assert cloud.pending == {}

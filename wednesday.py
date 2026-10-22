@@ -6,7 +6,7 @@ import sys
 from datetime import datetime
 from pathlib import Path
 
-import yaml
+from media_automation.weekly_cli import weekly_token as token, load_optional_yaml as load_yaml
 
 
 ROOT = Path(__file__).resolve().parent
@@ -26,9 +26,6 @@ def run_script(name, *args, allow=(0,)):
     return result.returncode
 
 
-def token(date):
-    return date.replace("-", "").replace(".", "").strip()
-
 
 def intake_path(date):
     return INTAKE_DIR / f"wednesday_{token(date)}_intake.yaml"
@@ -37,11 +34,6 @@ def intake_path(date):
 def checklist_path(date):
     return INTAKE_DIR / f"wednesday_{token(date)}_song_checklist.yaml"
 
-
-def load_yaml(path):
-    if not path.exists():
-        return {}
-    return yaml.safe_load(path.read_text(encoding="utf-8-sig")) or {}
 
 
 def bible_master_summary():

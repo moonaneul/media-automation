@@ -9,6 +9,7 @@ import threading
 from http.cookies import SimpleCookie
 import json
 import mimetypes
+from datetime import datetime, timezone
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from urllib.parse import urlsplit, parse_qs
@@ -21,6 +22,11 @@ from .ppt_preview import preview
 from ..streaming_download import send_download
 
 UI = Path(__file__).resolve().parent / 'ui'
+
+
+class BulletinReviewBlocked(ValueError):
+    """Safe and actionable reason for refusing a bulletin's review approval."""
+    pass
 
 def make_server(store, port=0, password=None, bind_host="127.0.0.1", public_origin=None, supabase_auth=None, hosted=None):
     address = ipaddress.ip_address(bind_host)
@@ -63,7 +69,8 @@ def make_server(store, port=0, password=None, bind_host="127.0.0.1", public_orig
             self.send_header('X-Content-Type-Options', 'nosniff')
             self.send_header('Referrer-Policy', 'no-referrer')
             self.end_headers()
-            self.wfile.write(data)
+            if self.command != 'HEAD':
+                self.wfile.write(data)
 
         def route(self):
             if hosted is not None and self.command == 'GET' and self.path == '/healthz':
@@ -77,11 +84,11 @@ def make_server(store, port=0, password=None, bind_host="127.0.0.1", public_orig
                     or public_origin and ((hosted is None and not ipaddress.ip_address(self.client_address[0]).is_loopback)
                                           or self.headers.get('X-Forwarded-Proto') != 'https')):
                 return self.reply(403, {'error':'허용된 접속 주소만 이용할 수 있습니다.'})
-            if hosted is not None and self.command != 'GET' and self.headers.get('Origin') != expected_origin:
+            if hosted is not None and self.command not in ('GET', 'HEAD') and self.headers.get('Origin') != expected_origin:
                 return self.reply(403, {'error':'접속 주소를 확인하세요.'})
             parsed = urlsplit(self.path)
             if self.command == 'GET' and parsed.path in ('/', '/index.html'):
-                html=(UI / 'index.html').read_text()
+                html=(UI / 'index.html').read_text(encoding='utf-8')
                 for marker,version in {'__ENGINE_VERSION__':BUILD_VERSION,'__SUNDAY_VERSION__':UI_SUNDAY_VERSION,'__FRIDAY_VERSION__':UI_FRIDAY_VERSION,'__BULLETIN_VERSION__':UI_BULLETIN_VERSION}.items():html=html.replace(marker,version)
                 if hosted is not None:
                     html=html.replace('</body>', '<script src="/cloud-runtime.js"></script></body>')
@@ -202,9 +209,11 @@ def make_server(store, port=0, password=None, bind_host="127.0.0.1", public_orig
                 with auth_lock:
                     return (not password and not supabase_auth) or sessions.get(session_token,0)>time.time()
             if parsed.path.startswith('/api/onedrive/'):
-                with cloud.lock:
-                    if handle_cloud(cloud,self,parsed,expected_origin,authenticated,token,cloud_session_valid):
-                        return
+                # Uploads can run for minutes. Do not hold cloud.lock across
+                # the HTTP response: it blocks status/diagnostics/retry from
+                # other threads. The OneDrive client protects its own state.
+                if handle_cloud(cloud,self,parsed,expected_origin,authenticated,token,cloud_session_valid):
+                    return
             if not authenticated:
                 return self.reply(401,{'error':'로그인 후 이용하세요.'})
             if parsed.path=='/api/bulletin-settings':
@@ -214,7 +223,7 @@ def make_server(store, port=0, password=None, bind_host="127.0.0.1", public_orig
                         db.execute('BEGIN IMMEDIATE')
                         row=db.execute('SELECT revision,payload FROM bulletin_settings WHERE id=1').fetchone()
                         revision=row[0] if row else 0
-                        data=json.loads(row[1]) if row else json.loads((UI.parent/'bulletin-base-reference.json').read_text())
+                        data=json.loads(row[1]) if row else json.loads((UI.parent/'bulletin-base-reference.json').read_text(encoding='utf-8'))
                         if self.command=='GET':return self.reply(200,{'revision':revision,'data':data})
                         size=int(self.headers.get('Content-Length','-1'))
                         if self.command!='POST' or self.headers.get('Content-Type')!='application/json' or not 0<size<=9*1024*1024:raise ValueError()
@@ -245,7 +254,7 @@ def make_server(store, port=0, password=None, bind_host="127.0.0.1", public_orig
                             if len(identifier)!=32 or any(c not in '0123456789abcdef' for c in identifier):continue
                             report_path=Path(store.path).with_suffix('.generated')/(identifier+'.json')
                             if not report_path.is_file():continue
-                            report=json.loads(report_path.read_text())
+                            report=json.loads(report_path.read_text(encoding='utf-8'))
                             if report.get('settings')==data:continue
                             output['changed']=True
                             db.execute("UPDATE works SET revision=?,payload=? WHERE date=? AND service='sunday'",(work_revision+1,json.dumps(work,ensure_ascii=False),day))
@@ -279,7 +288,12 @@ def make_server(store, port=0, password=None, bind_host="127.0.0.1", public_orig
                     path, filename=store.original(digest)
                     from .ppt_conversion import convert_original
                     from media_automation.web.pptx_preview import convert_pptx
-                    if Path(filename).suffix.lower()=='.ppt': path=convert_original(path)
+                    if Path(filename).suffix.lower()=='.ppt':
+                        try:
+                            path=convert_original(path)
+                        except RuntimeError as error:
+                            # Conversion messages are controlled by our converter and safe to show.
+                            return self.reply(422, {'error':'구형 악보 변환 실패: '+str(error)})
                     if Path(filename).suffix.lower() not in ('.ppt','.pptx'): raise ValueError('PPT 원본을 선택하세요.')
                     cache=Path(store.path).with_suffix('.previews');cache.mkdir(exist_ok=True)
                     output=cache/(digest+'.pdf')
@@ -382,15 +396,15 @@ def make_server(store, port=0, password=None, bind_host="127.0.0.1", public_orig
                 report=directory/(identifier+'.json')
                 if not report.is_file() or not (directory/(identifier+'.pptx')).is_file():
                     return self.reply(404,{'error':'PPT 제작 결과를 찾지 못했습니다.'})
-                data=json.loads(report.read_text())
+                data=json.loads(report.read_text(encoding='utf-8'))
                 return self.reply(200,{'slide_count':data['slide_count'],'mapping':[
                     {key:item.get(key) for key in ('key','kind','start','end','status')}
                     for item in data.get('mapping',[])], 'unresolved':data.get('unresolved',[]),
-                    'fields':data.get('fields',{}), 'date':data.get('date'),
+                    'fields':data.get('fields',{}), 'bible_errors':data.get('bible_errors',{}), 'date':data.get('date'),
                     'service':data.get('service'), 'connections':data.get('connections',[]),
                     'background_music':data.get('background_music',[]),
                     'complete':False, 'visual_review_pending':True})
-            if self.command=='GET' and parsed.path=='/api/generated':
+            if self.command in ('GET', 'HEAD') and parsed.path=='/api/generated':
                 identifier=parse_qs(parsed.query).get('id',[''])[0]
                 if len(identifier)!=32 or any(c not in '0123456789abcdef' for c in identifier):
                     return self.reply(400,{'error':'파일을 확인하세요.'})
@@ -398,7 +412,39 @@ def make_server(store, port=0, password=None, bind_host="127.0.0.1", public_orig
                 if extension not in ('pptx','pdf'):return self.reply(400,{'error':'파일 형식을 확인하세요.'})
                 file=Path(store.path).with_suffix('.generated')/(identifier+'.'+extension)
                 if not file.is_file():return self.reply(404,{'error':'파일을 찾지 못했습니다.'})
-                return send_download(self, file)
+                return send_download(self, file, head_only=self.command=='HEAD')
+            if self.command=='POST' and parsed.path=='/api/reopen-ppt-review':
+                # Revoking approval affects this PPT's review status only.
+                # Neither the generated artifact nor past OneDrive uploads
+                # are ever deleted, moved or marked as missing.
+                try:
+                    size=int(self.headers.get('Content-Length','-1'))
+                    if self.headers.get('Content-Type')!='application/json' or not 0<size<=8192:
+                        raise ValueError()
+                    body=json.loads(self.rfile.read(size))
+                    if body.get('confirmed') is not True:
+                        raise ValueError()
+                    identifier=body.get('file_id','')
+                    if not isinstance(identifier,str) or len(identifier)!=32 or any(
+                            ch not in '0123456789abcdef' for ch in identifier):
+                        raise ValueError()
+                    if body.get('service') not in ('sunday','wednesday','friday'):
+                        raise ValueError()
+                    current=store.get(body['date'],body['service'])
+                    ppt=current['data'].get('outputs',{}).get('ppt',{})
+                    if (ppt.get('fileId')!=identifier or not ppt.get('complete')
+                            or ppt.get('changed')):
+                        return self.reply(409,{'error':'해당 PPT의 완료 기록이 변경되었습니다. 최신 상태를 확인하세요.'})
+                    ppt['complete']=False
+                    ppt['reviewRevokedAt']=datetime.now(timezone.utc).isoformat(timespec='seconds')
+                    # Keep cloudItem, cloudVerified, archiveStatus and prior
+                    # manual review audit; re-approval must be explicit.
+                    saved=store.save(body['date'],body['service'],body['revision'],current['data'])
+                    return self.reply(200,saved)
+                except RevisionConflict:
+                    return self.reply(409,{'error':'다른 화면에서 검수 기록이 변경됐습니다. 새로고침 후 확인하세요.'})
+                except Exception:
+                    return self.reply(400,{'error':'현재 파일과 검수 완료 기록을 확인한 뒤 다시 시도하세요.'})
             if self.command=='POST' and parsed.path in ('/api/complete-bulletin','/api/complete'):
                 try:
                     size=int(self.headers.get('Content-Length','-1'))
@@ -408,33 +454,106 @@ def make_server(store, port=0, password=None, bind_host="127.0.0.1", public_orig
                     identifier=body['file_id']
                     if len(identifier)!=32 or any(c not in '0123456789abcdef' for c in identifier):raise ValueError()
                     directory=Path(store.path).with_suffix('.generated')
-                    report=json.loads((directory/(identifier+'.json')).read_text())
+                    report=json.loads((directory/(identifier+'.json')).read_text(encoding='utf-8'))
                     current=store.get(body['date'],body['service'])
-                    if report.get('date')!=body['date'] or report.get('service')!=body['service'] or report['unresolved'] or report['fields']!=current['data']['fields']:raise ValueError()
+                    if report.get('date')!=body['date'] or report.get('service')!=body['service']:raise ValueError()
+                    if report['fields']!=current['data']['fields']:
+                        if report.get('format')=='pdf':
+                            raise BulletinReviewBlocked('주보 PDF를 만든 뒤 입력이 변경되었습니다. PDF를 다시 제작해 확인하세요.')
+                        raise ValueError()
+                    bible_receipts={}
                     if report.get('format')=='pdf':
+                        if report.get('unresolved'):
+                            labels=', '.join(str(name) for name in report['unresolved'][:25])
+                            raise BulletinReviewBlocked('주보 PDF 미확정 항목: '+labels+' · 내용을 확정하고 PDF를 다시 제작해 주세요.')
                         from media_automation.bulletin.original_design import LAYOUT_VERSION
-                        if report.get('layout_version')!=LAYOUT_VERSION or not (directory/(identifier+'.pdf')).is_file():raise ValueError()
+                        if report.get('layout_version')!=LAYOUT_VERSION:
+                            raise BulletinReviewBlocked('주보 PDF 제작 코드가 갱신되었습니다. 최신 코드로 PDF를 다시 제작해 주세요.')
+                        if not (directory/(identifier+'.pdf')).is_file():
+                            raise BulletinReviewBlocked('생성된 주보 PDF 파일이 없습니다. PDF를 다시 제작해 주세요.')
                         with store.connect() as db:
                             row=db.execute('SELECT payload FROM bulletin_settings WHERE id=1').fetchone()
-                        settings=json.loads(row[0]) if row else json.loads((UI.parent/'bulletin-base-reference.json').read_text())
-                        if report.get('settings')!=settings:raise ValueError()
+                        settings=json.loads(row[0]) if row else json.loads((UI.parent/'bulletin-base-reference.json').read_text(encoding='utf-8'))
+                        if report.get('settings')!=settings:
+                            raise BulletinReviewBlocked('주보 기본 설정이 PDF 제작 후 변경되었습니다. PDF를 다시 제작해 주세요.')
                     else:
+                        unresolved=report.get('unresolved',[])
+                        if not isinstance(unresolved,list) or any(not isinstance(x,str) for x in unresolved):raise ValueError()
+                        acknowledged=[x for x in unresolved if x.endswith((':score_asset', ':audio_asset', ':original_review', ':bible_review'))]
+                        manual_reviews=[x for x in acknowledged if x.endswith((':original_review', ':bible_review'))]
+                        if (len(acknowledged)!=len(unresolved) or body.get('acknowledged_unresolved',[])!=acknowledged
+                                or body.get('confirmed_manual_reviews',[])!=manual_reviews):raise ValueError()
                         from .generation import render_configuration, _asset, SUNDAY_TYPOGRAPHY_VERSION, FRIDAY_TYPOGRAPHY_VERSION
                         if body['service'] in ('sunday','wednesday') and report.get('typography_version')!=SUNDAY_TYPOGRAPHY_VERSION:raise ValueError()
                         if body['service']=='friday' and report.get('typography_version')!=FRIDAY_TYPOGRAPHY_VERSION:raise ValueError()
                         if report.get('render_configuration')!=render_configuration(current['data']):raise ValueError()
                         if report.get('attachments')!=store.attachments(body['date'],body['service']):raise ValueError()
                         if not (directory/(identifier+'.pptx')).is_file():raise ValueError()
+                        # Only a freshly generated PPT with source digests
+                        # can seed reusable manual review receipts. Historic
+                        # complete=True records cannot be promoted silently.
+                        pending=report.get('bible_review_digests',{})
+                        if pending:
+                            if not isinstance(pending,dict):raise ValueError()
+                            from .bible_connection import resolve
+                            from .bible_review_cache import units_for_manual_confirmation
+                            labels=[name for name in manual_reviews if name.endswith(':bible_review')]
+                            blocks=[]
+                            matched_labels=[]
+                            expected={}
+                            for label in labels:
+                                slot=label[:-len(':bible_review')]
+                                stored=pending.get(slot)
+                                if stored is None:
+                                    continue # supporting-prayer verse: no exact source receipt
+                                if not isinstance(stored,dict):raise ValueError()
+                                expected.update(stored)
+                                matched_labels.append(label)
+                                field=current['data']['fields'].get(slot,{})
+                                if field.get('state')!='VALUE' or not field.get('value'):
+                                    raise ValueError()
+                                blocks.append(dict(kind='input',key=slot,state='VALUE',
+                                                   content=field['value']))
+                            if blocks:
+                                candidate=units_for_manual_confirmation(resolve(blocks),matched_labels)
+                                if candidate!=expected:
+                                    raise BulletinReviewBlocked(
+                                        '검수할 성경 본문이 PPT 제작 시 사용한 원문과 달라졌습니다. 정확한 자료로 다시 제작하세요.')
+                                bible_receipts=candidate
                         for slot, connected in report.get('connections',{}).items():
                             if connected.get('status')!='connected':continue
                             text=current['data']['fields'].get(slot,{}).get('value','')
                             selected=_asset(store,body,{'key':slot,'content':text})
                             if not selected or selected[2]['digest']!=connected['digest']:raise ValueError()
                     data=current['data'];kind='pdf' if report['format']=='pdf' else 'ppt';o=data['outputs'][kind]
-                    if o.get('fileId')!=identifier or o.get('changed'):raise ValueError()
-                    o.update(complete=True,changed=False,archiveStatus='pending_connection')
+                    if o.get('fileId')!=identifier or o.get('changed'):
+                        if kind=='pdf':
+                            raise BulletinReviewBlocked('현재 선택한 파일이 최신 주보 PDF가 아닙니다. PDF를 다시 제작해 주세요.')
+                        raise ValueError()
+                    # Re-reviewing an already approved file must never
+                    # invalidate an existing OneDrive archive record.
+                    previous_archive=o.get('archiveStatus')
+                    has_cloud_item=bool(o.get('cloudItem'))
+                    new_status=(previous_archive if kind=='ppt' and has_cloud_item
+                                else 'pending_connection')
+                    o.update(complete=True,changed=False,archiveStatus=new_status,
+                             acknowledgedUnresolved=acknowledged if kind=='ppt' else [],
+                             confirmedManualReviews=manual_reviews if kind=='ppt' else [])
+                    if kind=='ppt':
+                        o['reviewedAt']=datetime.now(timezone.utc).isoformat(timespec='seconds')
+                        o.pop('reviewRevokedAt',None)
                     saved=store.save(body['date'],body['service'],body['revision'],data)
+                    if kind=='ppt' and bible_receipts:
+                        # A human explicitly checked all verses at approval.
+                        # Store exact hashes, not copyrighted verse text.
+                        store.record_bible_review_receipts(
+                            bible_receipts,date=body['date'],
+                            service=body['service'],file_id=identifier)
                     return self.reply(200,saved)
+                except BulletinReviewBlocked as exc:
+                    return self.reply(409, {'error':str(exc)})
+                except RevisionConflict:
+                    return self.reply(409, {'error':'다른 화면에서 예배 입력이나 완료 상태가 변경됐습니다. 최신 상태를 확인해 주세요.'})
                 except Exception:return self.reply(400,{'error':'최신 제작 파일과 입력·자료 변경을 확인하고 다시 검수하세요.'})
             if self.command=='POST' and parsed.path=='/api/build':
                 output_label = 'PPT'
@@ -491,6 +610,7 @@ def make_server(store, port=0, password=None, bind_host="127.0.0.1", public_orig
                 self.reply(500, {'error':'공동 저장에 실패했습니다.'})
 
         do_GET = route
+        do_HEAD = route
         do_PUT = route
         do_POST = route
     return ThreadingHTTPServer((bind_host,port), Handler)

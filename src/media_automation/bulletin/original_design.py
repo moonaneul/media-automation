@@ -8,7 +8,7 @@ import os
 import pymupdf as pdf
 from media_automation.people import confirmed_titles, format_people
 
-LAYOUT_VERSION = 'original-reference-260920-v8-consistent-weekly-fonts'
+LAYOUT_VERSION = 'original-reference-260920-v10-sunday-pastor-preacher-default'
 ROOT = Path(__file__).resolve().parents[3]
 
 

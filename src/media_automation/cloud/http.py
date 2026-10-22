@@ -142,6 +142,9 @@ class Hosted:
                             raise ValueError('페이지 번호를 확인하세요.')
                         scale = 1200 / max(doc[page - 1].rect.width, doc[page - 1].rect.height)
                         return reply(200, doc[page - 1].get_pixmap(matrix=pymupdf.Matrix(scale, scale), alpha=False).tobytes('png'), 'image/png')
+            if path == '/api/catalog-audit' and method == 'GET':
+                from .catalog_audit import inspect_catalog
+                return reply(200, inspect_catalog(self.catalog(client)))
             if path == '/api/songs':
                 snapshot = self.catalog(client)
                 if method == 'GET':
@@ -256,7 +259,10 @@ class Hosted:
             return reply(503, {'error': '처리 결과를 확인하지 못했습니다. 다시 불러와 확인하세요.'})
 
     def upload(self, client, path, query, content):
+        from ..web.original.original_roles import song_candidate
         filename = query['filename'][0]
+        if (path == '/api/song-assets' or query.get('song_id', [None])[0]) and not song_candidate(filename):
+            raise ValueError('찬양이 아닌 주보·기도·템플릿 자료는 찬양 원본으로 등록할 수 없습니다.')
         with tempfile.TemporaryDirectory(prefix='media-cloud-source-') as folder:
             store = WorkStore(Path(folder) / 'upload.db')
             digest, _, target = store._store_file(filename, content)
@@ -324,6 +330,9 @@ class Hosted:
         route, query = body['route'], body['query']
         if route not in ('/api/attachments','/api/song-assets') or not isinstance(query,dict):
             raise ValueError('업로드 위치를 확인하세요.')
+        from ..web.original.original_roles import song_candidate
+        if (route == '/api/song-assets' or query.get('song_id')) and not song_candidate(filename):
+            raise ValueError('찬양이 아닌 주보·기도·템플릿 자료는 찬양 원본으로 등록할 수 없습니다.')
         if route == '/api/attachments':
             day, service, slot = query['date'], query['service'], query['slot']
             if not isinstance(slot,str) or not 0<len(slot)<=200:
@@ -360,6 +369,9 @@ class Hosted:
         if (state.get('purpose')!='media-source-upload-v1' or state['expires']<time.time()
                 or state['user_id']!=member.user_id):
             raise ValueError('업로드 확인 시간이 만료됐습니다.')
+        from ..web.original.original_roles import song_candidate
+        if (state.get('operation') == 'song_asset' or state.get('mutation', {}).get('song_id')) and not song_candidate(state.get('mutation', {}).get('filename', '')):
+            raise ValueError('찬양 외 자료는 찬양 원본으로 등록할 수 없습니다.')
         item=self.cloud.item(body['item_id'])
         if item.get('name')!=state['name'] or item.get('parentReference',{}).get('id')!=state['folder_id']:
             raise ValueError('선택한 원본 위치를 확인하세요.')
@@ -394,14 +406,23 @@ class Hosted:
 
     def onedrive(self, handler, client, parsed):
         from ..web.original.onedrive import OneDrive
+        from ..web.original.original_roles import song_candidate
         action=parsed.path.removeprefix('/api/onedrive/')
         query=parse_qs(parsed.query)
         if action=='status' and handler.command=='GET':
             return handler.reply(200,self.cloud.status('https://'+handler.headers['Host']))
         if action=='files' and handler.command=='GET':
             purpose=query.get('purpose',['source'])[0]
-            if purpose not in ('source','archive'):raise ValueError('자료 종류를 확인하세요.')
-            return handler.reply(200,{'items':self.cloud.list_selected(purpose,query.get('id',[None])[0],query.get('q',[''])[0])})
+            if purpose not in ('source','source_video','archive','archive_wednesday','archive_friday_zoom','archive_friday_in_person','archive_sunday_ppt','archive_sunday_pdf'):raise ValueError('자료 종류를 확인하세요.')
+            terms=query.get('q',[''])[0]
+            if purpose in ('source','source_video') and not terms.strip():
+                raise ValueError('원본을 찾을 곡명 또는 찬송가 번호를 입력하세요.')
+            items=self.cloud.list_selected(purpose,query.get('id',[None])[0],terms)
+            if purpose in ('source','source_video'):
+                from ..web.original.original_roles import original_role
+                items=[{**item,'source_role':original_role(item.get('name',''))}
+                       if 'file' in item else item for item in items]
+            return handler.reply(200,{'items':items})
         if action=='folders' and handler.command=='GET':
             return handler.reply(200,{'items':[i for i in self.cloud.children(query.get('id',['root'])[0]) if 'folder' in i]})
         if action=='download' and handler.command=='GET':
@@ -430,6 +451,8 @@ class Hosted:
             return handler.reply(200,{'work':current,'item':job['result']['artifact'],'already_archived':True})
         if action=='import':
             return handler.reply(201,self.import_original(client,body['id'],body['song_id']))
+        if action=='import-to-slot':
+            return handler.reply(201,self.import_for_slot(client,body))
         if action=='auto-connect':
             snapshot=self.catalog(client)
             songs=self.songs(snapshot)
@@ -457,7 +480,7 @@ class Hosted:
                             result['choices'].append({'name':item['name'],'reason':'원본 변경 여부를 직접 확인하세요.'})
                         else:result['unchanged']+=1
                         continue
-                    if Path(item.get('name','')).suffix.lower() not in ('.ppt','.pptx','.mp3','.mp4','.wav','.pdf'):continue
+                    if not song_candidate(item.get('name','')):continue
                     song=OneDrive.filename_song(item['name'],songs)
                     if song:groups.setdefault(song['id'],[]).append(item)
                     else:result['choices'].append({'name':item['name'],'reason':'곡명·찬송가 종류를 직접 선택하세요.'})
@@ -473,10 +496,73 @@ class Hosted:
             return handler.reply(200,result)
         return handler.reply(409,{'error':'연결·폴더 변경은 관리자 배포 설정에서 진행하세요.'})
 
+    def import_for_slot(self, client, body):
+        """One user-selected OneDrive source -> one explicit worship attachment.
+
+        The server validates the requested service, slot and format. Unlike
+        auto-connect this never guesses a song or copies last week's values.
+        The source file stays in OneDrive; the cloud catalog references its ID.
+        """
+        import hashlib
+        from ..web.original.original_roles import song_candidate
+        from ..web.original.generation import compatible_original
+
+        day, service, slot, item_id = (body[k] for k in ('date', 'service', 'slot', 'id'))
+        WorkStore.validate(day, service)
+        if not isinstance(slot, str) or len(slot) > 200:
+            raise ValueError('찬양 항목을 확인하세요.')
+        is_background = slot.startswith('배경음악 ')
+        is_song = any(text in slot for text in ('찬양', '찬송', '특송'))
+        if not is_background and not is_song:
+            raise ValueError('찬양·찬송·특송 항목만 연결할 수 있습니다.')
+        snapshot = self.catalog(client, day, service)
+        data = snapshot['work']['data']
+        field = data.get('fields', {}).get(slot)
+        if not is_background and (not isinstance(field, dict) or field.get('state') != 'VALUE'
+                                  or not field.get('value', '').strip()):
+            raise ValueError('이번 주 예배에 이 곡을 먼저 입력하세요.')
+        mode = data.get('fridayMode', 'zoom')
+        if is_background and (service != 'friday' or mode != 'zoom'):
+            raise ValueError('금요 Zoom 배경음악만 연결할 수 있습니다.')
+        item = self.cloud.item(item_id)
+        filename = item.get('name', '')
+        if ('file' not in item or not isinstance(filename, str)
+                or not compatible_original(filename, service, mode, slot)
+                or not is_background and not song_candidate(filename)):
+            raise ValueError('현재 예배 방식에 맞는 찬양 원본만 선택하세요.')
+        if not self.cloud.within(item, self.cloud.selected('source_video' if service=='friday' and mode=='zoom' else 'source')):
+            raise ValueError('예배 방식에 맞는 원본 폴더의 파일만 가져올 수 있습니다.')
+        if not 0 < item.get('size', 0) <= 128 * 1024 * 1024:
+            raise ValueError('지원하는 원본 크기는 128MB 이하입니다.')
+        content = self.cloud._download(item)
+        if len(content) != item['size']:
+            raise ValueError('OneDrive 다운로드 크기가 원본 정보와 일치하지 않습니다.')
+        with tempfile.TemporaryDirectory(prefix='media-inline-source-check-') as folder:
+            digest, _, _ = WorkStore(Path(folder)/'validation.db')._store_file(filename, content)
+        exists = next((entry for entry in snapshot['tables']['files']
+                       if entry['digest'] == digest), None)
+        if exists is None:
+            self.backend.call('media_register_file', {'p_record': {
+                'digest': digest, 'filename': filename, 'size': item['size'],
+                'item_id': item['id'], 'drive_id': item['parentReference']['driveId']
+            }})
+        self.edit(client, snapshot, 'attachment', {
+            'day': day, 'service': service, 'slot': slot,
+            'song_id': None, 'filename': filename, 'digest': digest
+        })
+        return {'slot': slot, 'filename': filename, 'digest': digest,
+                'source': 'onedrive', 'imported': True, 'ready_for_ppt': True,
+                'conversion_status': 'not_needed' if filename.lower().endswith('.pptx')
+                                     or filename.lower().endswith('.mp4')
+                                     or filename.lower().endswith('.mp3') else 'pending',
+                'archive_status': 'uploaded'}
+
     def import_original(self,client,item_id,song_id):
         snapshot=self.catalog(client)
         if not any(r['id']==song_id for r in snapshot['tables']['songs']):raise ValueError('등록 곡을 확인하세요.')
         item=self.cloud.item(item_id)
+        from ..web.original.original_roles import song_candidate
+        if not song_candidate(item.get('name','')):raise ValueError('찬양 원본이 아닌 자료는 등록할 수 없습니다.')
         if ('file' not in item or not self.cloud.within(item,self.cloud.selected('source'))
                 or not 0<item.get('size',0)<=128*1024*1024):raise ValueError('원본 폴더의 지원 파일을 선택하세요.')
         content=self.cloud._download(item)

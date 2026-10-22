@@ -14,7 +14,7 @@ def preview(store, identifier, page):
     if len(identifier)!=32 or any(c not in '0123456789abcdef' for c in identifier): raise ValueError('파일을 확인하세요.')
     directory=Path(store.path).with_suffix('.generated')
     ppt=directory/(identifier+'.pptx')
-    report=json.loads((directory/(identifier+'.json')).read_text())
+    report=json.loads((directory/(identifier+'.json')).read_text(encoding='utf-8'))
     is_pdf=report.get('format')=='pdf'
     source=directory/(identifier+'.pdf') if is_pdf else ppt
     if is_pdf:
