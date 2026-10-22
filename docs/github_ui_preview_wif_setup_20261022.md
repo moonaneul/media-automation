@@ -86,3 +86,14 @@ gcloud run jobs describe media-production \
 ```
 
 프리뷰 리비전만 바뀌어야 한다. 새로운 GitHub Actions 체크가 통과했고 별도 미리보기 UI를 육안 확인하기 전까지 운영 반영하지 않는다. 비밀번호, 클라이언트 비밀키, 서비스 계정 JSON 파일은 출력하거나 GitHub에 커밋하지 않는다.
+
+## GitHub Actions 첫 자동 배포 성공 (2026-10-22)
+
+- 사용자가 GitHub Actions repository variables `MEDIA_PREVIEW_WIF_PROVIDER`와 `MEDIA_PREVIEW_DEPLOYER_SA` 등록 완료를 통보.
+- 검수 브랜치 커밋 `6d3c8432f448dae7487eab98c250d681953ff516` (`ui-preview-sync.yml`의 `node --check` 추가)이 GitHub `push` 이벤트를 트리거했다.
+- GitHub Actions [Safe UI Preview Sync 실행 #8](https://github.com/moonaneul/media-automation/actions/runs/39715624076): `Test preview-only UI` **success**, `Update ONLY private media-ui-preview-1022` **success**.
+- 배포 Job 내 Workload Identity OIDC 인증 성공, 비공개 미리보기 계정·빈 환경변수 검사 성공, 별도 Artifact Registry 저장소로 Docker build/push 성공.
+- 새 이미지 `asia-northeast3-docker.pkg.dev/church-media-511519/media-ui-preview/media-ui-preview@sha256:4f3e2c4a07c92eae9e71a75bda881de1402fdcdd7fa6cebb56e483486345eccb`.
+- GitHub Action 로그에서 리비전 `media-ui-preview-1022-00003-rst` 배포 `Done`, **미리보기 서비스 트래픽 100%**가 확인됨.
+- 운영 웹 `media-automation`/Job `media-production` 배포 단계 없음; 배포 주체 IAM은 별도 UI 미리보기 서비스·이미지 저장소·실행 계정 범위에 국한된다. 이는 운영환경 전체의 사후 실측 확인을 대체하지 않는다.
+- 사용자 브라우저 UI 시각 검증 및 실제 원본/예배 제작·OneDrive 연동 검증은 별개이며 아직 실시하지 않았다.
