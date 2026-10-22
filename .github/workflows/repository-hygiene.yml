@@ -10,6 +10,9 @@ on:
       - "src/media_automation/weekly_cli.py"
       - "scripts/audit_repository_layout.py"
       - "scripts/check_workspace_split.py"
+      - "scripts/prepare_single_workspace.py"
+      - "tests/test_prepare_single_workspace.py"
+      - "docs/single_workspace_adoption_20261022.md"
       - "tests/test_workspace_split.py"
       - "docs/multi_device_workflow_20261022.md"
       - "tests/test_weekly_cli_shared.py"
@@ -68,6 +71,7 @@ jobs:
             tests/test_repository_layout.py \
             tests/test_script_usage_audit.py \
             tests/test_workspace_split.py \
+            tests/test_prepare_single_workspace.py \
             tests/test_shared_song_checklist.py \
             tests/test_friday_cli.py \
             tests/test_bulletin_cli.py
