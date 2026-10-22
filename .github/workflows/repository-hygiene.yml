@@ -13,6 +13,12 @@ on:
       - "tests/test_repository_layout.py"
       - "tests/test_friday_cli.py"
       - "docs/repository_layout_20261022.md"
+      - "docs/INDEX.md"
+      - "README.md"
+      - ".gitignore"
+      - "experiments/**"
+      - "scripts/archive/**"
+      - "src/media_automation/_legacy_migration/**"
       - ".github/workflows/repository-hygiene.yml"
   workflow_dispatch:
 
