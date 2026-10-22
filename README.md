@@ -4,7 +4,7 @@
 >
 > 실제 하늘빛기쁨성서침례교회 미디어팀 업무를 출발점으로, **예배 안내 입력 → 주간 데이터 정리 → 자료 등록 → PPT/주보 제작 → 검수 → 전달** 과정을 설계하고 구현하고 있습니다.
 
-> **2026-10-22 저장소 정리 현황:** [공식 진입점·폴더별 역할·복구 보관본 구분](docs/repository_layout_20261022.md). 수요/금요/주일 공통 날짜·YAML 읽기 코드를 통합했으며, [읽기 전용 폴더 감사 및 CLI 회귀 검증 22개](https://github.com/moonaneul/media-automation/actions/runs/39730842031)가 통과했습니다. 기존 Cloud Run 웹/Job은 확인된 운영 이미지로 유지하고 있고, 검수 브랜치의 변경사항은 **운영으로 승격하지 않았습니다**. 실제 예배 PPT·주보 출력의 추가 육안 검수도 현재 보류 중입니다.
+> **2026-10-22 저장소 정리 현황:** [공식 진입점·폴더별 역할·복구 보관본 구분](docs/repository_layout_20261022.md) 및 [Mac·Windows·GitHub의 코드/자료 분리 절차](docs/multi_device_workflow_20261022.md). 수요/금요/주일 공통 날짜·YAML 읽기 코드를 통합했으며, [읽기 전용 폴더 감사 및 CLI 회귀 검증 22개](https://github.com/moonaneul/media-automation/actions/runs/39730842031)가 통과했습니다. 기존 Cloud Run 웹/Job은 확인된 운영 이미지로 유지하고 있고, 검수 브랜치의 변경사항은 **운영으로 승격하지 않았습니다**. 실제 예배 PPT·주보 출력의 추가 육안 검수도 현재 보류 중입니다.
 >
 > 아래 2026-10-15 상태 표는 **해당 날짜 작성 당시 기록**이며, 이후 Cloud Run 및 비공개 정적 UI 미리보기 작업은 별도 [2026-10-22 검수 기록](docs/production_release_rollback_runbook_20261022.md)을 기준으로 확인하세요.
 
