@@ -36,12 +36,12 @@ git archive HEAD src/media_automation/web/original/ui deploy/cloud/Dockerfile.ui
   tar -xf - -C "$tmp/context"
 cp "$tmp/context/deploy/cloud/Dockerfile.ui-preview" "$tmp/context/Dockerfile"
 commit="$(git rev-parse HEAD)"
-image_tag="asia-northeast3-docker.pkg.dev/$project/church-media/media-ui-preview:branch-${commit:0:12}"
+image_tag="asia-northeast3-docker.pkg.dev/$project/media-ui-preview/media-ui-preview:branch-${commit:0:12}"
 echo "Review source: $commit"
 echo "Image: $image_tag"
 gcloud builds submit "$tmp/context" --project="$project" --region="$region" --tag="$image_tag"
 image_digest="$(gcloud artifacts docker images describe "$image_tag" --format='value(image_summary.fully_qualified_digest)')"
-if [[ "$image_digest" != asia-northeast3-docker.pkg.dev/church-media-511519/church-media/media-ui-preview@sha256:* ]]; then
+if [[ "$image_digest" != asia-northeast3-docker.pkg.dev/church-media-511519/media-ui-preview/media-ui-preview@sha256:* ]]; then
   echo 'Unexpected image digest: refusing deployment' >&2
   exit 1
 fi
