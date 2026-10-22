@@ -48,12 +48,16 @@ def test_completion_rejects_unreviewed_or_mandatory_gaps(tmp_path, unresolved, a
     directory = Path(store.path).with_suffix('.generated')
     directory.mkdir()
     (directory / (identifier + '.pptx')).write_bytes(b'test PPT')
-    (directory / (identifier + '.json')).write_text(json.dumps({
+    report_path = directory / (identifier + '.json')
+    report_path.write_text(json.dumps({
         'date': day, 'service': service, 'format': 'pptx',
         'fields': data['fields'], 'unresolved': unresolved,
         'attachments': [], 'typography_version': FRIDAY_TYPOGRAPHY_VERSION,
         'render_configuration': render_configuration(data),
-    }, ensure_ascii=False))
+    }, ensure_ascii=False), encoding='utf-8')
+    # If this fixture is unreadable as UTF-8, every negative case can pass
+    # for the wrong reason before completion validation is exercised.
+    assert json.loads(report_path.read_text(encoding='utf-8'))['unresolved'] == unresolved
     server = make_server(store, 0)
     worker = threading.Thread(target=server.serve_forever, daemon=True)
     worker.start()
@@ -83,7 +87,7 @@ def test_completion_rejects_unreviewed_or_mandatory_gaps(tmp_path, unresolved, a
 
 
 def test_worship_completion_ui_passes_acknowledged_media_list():
-    html = Path('src/media_automation/web/original/ui/index.html').read_text()
+    html = Path('src/media_automation/web/original/ui/index.html').read_text(encoding='utf-8')
     handler = html[html.index("const completePdf=$('complete').onclick;"):
                    html.index("document.querySelectorAll('[data-workflow-target]')", html.index("const completePdf=$('complete').onclick;"))]
     assert 'acknowledged_unresolved:acknowledged' in handler
