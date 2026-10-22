@@ -11,6 +11,8 @@ on:
       - "scripts/audit_repository_layout.py"
       - "scripts/check_workspace_split.py"
       - "scripts/prepare_single_workspace.py"
+      - "scripts/device_transfer.py"
+      - "tests/test_device_transfer.py"
       - "tests/test_prepare_single_workspace.py"
       - "docs/single_workspace_adoption_20261022.md"
       - "tests/test_workspace_split.py"
